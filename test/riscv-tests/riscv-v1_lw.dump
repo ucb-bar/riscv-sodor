@@ -1,0 +1,79 @@
+
+riscv-v1_lw:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+    200c:	d8000013 	li	s7,0
+
+00002010 <stats>:
+    2010:	02b601fb 	mtpcr	zero,s7,cr10
+    2014:	00000013 	nop
+    2018:	00000013 	nop
+    201c:	00000013 	nop
+    2020:	00000013 	nop
+    2024:	08034013 	li	ra,208
+    2028:	10400103 	lw	v0,0(ra)
+    202c:	1803fc13 	li	v1,255
+    2030:	00c510e3 	bne	v1,v0,20b8 <fail>
+    2034:	10401103 	lw	v0,4(ra)
+    2038:	181fc013 	li	v1,2032
+    203c:	00c4f8e3 	bne	v1,v0,20b8 <fail>
+    2040:	10402103 	lw	v0,8(ra)
+    2044:	180fcc13 	li	v1,1011
+    2048:	00c4e0e3 	bne	v1,v0,20b8 <fail>
+    204c:	10403103 	lw	v0,12(ra)
+    2050:	181c3c13 	li	v1,1807
+    2054:	00c4c8e3 	bne	v1,v0,20b8 <fail>
+    2058:	08037013 	li	ra,220
+    205c:	107fd103 	lw	v0,-12(ra)
+    2060:	1803fc13 	li	v1,255
+    2064:	00c4a8e3 	bne	v1,v0,20b8 <fail>
+    2068:	107fe103 	lw	v0,-8(ra)
+    206c:	181fc013 	li	v1,2032
+    2070:	00c490e3 	bne	v1,v0,20b8 <fail>
+    2074:	107ff103 	lw	v0,-4(ra)
+    2078:	180fcc13 	li	v1,1011
+    207c:	00c478e3 	bne	v1,v0,20b8 <fail>
+    2080:	10400103 	lw	v0,0(ra)
+    2084:	181c3c13 	li	v1,1807
+    2088:	00c460e3 	bne	v1,v0,20b8 <fail>
+    208c:	dec00413 	add	s7,s7,1
+    2090:	d0000813 	li	s6,2
+    2094:	fef4f8e3 	bne	s7,s6,2010 <stats>
+    2098:	d0000013 	li	s6,0
+    209c:	02b401fb 	mtpcr	zero,s6,cr10
+    20a0:	00000013 	nop
+    20a4:	00000013 	nop
+    20a8:	00000013 	nop
+    20ac:	00000013 	nop
+    20b0:	08000413 	li	ra,1
+    20b4:	000220e3 	bne	zero,ra,20c4 <pass>
+
+000020b8 <fail>:
+    20b8:	08000813 	li	ra,2
+    20bc:	078201fb 	mtpcr	zero,ra,cr30
+    20c0:	00000063 	b	20c0 <fail+0x8>
+
+000020c4 <pass>:
+    20c4:	078201fb 	mtpcr	zero,ra,cr30
+    20c8:	00000063 	b	20c8 <pass+0x4>
+    20cc:	00000013 	nop
+
+Disassembly of section .data:
+
+000020d0 <tdat>:
+    20d0:	000000ff 	0xff
+
+000020d4 <tdat2>:
+    20d4:	000007f0 	0x7f0
+
+000020d8 <tdat3>:
+    20d8:	000003f3 	vf	0(zero)
+
+000020dc <tdat4>:
+    20dc:	0000070f 	0x70f

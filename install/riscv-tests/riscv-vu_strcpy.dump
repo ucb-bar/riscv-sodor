@@ -1,0 +1,115 @@
+
+riscv-vu_strcpy:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+    200c:	08000137 	lui	ra,0x2
+    2010:	08438013 	add	ra,ra,224
+    2014:	10000137 	lui	s0,0x2
+    2018:	1083f013 	add	s0,s0,252
+    201c:	1041fe7b 	0x1041fe7b
+    2020:	08000137 	lui	ra,0x2
+    2024:	0844a013 	add	ra,ra,296
+    2028:	10000137 	lui	s0,0x2
+    202c:	1084b013 	add	s0,s0,300
+    2030:	1041fe7b 	0x1041fe7b
+
+00002034 <check1>:
+    2034:	08000137 	lui	ra,0x2
+    2038:	0843f013 	add	ra,ra,252
+    203c:	10002813 	li	s0,10
+    2040:	50003c13 	li	s8,15
+
+00002044 <loop1>:
+    2044:	20400103 	lw	s2,0(ra)
+    2048:	010478e3 	bne	s2,s0,2084 <fail>
+    204c:	01142063 	beq	s2,s8,205c <done_check1>
+    2050:	10800413 	add	s0,s0,1
+    2054:	08401013 	add	ra,ra,4
+    2058:	fffffb67 	j	2044 <loop1>
+
+0000205c <done_check1>:
+    205c:	20401103 	lw	s2,4(ra)
+    2060:	010048e3 	bnez	s2,2084 <fail>
+
+00002064 <check2>:
+    2064:	08000137 	lui	ra,0x2
+    2068:	0844b013 	add	ra,ra,300
+    206c:	20400103 	lw	s2,0(ra)
+    2070:	010028e3 	bnez	s2,2084 <fail>
+    2074:	20401103 	lw	s2,4(ra)
+    2078:	283ffc13 	li	s3,-1
+    207c:	010a10e3 	bne	s2,s3,2084 <fail>
+    2080:	00000767 	j	209c <pass>
+
+00002084 <fail>:
+    2084:	08000813 	li	ra,2
+    2088:	078201fb 	mtpcr	zero,ra,cr30
+    208c:	00000013 	nop
+    2090:	00000013 	nop
+    2094:	00000013 	nop
+    2098:	00000063 	b	2098 <fail+0x14>
+
+0000209c <pass>:
+    209c:	08000413 	li	ra,1
+    20a0:	078201fb 	mtpcr	zero,ra,cr30
+    20a4:	00000013 	nop
+    20a8:	00000013 	nop
+    20ac:	00000013 	nop
+    20b0:	00000013 	nop
+    20b4:	00000013 	nop
+    20b8:	00000013 	nop
+    20bc:	00000013 	nop
+    20c0:	00000013 	nop
+    20c4:	00000013 	nop
+    20c8:	00000013 	nop
+    20cc:	00000013 	nop
+    20d0:	00000063 	b	20d0 <pass+0x34>
+    20d4:	00000013 	nop
+    20d8:	00000013 	nop
+    20dc:	00000013 	nop
+
+Disassembly of section .data:
+
+000020e0 <src_str1>:
+    20e0:	0000000a 	0xa
+    20e4:	0000000b 	vlb	vzero,zero
+    20e8:	0000000c 	0xc
+    20ec:	0000000d 	0xd
+    20f0:	0000000e 	0xe
+    20f4:	0000000f 	vsb	vzero,zero
+    20f8:	00000000 	unimp
+
+000020fc <dst_str1>:
+    20fc:	ffffffff 	0xffffffff
+    2100:	ffffffff 	0xffffffff
+    2104:	ffffffff 	0xffffffff
+    2108:	ffffffff 	0xffffffff
+    210c:	ffffffff 	0xffffffff
+    2110:	ffffffff 	0xffffffff
+    2114:	ffffffff 	0xffffffff
+    2118:	ffffffff 	0xffffffff
+    211c:	ffffffff 	0xffffffff
+    2120:	ffffffff 	0xffffffff
+    2124:	ffffffff 	0xffffffff
+
+00002128 <src_str2>:
+    2128:	00000000 	unimp
+
+0000212c <dst_str2>:
+    212c:	ffffffff 	0xffffffff
+    2130:	ffffffff 	0xffffffff
+    2134:	ffffffff 	0xffffffff
+    2138:	ffffffff 	0xffffffff
+    213c:	ffffffff 	0xffffffff
+    2140:	ffffffff 	0xffffffff
+    2144:	ffffffff 	0xffffffff
+    2148:	ffffffff 	0xffffffff
+    214c:	ffffffff 	0xffffffff
+    2150:	ffffffff 	0xffffffff
+    2154:	ffffffff 	0xffffffff

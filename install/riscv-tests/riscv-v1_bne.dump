@@ -1,0 +1,31 @@
+
+riscv-v1_bne:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+    200c:	08000413 	li	ra,1
+    2010:	10000813 	li	s0,2
+    2014:	004410e3 	bne	ra,s0,201c <_start+0x1c>
+    2018:	000230e3 	bne	zero,ra,2030 <fail>
+    201c:	08000413 	li	ra,1
+    2020:	10000413 	li	s0,1
+    2024:	004418e3 	bne	ra,s0,2030 <fail>
+    2028:	08000413 	li	ra,1
+    202c:	000220e3 	bne	zero,ra,203c <pass>
+
+00002030 <fail>:
+    2030:	08001413 	li	ra,5
+    2034:	078201fb 	mtpcr	zero,ra,cr30
+    2038:	00000063 	b	2038 <fail+0x8>
+
+0000203c <pass>:
+    203c:	078201fb 	mtpcr	zero,ra,cr30
+    2040:	00000063 	b	2040 <pass+0x4>
+    2044:	00000013 	nop
+    2048:	00000013 	nop
+    204c:	00000013 	nop

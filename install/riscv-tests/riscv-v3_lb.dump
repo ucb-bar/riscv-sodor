@@ -1,0 +1,222 @@
+
+riscv-v3_lb:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+
+0000200c <test_2>:
+    200c:	08000137 	lui	ra,0x2
+    2010:	084a0013 	add	ra,ra,640
+    2014:	18400003 	lb	s1,0(ra)
+    2018:	e83ffc13 	li	a11,-1
+    201c:	e0000813 	li	a10,2
+    2020:	10fa70e3 	bne	s1,a11,2258 <fail>
+
+00002024 <test_3>:
+    2024:	08000137 	lui	ra,0x2
+    2028:	084a0013 	add	ra,ra,640
+    202c:	18400403 	lb	s1,1(ra)
+    2030:	e8000013 	li	a11,0
+    2034:	e0000c13 	li	a10,3
+    2038:	10fa40e3 	bne	s1,a11,2258 <fail>
+
+0000203c <test_4>:
+    203c:	08000137 	lui	ra,0x2
+    2040:	084a0013 	add	ra,ra,640
+    2044:	18400803 	lb	s1,2(ra)
+    2048:	e83fc013 	li	a11,-16
+    204c:	e0001013 	li	a10,4
+    2050:	10fa10e3 	bne	s1,a11,2258 <fail>
+
+00002054 <test_5>:
+    2054:	08000137 	lui	ra,0x2
+    2058:	084a0013 	add	ra,ra,640
+    205c:	18400c03 	lb	s1,3(ra)
+    2060:	e8003c13 	li	a11,15
+    2064:	e0001413 	li	a10,5
+    2068:	08fbe0e3 	bne	s1,a11,2258 <fail>
+
+0000206c <test_6>:
+    206c:	08000137 	lui	ra,0x2
+    2070:	084a0c13 	add	ra,ra,643
+    2074:	187ff403 	lb	s1,-3(ra)
+    2078:	e83ffc13 	li	a11,-1
+    207c:	e0001813 	li	a10,6
+    2080:	08fbb0e3 	bne	s1,a11,2258 <fail>
+
+00002084 <test_7>:
+    2084:	08000137 	lui	ra,0x2
+    2088:	084a0c13 	add	ra,ra,643
+    208c:	187ff803 	lb	s1,-2(ra)
+    2090:	e8000013 	li	a11,0
+    2094:	e0001c13 	li	a10,7
+    2098:	08fb80e3 	bne	s1,a11,2258 <fail>
+
+0000209c <test_8>:
+    209c:	08000137 	lui	ra,0x2
+    20a0:	084a0c13 	add	ra,ra,643
+    20a4:	187ffc03 	lb	s1,-1(ra)
+    20a8:	e83fc013 	li	a11,-16
+    20ac:	e0002013 	li	a10,8
+    20b0:	08fb50e3 	bne	s1,a11,2258 <fail>
+
+000020b4 <test_9>:
+    20b4:	08000137 	lui	ra,0x2
+    20b8:	084a0c13 	add	ra,ra,643
+    20bc:	18400003 	lb	s1,0(ra)
+    20c0:	e8003c13 	li	a11,15
+    20c4:	e0002413 	li	a10,9
+    20c8:	08fb20e3 	bne	s1,a11,2258 <fail>
+
+000020cc <test_10>:
+    20cc:	08000137 	lui	ra,0x2
+    20d0:	084a0013 	add	ra,ra,640
+    20d4:	087f8013 	add	ra,ra,-32
+    20d8:	18408003 	lb	s1,32(ra)
+    20dc:	e83ffc13 	li	a11,-1
+    20e0:	e0002813 	li	a10,10
+    20e4:	08fae8e3 	bne	s1,a11,2258 <fail>
+
+000020e8 <test_11>:
+    20e8:	08000137 	lui	ra,0x2
+    20ec:	084a0013 	add	ra,ra,640
+    20f0:	087fe813 	add	ra,ra,-6
+    20f4:	18401c03 	lb	s1,7(ra)
+    20f8:	e8000013 	li	a11,0
+    20fc:	e0002c13 	li	a10,11
+    2100:	08fab0e3 	bne	s1,a11,2258 <fail>
+
+00002104 <test_12>:
+    2104:	e0003013 	li	a10,12
+    2108:	20000013 	li	s2,0
+    210c:	08000137 	lui	ra,0x2
+    2110:	084a0413 	add	ra,ra,641
+    2114:	18400403 	lb	s1,1(ra)
+    2118:	30c00013 	move	s4,s1
+    211c:	e83fc013 	li	a11,-16
+    2120:	09ba70e3 	bne	s4,a11,2258 <fail>
+    2124:	21000413 	add	s2,s2,1
+    2128:	28000813 	li	s3,2
+    212c:	f90bc0e3 	bne	s2,s3,210c <test_12+0x8>
+
+00002130 <test_13>:
+    2130:	e0003413 	li	a10,13
+    2134:	20000013 	li	s2,0
+    2138:	08000137 	lui	ra,0x2
+    213c:	084a0813 	add	ra,ra,642
+    2140:	18400403 	lb	s1,1(ra)
+    2144:	00000013 	nop
+    2148:	30c00013 	move	s4,s1
+    214c:	e8003c13 	li	a11,15
+    2150:	09ba10e3 	bne	s4,a11,2258 <fail>
+    2154:	21000413 	add	s2,s2,1
+    2158:	28000813 	li	s3,2
+    215c:	f90bb8e3 	bne	s2,s3,2138 <test_13+0x8>
+
+00002160 <test_14>:
+    2160:	e0003813 	li	a10,14
+    2164:	20000013 	li	s2,0
+    2168:	08000137 	lui	ra,0x2
+    216c:	084a0013 	add	ra,ra,640
+    2170:	18400403 	lb	s1,1(ra)
+    2174:	00000013 	nop
+    2178:	00000013 	nop
+    217c:	30c00013 	move	s4,s1
+    2180:	e8000013 	li	a11,0
+    2184:	01bba8e3 	bne	s4,a11,2258 <fail>
+    2188:	21000413 	add	s2,s2,1
+    218c:	28000813 	li	s3,2
+    2190:	f90bb0e3 	bne	s2,s3,2168 <test_14+0x8>
+
+00002194 <test_15>:
+    2194:	e0003c13 	li	a10,15
+    2198:	20000013 	li	s2,0
+    219c:	08000137 	lui	ra,0x2
+    21a0:	084a0413 	add	ra,ra,641
+    21a4:	18400403 	lb	s1,1(ra)
+    21a8:	e83fc013 	li	a11,-16
+    21ac:	00fb58e3 	bne	s1,a11,2258 <fail>
+    21b0:	21000413 	add	s2,s2,1
+    21b4:	28000813 	li	s3,2
+    21b8:	f90bc8e3 	bne	s2,s3,219c <test_15+0x8>
+
+000021bc <test_16>:
+    21bc:	e0004013 	li	a10,16
+    21c0:	20000013 	li	s2,0
+    21c4:	08000137 	lui	ra,0x2
+    21c8:	084a0813 	add	ra,ra,642
+    21cc:	00000013 	nop
+    21d0:	18400403 	lb	s1,1(ra)
+    21d4:	e8003c13 	li	a11,15
+    21d8:	00fb00e3 	bne	s1,a11,2258 <fail>
+    21dc:	21000413 	add	s2,s2,1
+    21e0:	28000813 	li	s3,2
+    21e4:	f90bc0e3 	bne	s2,s3,21c4 <test_16+0x8>
+
+000021e8 <test_17>:
+    21e8:	e0004413 	li	a10,17
+    21ec:	20000013 	li	s2,0
+    21f0:	08000137 	lui	ra,0x2
+    21f4:	084a0013 	add	ra,ra,640
+    21f8:	00000013 	nop
+    21fc:	00000013 	nop
+    2200:	18400403 	lb	s1,1(ra)
+    2204:	e8000013 	li	a11,0
+    2208:	00faa0e3 	bne	s1,a11,2258 <fail>
+    220c:	21000413 	add	s2,s2,1
+    2210:	28000813 	li	s3,2
+    2214:	f90bb8e3 	bne	s2,s3,21f0 <test_17+0x8>
+
+00002218 <test_18>:
+    2218:	18000137 	lui	s1,0x2
+    221c:	18ca0013 	add	s1,s1,640
+    2220:	10c00003 	lb	s0,0(s1)
+    2224:	10000813 	li	s0,2
+    2228:	e8000813 	li	a11,2
+    222c:	e0004813 	li	a10,18
+    2230:	00ba50e3 	bne	s0,a11,2258 <fail>
+
+00002234 <test_19>:
+    2234:	18000137 	lui	s1,0x2
+    2238:	18ca0013 	add	s1,s1,640
+    223c:	10c00003 	lb	s0,0(s1)
+    2240:	00000013 	nop
+    2244:	10000813 	li	s0,2
+    2248:	e8000813 	li	a11,2
+    224c:	e0004c13 	li	a10,19
+    2250:	00ba10e3 	bne	s0,a11,2258 <fail>
+    2254:	003830e3 	bne	zero,a10,226c <pass>
+
+00002258 <fail>:
+    2258:	e7000493 	sll	a10,a10,0x1
+    225c:	e7000713 	or	a10,a10,1
+    2260:	07b801fb 	mtpcr	zero,a10,cr30
+    2264:	00000063 	b	2264 <fail+0xc>
+    2268:	00000013 	nop
+
+0000226c <pass>:
+    226c:	08000413 	li	ra,1
+    2270:	078201fb 	mtpcr	zero,ra,cr30
+    2274:	00000063 	b	2274 <pass+0x8>
+    2278:	00000013 	nop
+    227c:	00000013 	nop
+
+Disassembly of section .data:
+
+00002280 <tdat>:
+    2280:	0ff000ff 	0xff000ff
+
+00002281 <tdat2>:
+    2281:	dd0ff000 	0xf000
+
+00002282 <tdat3>:
+    2282:	2add0ff0 	0xff0
+
+00002283 <tdat4>:
+    2283:	Address 0x0000000000002283 is out of bounds.
+

@@ -1,0 +1,263 @@
+all: emulator
+
+common      := $(srcDir)/emulator/common
+install     := $(srcDir)/install
+
+ELF         := elf2hex
+
+
+MODEL := Top
+
+seed=
+MK_TARGET_PROC?=rv32_1stage
+
+ 
+#choose between 32b anad 64b binaries, using proxy-kernel 
+RV64_MODE?="false"
+SUPERVISOR_MODE?="false"
+ 
+ 
+#riscv-pk is relative to top of sodor
+#pk_hex is relative to emulator/proc directory
+RISCV_PK:= $(installTop)/riscv-pk/target/bin/pk
+PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
+
+# Allow us to use different Tracer modules for each processor
+TRACERPATH?=$(common)
+TRACER?=tracer
+
+CXX := g++
+CXXFLAGS := $(CXXFLAGS) -O1 -std=c++0x
+
+CXXSRCS := disasm htif_emulator
+CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
+CXXDEBUGFLAGS := -DDEBUG
+
+LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -L. -ldramsim -lfesvr -lpthread
+
+OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER))
+DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER))
+
+CHISEL_ARGS := --noIoDebug --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src
+CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
+
+# To find emulator.cpp
+vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC)
+vpath %.a    $(buildLibDir)
+
+generated-src/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala
+	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS)"
+
+generated-src-debug/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala
+	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
+
+$(MODEL).o: %.o: generated-src/%.cpp
+	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
+
+$(MODEL)-debug.o: %-debug.o: generated-src-debug/%.cpp
+	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
+
+$(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src/$(MODEL).cpp
+	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
+
+$(addsuffix -debug.o,$(CXXSRCS)): %-debug.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src-debug/$(MODEL).cpp
+	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
+ 
+$(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src/Top.h
+	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src -o $(TRACER).o
+ 
+$(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
+	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
+
+emulator.o: emulator.cpp generated-src/Top.h
+	$(CXX) -c $(CXXFLAGS) $< -I$(common) -I./generated-src -o $@
+
+emulator-debug.o: emulator.cpp generated-src-debug/Top.h
+	$(CXX) -c $(CXXFLAGS) $(CXXDEBUGFLAGS) $< -I$(common) -I./generated-src-debug -o $@
+
+emulator: $(OBJS) emulator.o
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) emulator.o $(LDFLAGS)
+
+emulator-debug: $(DEBUG_OBJS) emulator-debug.o
+	$(CXX) $(CXXFLAGS) -o $@ $(DEBUG_OBJS) emulator-debug.o $(LDFLAGS)
+ 
+clean:
+	rm -rf *.o *.a emulator emulator-debug generated-src generated-src-debug DVEfiles output
+
+clean-tests:
+	rm -rf output/*.out
+
+test:
+	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "~make $(CURDIR) run-fast $(CHISEL_ARGS)"
+
+
+#--------------------------------------------------------------------
+# Tests
+#--------------------------------------------------------------------
+
+
+# Globally installed assembly tests
+global_tstdir = $(install)/riscv-tests
+
+global_asm_tests += \
+	riscv_example \
+	riscv-v1_addi \
+	riscv-v1_bne \
+	riscv-v1_simple \
+	riscv-v1_sw \
+	riscv-v2_addi \
+	riscv-v2_add \
+	riscv-v2_and \
+	riscv-v2_andi \
+	riscv-v2_beq \
+	riscv-v2_bge \
+	riscv-v2_bgeu \
+	riscv-v2_blt \
+	riscv-v2_bltu \
+	riscv-v2_bne \
+	riscv-v2_j \
+	riscv-v2_jal \
+	riscv-v2_jalr  \
+	riscv-v2_lui \
+	riscv-v2_lw \
+	riscv-v2_or \
+	riscv-v2_ori \
+	riscv-v2_simple \
+	riscv-v2_slt \
+	riscv-v2_sltu \
+	riscv-v2_slti \
+	riscv-v2_sltiu \
+	riscv-v2_slli \
+	riscv-v2_sll \
+	riscv-v2_srli \
+	riscv-v2_srl \
+	riscv-v2_sub \
+	riscv-v2_sw \
+	riscv-v2_xor \
+	riscv-v2_xori \
+	riscv-v2_auipc \
+
+# Local assembly tests
+local_tstdir = ../../test/riscv-tests
+
+
+local_asm_tests := \
+	$(local_asm_tests)
+	#append any tests set by individual processors
+
+# taken out, b/c of bug with v1 being built at 0x2000, which is too big for LW
+# offsets without using LUI
+#	riscv-v1_lw \
+
+# Globally installed benchmarks
+global_bmarkdir = $(install)/riscv-bmarks
+global_bmarks = \
+	median \
+	mix_manufacturing \
+	multiply \
+	qsort \
+	towers \
+	vvadd \
+
+# Local benchmarks
+local_bmarkdir = ../../test/riscv-bmarks
+local_bmarks = \
+
+
+#--------------------------------------------------------------------
+# Run assembly tests and benchmarks
+#--------------------------------------------------------------------
+    
+global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
+global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
+global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
+
+asm_test_timeout ?=30000
+bmark_timeout ?=100000
+                           
+# allow some processors to override testmod when running benchmarks
+filetype=rv32u.hex
+PK_PATH=
+ifeq ($(SUPERVISOR_MODE),"true")
+ifeq ($(RV64_MODE),"false")
+	filetype=rv32s
+	PK_PATH=PATH=$(install)/riscv-pk/bin:$(PATH);
+else
+	filetype=rv64s
+	PK_PATH=RISCV=$(install)/riscv-pk64/;
+	#$(install)/riscv-pk64/bin:$(PATH);
+endif
+else
+ifeq ($(RV64_MODE),"false")
+	filetype=rv32u
+else
+	filetype=rv64u
+endif
+endif
+ 
+%pk.hex: %pk
+	$(ELF) 16 16384 $< > $@
+
+%.hex: 
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+%.riscv.hex: %
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+$(addprefix output/, $(addsuffix .hex, $(global_asm_tests))): output/%.hex: $(global_tstdir)/%.hex
+	mkdir -p output
+	ln -fs $< $@
+
+#$(addprefix output/, $(addsuffix .hex, $(global_bmarks))): output/%.hex: $(global_bmarkdir)/%.hex
+#	mkdir -p output
+#	ln -fs $< $@
+
+output:
+	mkdir -p $@
+
+output/%.run: output/%.hex emulator
+	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none 2> /dev/null
+
+output/%.out: output/%.hex emulator
+	-./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
+
+output/%.vpd: output/%.hex emulator-debug
+	-./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+
+
+
+ifeq ($(SUPERVISOR_MODE),"false")
+ 
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator 
+	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2> $@
+$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug
+	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
+    
+else                                                   
+
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator $(PK_HEX) output
+	-$(PK_PATH) ./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $@
+$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator $(PK_HEX) output
+	$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+#	$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose $(seed) pk $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug $(PK_HEX) output
+	-$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
+#	-$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
+    
+endif
+
+run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
+	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
+#run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
+run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks)))
+	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
+run-asm-tests-debug: $(addprefix output/, $(addsuffix .vpd, $(global_asm_tests)))
+	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
+run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vpd, $(global_bmarks)))
+	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
+
+
+run: run-asm-tests run-bmarks-test
+run-debug: run-asm-tests-debug run-bmarks-test-debug
+run-fast: $(addprefix output/, $(addsuffix .run, $(global_asm_tests) $(global_bmarks)))
+

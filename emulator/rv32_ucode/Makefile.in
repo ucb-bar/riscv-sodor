@@ -1,0 +1,17 @@
+include @top_builddir@/prefix.mk
+
+MK_TARGET_PROC  ?= rv32_ucode
+
+asm_test_timeout=10000
+bmark_timeout=500000
+
+local_asm_tests += \
+
+# put these back in if you wish to 
+# practice writing micro-code for these
+# instructions...
+#	riscv-vu_addm \
+	riscv-vu_movn \
+	riscv-vu_strcpy \
+
+include $(srcDir)/emulator/common/Makefile.include

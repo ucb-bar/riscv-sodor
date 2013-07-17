@@ -1,0 +1,52 @@
+
+riscv-vu_movn:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+    200c:	080de013 	li	ra,888
+    2010:	10000413 	li	s0,1
+    2014:	180f9c13 	li	s1,999
+    2018:	184406f7 	movn	s1,ra,s0
+    201c:	280de013 	li	s3,888
+    2020:	00ca40e3 	bne	s1,s3,2040 <fail>
+    2024:	0806f013 	li	ra,444
+    2028:	10000013 	li	s0,0
+    202c:	1808ac13 	li	s1,555
+    2030:	184406f7 	movn	s1,ra,s0
+    2034:	2808ac13 	li	s3,555
+    2038:	00ca10e3 	bne	s1,s3,2040 <fail>
+    203c:	00000767 	j	2058 <pass>
+
+00002040 <fail>:
+    2040:	08000813 	li	ra,2
+    2044:	078201fb 	mtpcr	zero,ra,cr30
+    2048:	00000013 	nop
+    204c:	00000013 	nop
+    2050:	00000013 	nop
+    2054:	00000063 	b	2054 <fail+0x14>
+
+00002058 <pass>:
+    2058:	08000413 	li	ra,1
+    205c:	078201fb 	mtpcr	zero,ra,cr30
+    2060:	00000013 	nop
+    2064:	00000013 	nop
+    2068:	00000013 	nop
+    206c:	00000013 	nop
+    2070:	00000013 	nop
+    2074:	00000013 	nop
+    2078:	00000013 	nop
+    207c:	00000013 	nop
+    2080:	00000013 	nop
+    2084:	00000013 	nop
+    2088:	00000013 	nop
+    208c:	00000063 	b	208c <pass+0x34>
+
+Disassembly of section .data:
+
+00002090 <tdat>:
+    2090:	00000002 	0x2

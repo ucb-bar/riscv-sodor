@@ -1,0 +1,69 @@
+===============================================================================
+CS152 Lab1 Infrastructure : Quick & Dirty Instructions!
+===============================================================================
+# Author : Christopher Celio
+#        : 
+# Date   : 2012 Jan 8
+
+# About  : The following readme is written to target CS152 lab users, and may
+#          be slightly out of date.
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+First, make sure you have included the RISC-V toolchain in your path. For
+students using Instructional machines, this can be accomplished as follows:
+
+  $ source ~cs152/tools/cs152.bashrc
+
+
+To switch between the provided processors (rv32_1stage, rv32_2stage,
+rv32_5stage, rv32_ucode), change the bash variable $MK_TARGET_PROC:
+
+  $ export MK_TARGET_PROC=rv32_5stage
+  $ make run-emulator
+
+See docs/ for more information. Read the makefiles to see what's going on.
+
+-------------------------------------------------------------------------------
+BUILDING LAB 1
+-------------------------------------------------------------------------------
+
+from this directory:
+
+  make run-emulator - to generate C++ simulator code from Chisel and run all
+                     riscv-bmarks and riscv-test on the resulting processor (by
+                     default builds rv32_1stage).
+  make clean        - remove all generated files for the current target 
+                     processor.
+
+  export MK_TARGET_PROC=rv32_5stage - to change to a new target processor.
+                                       Other options are {rv32_1stage,
+                                       rv32_2stage, rv32_5stage, rv32_ucode}.
+
+the generated code is written to the emulator/${MK_TARGET_PROC}/generated-src
+directories.
+
+to build the C simulator:
+
+  cd emulator/${MK_TARGET_PROC}
+  make
+
+You can run a set of assembly tests or simple benchmarks:
+
+  make run-asm-tests
+  make run-bmarks
+
+Local assembly tests and benchmarks are in the ../test directory.
+to build them:
+
+  cd ../test/riscv-tests
+  make
+  cd ../riscv-bmarks
+  make
+
+Most assembly tests and benchmarks are globally installed in
+~cs152/install/.
+
+You must have the riscv toolchain (gcc, frontend server, proxy kernel)
+installed and in your path.
+

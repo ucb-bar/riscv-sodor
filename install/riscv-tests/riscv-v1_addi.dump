@@ -1,0 +1,35 @@
+
+riscv-v1_addi:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	0800017b 	mfpcr	ra,cr0
+    2004:	087dff93 	and	ra,ra,-129
+    2008:	000201fb 	mtpcr	zero,ra,cr0
+    200c:	08000413 	li	ra,1
+    2010:	10400413 	add	s0,ra,1
+    2014:	18000813 	li	s1,2
+    2018:	00c450e3 	bne	s1,s0,2040 <fail>
+    201c:	0803fc13 	li	ra,255
+    2020:	10400413 	add	s0,ra,1
+    2024:	18040013 	li	s1,256
+    2028:	00c430e3 	bne	s1,s0,2040 <fail>
+    202c:	083ffc13 	li	ra,-1
+    2030:	10400413 	add	s0,ra,1
+    2034:	000418e3 	bne	zero,s0,2040 <fail>
+    2038:	08000413 	li	ra,1
+    203c:	000220e3 	bne	zero,ra,204c <pass>
+
+00002040 <fail>:
+    2040:	08001413 	li	ra,5
+    2044:	078201fb 	mtpcr	zero,ra,cr30
+    2048:	00000063 	b	2048 <fail+0x8>
+
+0000204c <pass>:
+    204c:	078201fb 	mtpcr	zero,ra,cr30
+    2050:	00000063 	b	2050 <pass+0x4>
+    2054:	00000013 	nop
+    2058:	00000013 	nop
+    205c:	00000013 	nop

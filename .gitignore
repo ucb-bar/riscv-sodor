@@ -1,0 +1,16 @@
+emulator/*/*.out
+emulator/*/*.out.gz
+emulator/*/emulator
+emulator/*/emulator-debug
+emulator/*/generated-src
+emulator/*/generated-src-debug
+emulator/*/*.o
+emulator/*/*.a
+emulator/*/output/
+install/share
+*.pyc
+*.swp
+*.vcd
+*.vpd
+.DS_Store
+sbt/*/target
