@@ -15,15 +15,13 @@ instbasedir = ../../install
 
 
 # allow this to be overridden
-SUPERVISOR_MODE?="true"
+SUPERVISOR_MODE?="false"
 RV64_MODE?="false"
 
 #--------------------------------------------------------------------
 # Sources
 #--------------------------------------------------------------------
 
-# Assuming the user doesn't have the tool-chain installed to build
-# these benchmarks.
 bmarks = \
 	median \
 	mix_manufacturing \
