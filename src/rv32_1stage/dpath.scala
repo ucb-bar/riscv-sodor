@@ -33,28 +33,28 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Mod
+class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = new DpathIo()
    
    
    // Instruction Fetch
-   val pc_next          = UFix()
-   val pc_plus4         = UFix()
-   val branch_target    = UFix()
-   val jump_target      = UFix()
-   val jump_reg_target  = UFix()
-   val exception_target = UFix()
+   val pc_next          = UInt()
+   val pc_plus4         = UInt()
+   val branch_target    = UInt()
+   val jump_target      = UInt()
+   val jump_reg_target  = UInt()
+   val exception_target = UInt()
  
    // PC Register
-   val pc_reg = RegReset(UFix(START_ADDR, conf.xprlen))
+   val pc_reg = RegReset(UInt(START_ADDR, conf.xprlen))
 
    when (!io.ctl.stall) 
    {
       pc_reg := pc_next
    }
 
-   pc_plus4 := (pc_reg + UFix(4, conf.xprlen))               
+   pc_plus4 := (pc_reg + UInt(4, conf.xprlen))               
 
    pc_next := MuxCase(pc_plus4, Array(
                   (io.ctl.pc_sel === PC_4)   -> pc_plus4,
@@ -69,10 +69,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
                  
    
    // Decode
-   val rs1_addr = inst(26, 22).toUFix
-   val rs2_addr = inst(21, 17).toUFix
-   val X1       = UFix(1)
-   val wb_addr  = Mux(io.ctl.wa_sel, inst(31, 27).toUFix,
+   val rs1_addr = inst(26, 22).toUInt
+   val rs2_addr = inst(21, 17).toUInt
+   val X1       = UInt(1)
+   val wb_addr  = Mux(io.ctl.wa_sel, inst(31, 27).toUInt,
                                      X1)
    
    val wb_data = Bits(width = conf.xprlen)
@@ -80,13 +80,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    // Register File
    val regfile = Mem(32, Bits(width = conf.xprlen))
 
-   when (io.ctl.rf_wen && (wb_addr != UFix(0)))
+   when (io.ctl.rf_wen && (wb_addr != UInt(0)))
    {
       regfile(wb_addr) := wb_data
    }
 
-   val rs1_data = Mux((rs1_addr != UFix(0)), regfile(rs1_addr), UFix(0, conf.xprlen))
-   val rs2_data = Mux((rs2_addr != UFix(0)), regfile(rs2_addr), UFix(0, conf.xprlen))
+   val rs1_data = Mux((rs1_addr != UInt(0)), regfile(rs1_addr), UInt(0, conf.xprlen))
+   val rs2_data = Mux((rs2_addr != UInt(0)), regfile(rs2_addr), UInt(0, conf.xprlen))
    
    
    // immediates
@@ -102,47 +102,47 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
 
    
    // Operand Muxes
-   val alu_op1 = MuxCase(UFix(0), Array(
+   val alu_op1 = MuxCase(UInt(0), Array(
                (io.ctl.op1_sel === OP1_RS1) -> rs1_data,
                (io.ctl.op1_sel === OP1_PC)  -> pc_reg
-               )).toUFix
+               )).toUInt
    
-   val alu_op2 = MuxCase(UFix(0), Array(
+   val alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> rs2_data,
                (io.ctl.op2_sel === OP2_IMI) -> imm_itype_sext,
                (io.ctl.op2_sel === OP2_IMB) -> imm_btype_sext,
                (io.ctl.op2_sel === OP2_UI)  -> imm_utype
-               )).toUFix
+               )).toUInt
   
 
    // ALU
-   val alu_out   = UFix(width = conf.xprlen)
+   val alu_out   = UInt(width = conf.xprlen)
    
-   val alu_shamt = alu_op2(4,0).toUFix
+   val alu_shamt = alu_op2(4,0).toUInt
    
-   alu_out := MuxCase(UFix(0), Array(
-                  (io.ctl.alu_fun === ALU_ADD)  -> (alu_op1 + alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SUB)  -> (alu_op1 - alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_AND)  -> (alu_op1 & alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_OR)   -> (alu_op1 | alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_XOR)  -> (alu_op1 ^ alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SLT)  -> (alu_op1.toFix < alu_op2.toFix).toUFix,
-                  (io.ctl.alu_fun === ALU_SLTU) -> (alu_op1 < alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUFix,
-                  (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.toFix >> alu_shamt).toUFix,
-                  (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).toUFix,
+   alu_out := MuxCase(UInt(0), Array(
+                  (io.ctl.alu_fun === ALU_ADD)  -> (alu_op1 + alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SUB)  -> (alu_op1 - alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_AND)  -> (alu_op1 & alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_OR)   -> (alu_op1 | alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_XOR)  -> (alu_op1 ^ alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SLT)  -> (alu_op1.toSInt < alu_op2.toSInt).toUInt,
+                  (io.ctl.alu_fun === ALU_SLTU) -> (alu_op1 < alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
+                  (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.toSInt >> alu_shamt).toUInt,
+                  (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).toUInt,
                   (io.ctl.alu_fun === ALU_COPY2)-> alu_op2 
                   ))
 
    // Branch/Jump Target Calculation
-   val simm12_sh1  = Cat(imm_btype_sext, UFix(0,1)) 
-   branch_target   := pc_reg + simm12_sh1.toUFix
-   jump_target     := pc_reg + Cat(imm_jtype_sext(conf.xprlen-1,0), UFix(0, 1)).toUFix
-   jump_reg_target := (rs1_data.toUFix + imm_itype_sext.toUFix)
+   val simm12_sh1  = Cat(imm_btype_sext, UInt(0,1)) 
+   branch_target   := pc_reg + simm12_sh1.toUInt
+   jump_target     := pc_reg + Cat(imm_jtype_sext(conf.xprlen-1,0), UInt(0, 1)).toUInt
+   jump_reg_target := (rs1_data.toUInt + imm_itype_sext.toUInt)
                                   
    
    // Privileged Co-processor Registers
-   val pcr = Mod(new PCR())
+   val pcr = Module(new PCR())
    pcr.io.host <> io.host
    pcr.io.r.addr := rs1_addr
    pcr.io.r.en   := io.ctl.pcr_fcn != PCR_N
@@ -161,11 +161,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    exception_target := pcr.io.evec
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UFix(0, conf.xprlen))
-   tsc_reg := tsc_reg + UFix(1)
+   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UFix(0, conf.xprlen))
-   when (!io.ctl.stall && !io.ctl.exception) { irt_reg := irt_reg + UFix(1) }
+   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   when (!io.ctl.stall && !io.ctl.exception) { irt_reg := irt_reg + UInt(1) }
 
   
 
@@ -177,19 +177,19 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
                   (io.ctl.wb_sel === WB_PCR) -> pcr_out,
                   (io.ctl.wb_sel === WB_TSC) -> tsc_reg,
                   (io.ctl.wb_sel === WB_IRT) -> irt_reg
-                  )).toFix()
+                  )).toSInt()
                                   
 
    // datapath to controlpath outputs
    io.dat.inst   := inst
    io.dat.br_eq  := (rs1_data === rs2_data)
-   io.dat.br_lt  := (rs1_data.toFix < rs2_data.toFix) 
-   io.dat.br_ltu := (rs1_data.toUFix < rs2_data.toUFix)
+   io.dat.br_lt  := (rs1_data.toSInt < rs2_data.toSInt) 
+   io.dat.br_ltu := (rs1_data.toUInt < rs2_data.toUInt)
    
    
    // datapath to data memory outputs
    io.dmem.req.bits.addr  := alu_out
-   io.dmem.req.bits.data := rs2_data.toUFix 
+   io.dmem.req.bits.data := rs2_data.toUInt 
    
    
    // Printout
@@ -198,11 +198,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
       , pc_reg
       , Disassemble(inst)
       , Mux(io.ctl.stall, Str("stall"), Str("     "))
-      , Mux(io.ctl.pc_sel  === UFix(1), Str("BR"),
-         Mux(io.ctl.pc_sel === UFix(2), Str("J "),
-         Mux(io.ctl.pc_sel === UFix(3), Str("JR"),
-         Mux(io.ctl.pc_sel === UFix(4), Str("EX"),
-         Mux(io.ctl.pc_sel === UFix(0), Str("  "), Str("??"))))))
+      , Mux(io.ctl.pc_sel  === UInt(1), Str("BR"),
+         Mux(io.ctl.pc_sel === UInt(2), Str("J "),
+         Mux(io.ctl.pc_sel === UInt(3), Str("JR"),
+         Mux(io.ctl.pc_sel === UInt(4), Str("EX"),
+         Mux(io.ctl.pc_sel === UInt(0), Str("  "), Str("??"))))))
       , alu_op1
       , alu_op2
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))

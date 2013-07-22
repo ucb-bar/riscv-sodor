@@ -19,16 +19,16 @@ class CtrlSignals extends Bundle()
    val if_stall  = Bool()    // hazard on memory port: stall IF
    val if_kill   = Bool()    // squash IF stage (branch mispredict)
    val exe_kill  = Bool()    // squash EX stage (exception/eret occurred)
-   val pc_sel    = UFix(width = PC_4.getWidth) 
+   val pc_sel    = UInt(width = PC_4.getWidth) 
    val brjmp_sel = Bool()
-   val op1_sel   = UFix(width = OP1_X.getWidth) 
-   val op2_sel   = UFix(width = OP2_X.getWidth) 
+   val op1_sel   = UInt(width = OP1_X.getWidth) 
+   val op2_sel   = UInt(width = OP2_X.getWidth) 
    val alu_fun   = Bits(width = SZ_ALU_FN) 
-   val wb_sel    = UFix(width = WB_X.getWidth) 
+   val wb_sel    = UInt(width = WB_X.getWidth) 
    val wa_sel    = Bool() 
    val rf_wen    = Bool() 
    val bypassable= Bool()     // instruction's result can be bypassed
-   val pcr_fcn   = UFix(width = 3) 
+   val pcr_fcn   = UInt(width = 3) 
 
    val dmem_val  = Bool()
    val dmem_fcn  = Bits(width = M_X.getWidth)
@@ -36,7 +36,7 @@ class CtrlSignals extends Bundle()
  
    // confusing point: these three signals come out in WB
    val exception = Bool()   
-   val exc_cause = UFix(width = 6)
+   val exc_cause = UInt(width = 6)
    val eret      = Bool()
 }
 
@@ -50,7 +50,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Mod
+class CtlPath(implicit conf: SodorConfiguration) extends Module
 {                            //                                                                                                    mem flush/sync
   val io = new CpathIo()     //                                                                                                    |   is eret
                              //                                                                                                    |   |  is syscall
@@ -181,7 +181,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    // address exceptions/eret in WB stage
 
    val wb_exception = RegReset(Bool(false))
-   val wb_exc_cause = Reg(UFix(width = 5))
+   val wb_exc_cause = Reg(UInt(width = 5))
    
    
    // executing ERET when traps are enabled causes illegal istruction exception
@@ -203,7 +203,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
                      Mux(exc_priv,    EXCEPTION_PRIVILEGED,
                      Mux(cs_syscall.toBool,  EXCEPTION_SYSCALL,
                      Mux(cs_eret.toBool   ,  EXC_RETURN, // let's cheat, and treat "eret" like an exception
-                                      UFix(0,5)))))
+                                      UInt(0,5)))))
 
 
    take_evec        := wb_exception

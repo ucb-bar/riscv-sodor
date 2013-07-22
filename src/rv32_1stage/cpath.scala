@@ -17,16 +17,16 @@ import Constants._
 class CtlToDatIo extends Bundle() 
 {
    val stall     = Bool(OUTPUT)
-   val pc_sel    = UFix(OUTPUT, 3) 
-   val op1_sel   = UFix(OUTPUT, 1) 
-   val op2_sel   = UFix(OUTPUT, 2) 
-   val alu_fun   = UFix(OUTPUT, 4) 
-   val wb_sel    = UFix(OUTPUT, 3) 
+   val pc_sel    = UInt(OUTPUT, 3) 
+   val op1_sel   = UInt(OUTPUT, 1) 
+   val op2_sel   = UInt(OUTPUT, 2) 
+   val alu_fun   = UInt(OUTPUT, 4) 
+   val wb_sel    = UInt(OUTPUT, 3) 
    val wa_sel    = Bool(OUTPUT) 
    val rf_wen    = Bool(OUTPUT) 
-   val pcr_fcn   = UFix(OUTPUT, 3) 
+   val pcr_fcn   = UInt(OUTPUT, 3) 
    val exception = Bool(OUTPUT)
-   val exc_cause = UFix(OUTPUT, 6)
+   val exc_cause = UInt(OUTPUT, 6)
    val eret      = Bool(OUTPUT)
 
    val debug_dmem_val = Bool(OUTPUT)
@@ -43,7 +43,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Mod
+class CtlPath(implicit conf: SodorConfiguration) extends Module
 {                                                                                                                   //      mem flush/sync
   val io = new CpathIo()                                                                                            //      |   is eret
                                                                                                                     //      |   |  is syscall
@@ -177,7 +177,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    io.ctl.exc_cause := Mux(exc_illegal, EXCEPTION_ILLEGAL,
                        Mux(exc_priv,    EXCEPTION_PRIVILEGED,
                        Mux(cs_syscall.toBool,  EXCEPTION_SYSCALL,
-                                        UFix(0,5))))
+                                        UInt(0,5))))
    
    // only here to thread ctrl signals to printf in dpath.scala                  
    io.ctl.debug_dmem_val := cs_mem_en.toBool

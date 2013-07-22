@@ -48,7 +48,7 @@ class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bund
 
 class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
 {
-   val addr = UFix(width = conf.xprlen)
+   val addr = UInt(width = conf.xprlen)
    val data = Bits(width = data_width)
    val fcn  = Bits(width = M_X.getWidth)  // memory function code
    val typ  = Bits(width = MT_X.getWidth) // memory type
@@ -61,7 +61,7 @@ class MemResp(data_width: Int) extends Bundle
   override def clone = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
-class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Mod
+class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
 {
    val io = new Bundle
    {
@@ -92,10 +92,10 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
 
       val req_typ = io.core_ports(i).req.bits.typ
       val byte_shift_amt = io.core_ports(i).req.bits.addr(1,0)
-      val bit_shift_amt  = Cat(byte_shift_amt, UFix(0,3))
+      val bit_shift_amt  = Cat(byte_shift_amt, UInt(0,3))
 
       // read access
-      val data_idx = io.core_ports(i).req.bits.addr >> UFix(idx_lsb)
+      val data_idx = io.core_ports(i).req.bits.addr >> UInt(idx_lsb)
       val bank_idx = io.core_ports(i).req.bits.addr(bank_bit)
       val read_data_out = Mux(bank_idx, data_bank1(data_idx), data_bank0(data_idx))
       val rdata_out = LoadDataGen((read_data_out >> bit_shift_amt), io.core_ports(i).req.bits.typ)
@@ -123,7 +123,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
 
    // HTIF -------
    io.htif_port.req.ready := Bool(true) // for now, no back pressure
-   val htif_idx = io.htif_port.req.bits.addr >> UFix(idx_lsb)
+   val htif_idx = io.htif_port.req.bits.addr >> UInt(idx_lsb)
    val htif_read_data_out = Cat(data_bank1(htif_idx), data_bank0(htif_idx))
 
    io.htif_port.resp.valid      := RegUpdate(io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
@@ -141,7 +141,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
 
 object StoreDataGen
 {
-   def apply(din: Bits, typ: Bits): UFix =
+   def apply(din: Bits, typ: Bits): UInt =
    {
       val word = (typ === MT_W) || (typ === MT_WU)
       val half = (typ === MT_H) || (typ === MT_HU)
@@ -157,7 +157,7 @@ object StoreDataGen
 
 object StoreMask
 {
-   def apply(sel: UFix): UFix = 
+   def apply(sel: UInt): UInt = 
    {
       val mask = Mux(sel === MT_H || sel === MT_HU, Bits(0xffff, 32),
                  Mux(sel === MT_B || sel === MT_BU, Bits(0xff, 32),
@@ -173,9 +173,9 @@ object LoadDataGen
    def apply(data: Bits, typ: Bits) : Bits =
    {
       val out = Mux(typ === MT_H,  Cat(Fill(16, data(15)),  data(15,0)),
-                Mux(typ === MT_HU, Cat(Fill(16, UFix(0x0)), data(15,0)),
+                Mux(typ === MT_HU, Cat(Fill(16, UInt(0x0)), data(15,0)),
                 Mux(typ === MT_B,  Cat(Fill(24, data(7)),    data(7,0)),
-                Mux(typ === MT_BU, Cat(Fill(24, UFix(0x0)), data(7,0)), 
+                Mux(typ === MT_BU, Cat(Fill(24, UInt(0x0)), data(7,0)), 
                                     data(31,0)))))
       
       return out

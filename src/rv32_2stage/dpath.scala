@@ -32,31 +32,31 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Mod
+class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = new DpathIo()
    
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = RegReset(UFix(START_ADDR, conf.xprlen))
+   val if_reg_pc = RegReset(UInt(START_ADDR, conf.xprlen))
    
-   val exe_reg_pc       = RegReset(UFix(0, conf.xprlen))
-   val exe_reg_pc_plus4 = RegReset(UFix(0, conf.xprlen))
+   val exe_reg_pc       = RegReset(UInt(0, conf.xprlen))
+   val exe_reg_pc_plus4 = RegReset(UInt(0, conf.xprlen))
    val exe_reg_inst     = RegReset(BUBBLE)
    
    //**********************************
    // Instruction Fetch Stage
-   val if_pc_next          = UFix()
-   val exe_branch_target   = UFix()
-   val exe_jump_target     = UFix()
-   val exe_jump_reg_target = UFix()
+   val if_pc_next          = UInt()
+   val exe_branch_target   = UInt()
+   val exe_jump_target     = UInt()
+   val exe_jump_reg_target = UInt()
  
    when (!io.ctl.stall)
    {
       if_reg_pc := if_pc_next
    }
 
-   val if_pc_plus4 = (if_reg_pc + UFix(4, conf.xprlen))               
+   val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
 
    if_pc_next := MuxCase(if_pc_plus4, Array(
                   (io.ctl.pc_sel === PC_4)  -> if_pc_plus4,
@@ -77,7 +77,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    .elsewhen(io.ctl.if_kill) 
    {
       exe_reg_inst := BUBBLE
-      exe_reg_pc   := UFix(0)
+      exe_reg_pc   := UInt(0)
    } 
    .otherwise 
    {
@@ -89,9 +89,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    
    //**********************************
    // Execute Stage
-   val exe_rs1_addr = exe_reg_inst(26, 22).toUFix
-   val exe_rs2_addr = exe_reg_inst(21, 17).toUFix
-   val exe_wbaddr  = Mux(io.ctl.wa_sel, exe_reg_inst(31, 27).toUFix,
+   val exe_rs1_addr = exe_reg_inst(26, 22).toUInt
+   val exe_rs2_addr = exe_reg_inst(21, 17).toUInt
+   val exe_wbaddr  = Mux(io.ctl.wa_sel, exe_reg_inst(31, 27).toUInt,
                                         RA)
    
    val exe_wbdata = Bits(width = conf.xprlen)
@@ -99,13 +99,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    // Register File
    val regfile = Mem(32, Bits(width = conf.xprlen))
 
-   when (io.ctl.rf_wen && (exe_wbaddr != UFix(0)))
+   when (io.ctl.rf_wen && (exe_wbaddr != UInt(0)))
    {
       regfile(exe_wbaddr) := exe_wbdata
    }
 
-   val exe_rs1_data = Mux((exe_rs1_addr != UFix(0)), regfile(exe_rs1_addr), UFix(0, conf.xprlen))
-   val exe_rs2_data = Mux((exe_rs2_addr != UFix(0)), regfile(exe_rs2_addr), UFix(0, conf.xprlen))
+   val exe_rs1_data = Mux((exe_rs1_addr != UInt(0)), regfile(exe_rs1_addr), UInt(0, conf.xprlen))
+   val exe_rs2_data = Mux((exe_rs2_addr != UInt(0)), regfile(exe_rs2_addr), UInt(0, conf.xprlen))
    
    
    // immediates
@@ -120,48 +120,48 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    val imm_j25_sext = Cat(Fill(imm_jmp(24),  7), imm_jmp)
    
    
-   val exe_alu_op1 = MuxCase(UFix(0), Array(
+   val exe_alu_op1 = MuxCase(UInt(0), Array(
                (io.ctl.op1_sel === OP1_RS1) -> exe_rs1_data,
                (io.ctl.op1_sel === OP1_PC)  -> exe_reg_pc
-               )).toUFix
+               )).toUInt
    
-   val exe_alu_op2 = MuxCase(UFix(0), Array(
+   val exe_alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> exe_rs2_data,
                (io.ctl.op2_sel === OP2_IMI) -> imm_i12_sext,
                (io.ctl.op2_sel === OP2_IMB) -> imm_b12_sext,
                (io.ctl.op2_sel === OP2_UI)  -> imm_ui
-               )).toUFix
+               )).toUInt
   
 
    // ALU
-   val exe_alu_out   = UFix(width = conf.xprlen)
+   val exe_alu_out   = UInt(width = conf.xprlen)
    
-   val alu_shamt = exe_alu_op2(4,0).toUFix
+   val alu_shamt = exe_alu_op2(4,0).toUInt
    
-   exe_alu_out := MuxCase(UFix(0), Array(
-                  (io.ctl.alu_fun === ALU_ADD)  -> (exe_alu_op1 + exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SUB)  -> (exe_alu_op1 - exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_AND)  -> (exe_alu_op1 & exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_OR)   -> (exe_alu_op1 | exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_XOR)  -> (exe_alu_op1 ^ exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SLT)  -> (exe_alu_op1.toFix < exe_alu_op2.toFix).toUFix,
-                  (io.ctl.alu_fun === ALU_SLTU) -> (exe_alu_op1 < exe_alu_op2).toUFix,
-                  (io.ctl.alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUFix,
-                  (io.ctl.alu_fun === ALU_SRA)  -> (exe_alu_op1.toFix >> alu_shamt).toUFix,
-                  (io.ctl.alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).toUFix,
+   exe_alu_out := MuxCase(UInt(0), Array(
+                  (io.ctl.alu_fun === ALU_ADD)  -> (exe_alu_op1 + exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SUB)  -> (exe_alu_op1 - exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_AND)  -> (exe_alu_op1 & exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_OR)   -> (exe_alu_op1 | exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_XOR)  -> (exe_alu_op1 ^ exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SLT)  -> (exe_alu_op1.toSInt < exe_alu_op2.toSInt).toUInt,
+                  (io.ctl.alu_fun === ALU_SLTU) -> (exe_alu_op1 < exe_alu_op2).toUInt,
+                  (io.ctl.alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
+                  (io.ctl.alu_fun === ALU_SRA)  -> (exe_alu_op1.toSInt >> alu_shamt).toUInt,
+                  (io.ctl.alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).toUInt,
                   (io.ctl.alu_fun === ALU_COPY2)-> exe_alu_op2 
                   ))
 
    // Branch/Jump Target Calculation
-   val simm12_sh1 = Cat(imm_b12_sext, UFix(0,1)) 
-   exe_branch_target   := exe_reg_pc + simm12_sh1.toUFix
-   exe_jump_target     := exe_reg_pc + Cat(imm_j25_sext(conf.xprlen-1,0), UFix(0, 1)).toUFix
-   exe_jump_reg_target := (exe_rs1_data.toUFix + imm_i12_sext.toUFix)
+   val simm12_sh1 = Cat(imm_b12_sext, UInt(0,1)) 
+   exe_branch_target   := exe_reg_pc + simm12_sh1.toUInt
+   exe_jump_target     := exe_reg_pc + Cat(imm_j25_sext(conf.xprlen-1,0), UInt(0, 1)).toUInt
+   exe_jump_reg_target := (exe_rs1_data.toUInt + imm_i12_sext.toUInt)
                                   
    
 
    // Co-processor Registers
-   val pcr = Mod(new PCR())
+   val pcr = Module(new PCR())
    pcr.io.host <> io.host
    pcr.io.r.addr := exe_rs1_addr
    pcr.io.r.en   := io.ctl.pcr_fcn != PCR_N
@@ -177,27 +177,27 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
                   (io.ctl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
                   (io.ctl.wb_sel === WB_PC4) -> exe_reg_pc_plus4,
                   (io.ctl.wb_sel === WB_PCR) -> pcr_out
-                  )).toFix()
+                  )).toSInt()
                                   
 
    // datapath to controlpath outputs
-   io.dat.inst   := exe_reg_inst.toFix
+   io.dat.inst   := exe_reg_inst.toSInt
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
-   io.dat.br_lt  := (exe_rs1_data.toFix < exe_rs2_data.toFix) 
-   io.dat.br_ltu := (exe_rs1_data.toUFix < exe_rs2_data.toUFix)
+   io.dat.br_lt  := (exe_rs1_data.toSInt < exe_rs2_data.toSInt) 
+   io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
    
    
    // datapath to data memory outputs
    io.dmem.req.bits.addr := exe_alu_out
-   io.dmem.req.bits.data := exe_rs2_data.toUFix 
+   io.dmem.req.bits.data := exe_rs2_data.toUInt 
          
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UFix(0, conf.xprlen))
-   tsc_reg := tsc_reg + UFix(1)
+   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UFix(0, conf.xprlen))
-   when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + UFix(1) }
+   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + UInt(1) }
 
         
    
@@ -211,11 +211,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
       , Disassemble(exe_reg_inst)
       , Mux(io.ctl.stall, Str("stall"), Str("     "))
       , Mux(io.ctl.if_kill, Str("KILL"), Str("     "))
-      , Mux(io.ctl.pc_sel  === UFix(1), Str("BR"),
-         Mux(io.ctl.pc_sel === UFix(2), Str("J "),
-         Mux(io.ctl.pc_sel === UFix(3), Str("JR"),
-         Mux(io.ctl.pc_sel === UFix(4), Str("EX"),
-         Mux(io.ctl.pc_sel === UFix(0), Str("  "), Str("??"))))))
+      , Mux(io.ctl.pc_sel  === UInt(1), Str("BR"),
+         Mux(io.ctl.pc_sel === UInt(2), Str("J "),
+         Mux(io.ctl.pc_sel === UInt(3), Str("JR"),
+         Mux(io.ctl.pc_sel === UInt(4), Str("EX"),
+         Mux(io.ctl.pc_sel === UInt(0), Str("  "), Str("??"))))))
       , exe_alu_op1
       , exe_alu_op2
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))

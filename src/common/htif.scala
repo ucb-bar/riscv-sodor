@@ -37,6 +37,6 @@ class SCRIO extends Bundle
    val n = 64
    val rdata = Vec.fill(n) { Bits(INPUT, 64) }
    val wen = Bool(OUTPUT)
-   val waddr = UFix(OUTPUT, log2Up(n))
+   val waddr = UInt(OUTPUT, log2Up(n))
    val wdata = Bits(OUTPUT, 64)
 }

@@ -22,11 +22,11 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
   val mem  = new MemPortIo(conf.xprlen)
 }
 
-class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Mod(resetSignal)
+class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(resetSignal)
 {
   val io = new CoreIo()
-  val c  = Mod(new CtlPath())
-  val d  = Mod(new DatPath())
+  val c  = Module(new CtlPath())
+  val d  = Module(new DatPath())
   
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat

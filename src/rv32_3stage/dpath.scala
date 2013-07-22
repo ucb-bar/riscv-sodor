@@ -33,32 +33,32 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Mod 
+class DatPath(implicit conf: SodorConfiguration) extends Module 
 {
    val io = new DpathIo()
 
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = RegReset(UFix(START_ADDR, conf.xprlen))
+   val if_reg_pc = RegReset(UInt(START_ADDR, conf.xprlen))
     
-   val exe_reg_pc   = RegReset(UFix(0, conf.xprlen))
+   val exe_reg_pc   = RegReset(UInt(0, conf.xprlen))
    val exe_reg_inst = RegReset(BUBBLE)
 
    val wb_reg_ctrl     = Reg(new CtrlSignals)
    val wb_reg_alu      = Reg(Bits(width = conf.xprlen))
    val wb_reg_sdata    = Reg(Bits(width = conf.xprlen))
-   val wb_reg_rs1_addr = Reg(UFix(width = log2Up(32))) // needed for PCR
-   val wb_reg_wbaddr   = Reg(UFix(width = log2Up(32)))
+   val wb_reg_rs1_addr = Reg(UInt(width = log2Up(32))) // needed for PCR
+   val wb_reg_wbaddr   = Reg(UInt(width = log2Up(32)))
    
    val hazard_stall = Bool() // hazard detected, stall in IF/EXE required
 
    //**********************************
    // Instruction Fetch Stage
-   val if_pc_next          = UFix()
-   val exe_brjmp_target    = UFix()
-   val exe_jump_reg_target = UFix()
-   val exception_target    = UFix()
+   val if_pc_next          = UInt()
+   val exe_brjmp_target    = UInt()
+   val exe_jump_reg_target = UInt()
+   val exception_target    = UInt()
  
 
    // if hazard stall, freeze value
@@ -77,7 +77,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    }
 
 
-   val if_pc_plus4 = (if_reg_pc + UFix(4, conf.xprlen))               
+   val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
 
    if_pc_next := MuxCase(if_pc_plus4, Array(
                   (io.ctl.pc_sel === PC_EXC)   -> exception_target,
@@ -113,29 +113,29 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    // Execute Stage
    
    // Decode
-   val exe_rs1_addr = exe_reg_inst(26, 22).toUFix
-   val exe_rs2_addr = exe_reg_inst(21, 17).toUFix
-   val exe_wbaddr   = Mux(io.ctl.wa_sel, exe_reg_inst(31, 27).toUFix,
+   val exe_rs1_addr = exe_reg_inst(26, 22).toUInt
+   val exe_rs2_addr = exe_reg_inst(21, 17).toUInt
+   val exe_wbaddr   = Mux(io.ctl.wa_sel, exe_reg_inst(31, 27).toUInt,
                                          RA)
    val wb_wbdata    = Bits(width = conf.xprlen)
  
 
 
    // Hazard Stall Logic 
-   hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UFix(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
-                   ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UFix(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
+   hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
+                   ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
 
 
    // Register File
    val regfile = Mem(32, Bits(width = conf.xprlen))
 
-   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr != UFix(0)))
+   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr != UInt(0)))
    {
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
 
-   val rf_rs1_data = Mux((exe_rs1_addr != UFix(0)), regfile(exe_rs1_addr), UFix(0, conf.xprlen))
-   val rf_rs2_data = Mux((exe_rs2_addr != UFix(0)), regfile(exe_rs2_addr), UFix(0, conf.xprlen))
+   val rf_rs1_data = Mux((exe_rs1_addr != UInt(0)), regfile(exe_rs1_addr), UInt(0, conf.xprlen))
+   val rf_rs2_data = Mux((exe_rs2_addr != UInt(0)), regfile(exe_rs2_addr), UInt(0, conf.xprlen))
    
    
    // immediates
@@ -153,30 +153,30 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    // Bypass Muxes
    // bypass early for branch condition checking, and to prevent needing 3 bypass muxes
    val exe_rs1_data = MuxCase(rf_rs1_data, Array(
-                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UFix(0)) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
                         )
    val exe_rs2_data = MuxCase(rf_rs2_data, Array(
-                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UFix(0)) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UInt(0)) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
                         )
    
 
    // Operand Muxes
-   val exe_alu_op1 = MuxCase(UFix(0), Array(
+   val exe_alu_op1 = MuxCase(UInt(0), Array(
                (io.ctl.op1_sel === OP1_RS1) -> exe_rs1_data,
                (io.ctl.op1_sel === OP1_PC)  -> exe_reg_pc
-               )).toUFix
+               )).toUInt
    
-   val exe_alu_op2 = MuxCase(UFix(0), Array(
+   val exe_alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> exe_rs2_data,
                (io.ctl.op2_sel === OP2_IMI) -> imm_itype_sext,
                (io.ctl.op2_sel === OP2_IMB) -> imm_btype_sext,
                (io.ctl.op2_sel === OP2_UI)  -> imm_utype,
-               (io.ctl.op2_sel === OP2_4)   -> UFix(4)
-               )).toUFix
+               (io.ctl.op2_sel === OP2_4)   -> UInt(4)
+               )).toUInt
   
         
    // ALU
-   val alu = Mod(new ALU())
+   val alu = Module(new ALU())
 
       alu.io.in1 := exe_alu_op1
       alu.io.in2 := exe_alu_op2
@@ -187,16 +187,16 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
 
    // Branch/Jump Target Calculation
    val imm_brjmp = Mux(io.ctl.brjmp_sel, imm_jtype_sext, imm_btype_sext)
-   exe_brjmp_target := exe_reg_pc + Cat(imm_brjmp(conf.xprlen-2,0), UFix(0,1)).toUFix
+   exe_brjmp_target := exe_reg_pc + Cat(imm_brjmp(conf.xprlen-2,0), UInt(0,1)).toUInt
    exe_jump_reg_target := alu.io.adder_out 
 
-   val exe_pc_plus4 = exe_reg_pc + UFix(4)
+   val exe_pc_plus4 = exe_reg_pc + UInt(4)
 
    // datapath to controlpath outputs
    io.dat.inst   := exe_reg_inst
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
-   io.dat.br_lt  := (exe_rs1_data.toFix < exe_rs2_data.toFix) 
-   io.dat.br_ltu := (exe_rs1_data.toUFix < exe_rs2_data.toUFix)
+   io.dat.br_lt  := (exe_rs1_data.toSInt < exe_rs2_data.toSInt) 
+   io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
                                   
 
    // execute to wb registers
@@ -220,7 +220,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
                                   
    
    // Privileged Co-processor Registers
-   val pcr = Mod(new PCR())
+   val pcr = Module(new PCR())
    pcr.io.host <> io.host
    pcr.io.r.addr := wb_reg_rs1_addr
    pcr.io.r.en   := wb_reg_ctrl.pcr_fcn != PCR_N
@@ -235,18 +235,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    pcr.io.exception := io.ctl.exception
    pcr.io.cause  :=    io.ctl.exc_cause
    pcr.io.eret   :=    io.ctl.eret
-   pcr.io.pc     := exe_reg_pc - UFix(4)  // note: I'm relying on two facts: IF predicts PC+4, 
+   pcr.io.pc     := exe_reg_pc - UInt(4)  // note: I'm relying on two facts: IF predicts PC+4, 
                                           // and the "mispredictd" PC isn't cleared, so we 
                                           // can still read exe_reg_pc to get our own PC.
    exception_target := pcr.io.evec
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UFix(0, conf.xprlen))
-   tsc_reg := tsc_reg + UFix(1)
+   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   tsc_reg := tsc_reg + UInt(1)
 
    // TODO properly figure out how to measure retired inst count
-   val irt_reg = RegReset(UFix(0, conf.xprlen))
-   when (!io.ctl.if_stall && !io.ctl.exception && !hazard_stall) { irt_reg := irt_reg + UFix(1) }
+   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   when (!io.ctl.if_stall && !io.ctl.exception && !hazard_stall) { irt_reg := irt_reg + UInt(1) }
 
 
    // WB Mux                                                                   
@@ -259,7 +259,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
                   (wb_reg_ctrl.wb_sel === WB_PCR) -> pcr_out,
                   (wb_reg_ctrl.wb_sel === WB_TSC) -> tsc_reg,
                   (wb_reg_ctrl.wb_sel === WB_IRT) -> irt_reg
-                  )).toFix()
+                  )).toSInt()
                                  
    
    // datapath to data memory outputs
@@ -267,7 +267,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    io.dmem.req.valid     := wb_reg_ctrl.dmem_val
    io.dmem.req.bits.fcn  := wb_reg_ctrl.dmem_fcn
    io.dmem.req.bits.typ  := wb_reg_ctrl.dmem_typ
-   io.dmem.req.bits.addr := wb_reg_alu.toUFix 
+   io.dmem.req.bits.addr := wb_reg_alu.toUInt 
    io.dmem.req.bits.data := wb_reg_sdata
    
    
@@ -279,17 +279,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
       , Mux(hazard_stall, Str("HAZ"), Str("   "))
       , if_reg_pc(19,0)
       , exe_reg_pc(19,0)
-      , Mux(RegUpdate(hazard_stall), UFix(0), RegUpdate(exe_reg_pc)(19,0))
+      , Mux(RegUpdate(hazard_stall), UInt(0), RegUpdate(exe_reg_pc)(19,0))
       , Disassemble(if_inst, true)
       , Disassemble(exe_reg_inst, true)
       , Mux(RegUpdate(hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE, true), Disassemble(RegUpdate(exe_reg_inst), true))
       , Mux(RegUpdate(hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE), Disassemble(RegUpdate(exe_reg_inst)))
       , Mux(io.ctl.if_stall, Str("stall"), Str("     "))
       , Mux(hazard_stall, Str("HAZ"), Str("   "))
-      , Mux(io.ctl.pc_sel  === UFix(1), Str("Br/J"),
-        Mux(io.ctl.pc_sel === UFix(2), Str(" JR "),
-        Mux(io.ctl.pc_sel === UFix(3), Str("XPCT"),
-        Mux(io.ctl.pc_sel === UFix(0), Str("   "), Str(" ?? ")))))
+      , Mux(io.ctl.pc_sel  === UInt(1), Str("Br/J"),
+        Mux(io.ctl.pc_sel === UInt(2), Str(" JR "),
+        Mux(io.ctl.pc_sel === UInt(3), Str("XPCT"),
+        Mux(io.ctl.pc_sel === UInt(0), Str("   "), Str(" ?? ")))))
       , exe_alu_op1
       , exe_alu_op2
       , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))

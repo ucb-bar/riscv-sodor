@@ -22,19 +22,19 @@ class CtlToDatIo extends Bundle()
 {
    val dec_stall  = Bool(OUTPUT)    // stall IF/DEC stages (due to hazards)
    val full_stall = Bool(OUTPUT)    // stall entire pipeline (due to D$ misses)
-   val exe_pc_sel = UFix(OUTPUT, 2)
-   val br_type    = UFix(OUTPUT, 4)
+   val exe_pc_sel = UInt(OUTPUT, 2)
+   val br_type    = UInt(OUTPUT, 4)
    val if_kill    = Bool(OUTPUT) 
    val dec_kill   = Bool(OUTPUT) 
-   val op1_sel    = UFix(OUTPUT, 1)
-   val op2_sel    = UFix(OUTPUT, 3)
-   val alu_fun    = UFix(OUTPUT, 4)
-   val wb_sel     = UFix(OUTPUT, 2)
+   val op1_sel    = UInt(OUTPUT, 1)
+   val op2_sel    = UInt(OUTPUT, 3)
+   val alu_fun    = UInt(OUTPUT, 4)
+   val wb_sel     = UInt(OUTPUT, 2)
    val wa_sel     = Bool(OUTPUT) 
    val rf_wen     = Bool(OUTPUT) 
    val mem_val    = Bool(OUTPUT)
    val mem_fcn    = Bits(OUTPUT, 2)
-   val pcr_fcn    = UFix(OUTPUT, 2)
+   val pcr_fcn    = UInt(OUTPUT, 2)
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -47,7 +47,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
 
-class CtlPath(implicit conf: SodorConfiguration) extends Mod
+class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
   val io = new CpathIo()
 
@@ -104,7 +104,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
  
    // Branch Logic   
    val ctrl_exe_pc_sel
-      = Lookup(io.dat.exe_br_type, UFix(0, 3), 
+      = Lookup(io.dat.exe_br_type, UInt(0, 3), 
             Array(   BR_N  -> PC_PLUS4, 
                      BR_NE -> Mux(!io.dat.exe_br_eq,  PC_BRJMP, PC_PLUS4),
                      BR_EQ -> Mux( io.dat.exe_br_eq,  PC_BRJMP, PC_PLUS4),
@@ -124,15 +124,15 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    // Stall Signal Logic
    val stall   = Bool()
    
-   val dec_rs1_addr = io.dat.dec_inst(26, 22).toUFix
-   val dec_rs2_addr = io.dat.dec_inst(21, 17).toUFix
-   val dec_wbaddr  = Mux(cs_wa_sel.toBool, io.dat.dec_inst(31, 27).toUFix, RA)
+   val dec_rs1_addr = io.dat.dec_inst(26, 22).toUInt
+   val dec_rs2_addr = io.dat.dec_inst(21, 17).toUInt
+   val dec_wbaddr  = Mux(cs_wa_sel.toBool, io.dat.dec_inst(31, 27).toUInt, RA)
    val dec_rs1_oen = Mux(deckill, Bool(false), cs_rs1_oen.toBool)
    val dec_rs2_oen = Mux(deckill, Bool(false), cs_rs2_oen.toBool)
 
-   val exe_reg_wbaddr      = Reg(UFix())
-   val mem_reg_wbaddr      = Reg(UFix())
-   val wb_reg_wbaddr       = Reg(UFix())
+   val exe_reg_wbaddr      = Reg(UInt())
+   val mem_reg_wbaddr      = Reg(UInt())
+   val wb_reg_wbaddr       = Reg(UInt())
    val exe_reg_ctrl_rf_wen = RegReset(Bool(false))
    val mem_reg_ctrl_rf_wen = RegReset(Bool(false))
    val wb_reg_ctrl_rf_wen  = RegReset(Bool(false))
@@ -143,7 +143,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    {
       when (deckill)
       {
-         exe_reg_wbaddr      := UFix(0)
+         exe_reg_wbaddr      := UInt(0)
          exe_reg_ctrl_rf_wen := Bool(false)
       }
       .otherwise
@@ -155,7 +155,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    .elsewhen (stall && !full_stall)
    {
       // kill exe stage
-      exe_reg_wbaddr      := UFix(0)
+      exe_reg_wbaddr      := UInt(0)
       exe_reg_ctrl_rf_wen := Bool(false)
    }
    
@@ -179,20 +179,20 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
    if (USE_FULL_BYPASSING)
    {
       // stall for load-use hazard
-      stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UFix(0)) && dec_rs1_oen) ||
-               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UFix(0)) && dec_rs2_oen) 
+      stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs1_oen) ||
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) 
    }
    else
    {
       // stall for all hazards
-      stall := ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UFix(0)) && exe_reg_ctrl_rf_wen && dec_rs1_oen) ||
-               ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UFix(0)) && mem_reg_ctrl_rf_wen && dec_rs1_oen) ||
-               ((wb_reg_wbaddr  === dec_rs1_addr) && (dec_rs1_addr != UFix(0)) &&  wb_reg_ctrl_rf_wen && dec_rs1_oen) ||
-               ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != UFix(0)) && exe_reg_ctrl_rf_wen && dec_rs2_oen) ||
-               ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != UFix(0)) && mem_reg_ctrl_rf_wen && dec_rs2_oen) ||
-               ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr != UFix(0)) &&  wb_reg_ctrl_rf_wen && dec_rs2_oen) ||
-               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UFix(0)) && dec_rs1_oen) ||
-               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UFix(0)) && dec_rs2_oen) 
+      stall := ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && exe_reg_ctrl_rf_wen && dec_rs1_oen) ||
+               ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && mem_reg_ctrl_rf_wen && dec_rs1_oen) ||
+               ((wb_reg_wbaddr  === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) &&  wb_reg_ctrl_rf_wen && dec_rs1_oen) ||
+               ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != UInt(0)) && exe_reg_ctrl_rf_wen && dec_rs2_oen) ||
+               ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != UInt(0)) && mem_reg_ctrl_rf_wen && dec_rs2_oen) ||
+               ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr != UInt(0)) &&  wb_reg_ctrl_rf_wen && dec_rs2_oen) ||
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs1_oen) ||
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) 
    }
   
    

@@ -28,34 +28,34 @@ trait ScalarOpConstants
    val N      = Bool(false)
     
    // PC Select Signal
-   val PC_4   = UFix(0, 2)  // PC + 4
-   val PC_BRJMP=UFix(1, 2)  // br or jmp target
-   val PC_JR  = UFix(2, 2)  // jumpreg target
-   val PC_EXC = UFix(3, 2)  // exception 
+   val PC_4   = UInt(0, 2)  // PC + 4
+   val PC_BRJMP=UInt(1, 2)  // br or jmp target
+   val PC_JR  = UInt(2, 2)  // jumpreg target
+   val PC_EXC = UInt(3, 2)  // exception 
                                   
    // Branch Type
-   val BR_N   = UFix(0, 4)  // Next
-   val BR_NE  = UFix(1, 4)  // Branch on NotEqual
-   val BR_EQ  = UFix(2, 4)  // Branch on Equal
-   val BR_GE  = UFix(3, 4)  // Branch on Greater/Equal
-   val BR_GEU = UFix(4, 4)  // Branch on Greater/Equal Unsigned
-   val BR_LT  = UFix(5, 4)  // Branch on Less Than
-   val BR_LTU = UFix(6, 4)  // Branch on Less Than Unsigned
-   val BR_J   = UFix(7, 4)  // Jump 
-   val BR_JR  = UFix(8, 4)  // Jump Register
+   val BR_N   = UInt(0, 4)  // Next
+   val BR_NE  = UInt(1, 4)  // Branch on NotEqual
+   val BR_EQ  = UInt(2, 4)  // Branch on Equal
+   val BR_GE  = UInt(3, 4)  // Branch on Greater/Equal
+   val BR_GEU = UInt(4, 4)  // Branch on Greater/Equal Unsigned
+   val BR_LT  = UInt(5, 4)  // Branch on Less Than
+   val BR_LTU = UInt(6, 4)  // Branch on Less Than Unsigned
+   val BR_J   = UInt(7, 4)  // Jump 
+   val BR_JR  = UInt(8, 4)  // Jump Register
  
    // RS1 Operand Select Signal
-   val OP1_RS1 = UFix(0, 1) // Register Source #1
-   val OP1_PC  = UFix(1, 1) // PC
-   val OP1_X   = UFix(0, 1)
+   val OP1_RS1 = UInt(0, 1) // Register Source #1
+   val OP1_PC  = UInt(1, 1) // PC
+   val OP1_X   = UInt(0, 1)
    
    // RS2 Operand Select Signal
-   val OP2_RS2 = UFix(0, 3) // Register Source #2
-   val OP2_IMI = UFix(1, 3) // immediate, I-type
-   val OP2_IMB = UFix(2, 3) // immediate, B-type
-   val OP2_UI  = UFix(3, 3) // immediate, U-type
-   val OP2_4   = UFix(4, 3) // literal 4 (for PC+4 shift)
-   val OP2_X   = UFix(0, 3)
+   val OP2_RS2 = UInt(0, 3) // Register Source #2
+   val OP2_IMI = UInt(1, 3) // immediate, I-type
+   val OP2_IMB = UInt(2, 3) // immediate, B-type
+   val OP2_UI  = UInt(3, 3) // immediate, U-type
+   val OP2_4   = UInt(4, 3) // literal 4 (for PC+4 shift)
+   val OP2_X   = UInt(0, 3)
                       
    // Register File Write Enable Signal
    val REN_0   = Bool(false)
@@ -76,19 +76,19 @@ trait ScalarOpConstants
    val WA_X    = Bool(true)
     
    // Writeback Select Signal
-   val WB_ALU  = UFix(0, 3)
-   val WB_MEM  = UFix(1, 3)
-   val WB_PC4  = UFix(2, 3)
-   val WB_PCR  = UFix(3, 3)
-   val WB_TSC  = UFix(4, 3)
-   val WB_IRT  = UFix(5, 3)
-   val WB_X    = UFix(0, 3)
+   val WB_ALU  = UInt(0, 3)
+   val WB_MEM  = UInt(1, 3)
+   val WB_PC4  = UInt(2, 3)
+   val WB_PCR  = UInt(3, 3)
+   val WB_TSC  = UInt(4, 3)
+   val WB_IRT  = UInt(5, 3)
+   val WB_X    = UInt(0, 3)
    
    // Memory Function Type (Read,Write,Fence) Signal
-   val MWR_R   = UFix(0, 2)
-   val MWR_W   = UFix(1, 2)
-   val MWR_F   = UFix(2, 2)
-   val MWR_X   = UFix(0, 2)
+   val MWR_R   = UInt(0, 2)
+   val MWR_W   = UInt(1, 2)
+   val MWR_F   = UInt(2, 2)
+   val MWR_X   = UInt(0, 2)
                        
    // Memory Enable Signal
    val MEN_0   = Bool(false)
@@ -96,19 +96,19 @@ trait ScalarOpConstants
    val MEN_X   = Bool(false)
                         
    // Memory Mask Type Signal
-   val MSK_B   = UFix(0, 3)
-   val MSK_BU  = UFix(1, 3)
-   val MSK_H   = UFix(2, 3)
-   val MSK_HU  = UFix(3, 3)
-   val MSK_W   = UFix(4, 3)
-   val MSK_X   = UFix(4, 3)
+   val MSK_B   = UInt(0, 3)
+   val MSK_BU  = UInt(1, 3)
+   val MSK_H   = UInt(2, 3)
+   val MSK_HU  = UInt(3, 3)
+   val MSK_W   = UInt(4, 3)
+   val MSK_X   = UInt(4, 3)
                      
    // Enable Co-processor Register Signal (ToHost Register, etc.)
-   val PCR_N   = UFix(0,3)    // do nothing
-   val PCR_F   = UFix(1,3)    // mtpcr
-   val PCR_T   = UFix(2,3)    // mfpcr
-   val PCR_C   = UFix(3,3)    // clear pcr
-   val PCR_S   = UFix(4,3)    // set pcr
+   val PCR_N   = UInt(0,3)    // do nothing
+   val PCR_F   = UInt(1,3)    // mtpcr
+   val PCR_T   = UInt(2,3)    // mfpcr
+   val PCR_C   = UInt(3,3)    // clear pcr
+   val PCR_S   = UInt(4,3)    // set pcr
  
    // Cache Flushes & Sync Primitives 
    val M_N      = Bits(0,3)
@@ -130,7 +130,7 @@ trait ScalarOpConstants
    // between software NOPs and machine-generated Bubbles in the pipeline.
    val BUBBLE  = Bits(0x233, 32)
 
-   val RA = UFix(1) // return address register for JAL
+   val RA = UInt(1) // return address register for JAL
  
 }
  

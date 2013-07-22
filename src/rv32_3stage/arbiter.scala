@@ -12,7 +12,7 @@ import Common._
 
 
 // arbitrates memory 
-class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Mod
+class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
 {
    val io = new Bundle
    {

@@ -267,7 +267,7 @@ object Instructions
 
 object Disassemble
 {
-  def apply(insn: UFix, is_mini: Boolean = false) = {
+  def apply(insn: UInt, is_mini: Boolean = false) = {
     val name :: fmt :: Nil = ListLookup(insn, default, table)
     if (is_mini)
        sprintf("%s", name)
@@ -303,8 +303,8 @@ object Disassemble
                  Str("cr28"), Str("cr29"), Str("cr30"), Str("cr31"))
 
 
-    def hex(x: Fix, plus: Char = ' ') =
-      Cat(Mux(x < Fix(0), Str("-0x"), Str(plus + "0x")), Str(x.abs, 16))
+    def hex(x: SInt, plus: Char = ' ') =
+      Cat(Mux(x < SInt(0), Str("-0x"), Str(plus + "0x")), Str(x.abs, 16))
 
     val comma = Str(',')
     val lparen = Str('(')
@@ -314,14 +314,14 @@ object Disassemble
     val rs1 = insn(26,22)
     val rs2 = insn(21,17)
     val rs3 = insn(16,12)
-    val immv = insn(21,10).toFix
-    val bmmv = Cat(insn(31,27), insn(16,10)).toFix
-    val jmmv = insn(31,7).toFix
+    val immv = insn(21,10).toSInt
+    val bmmv = Cat(insn(31,27), insn(16,10)).toSInt
+    val jmmv = insn(31,7).toSInt
 
     val imm = hex(immv)
-    val bmm = hex(bmmv << UFix(1))
-    val jmm = hex(jmmv << UFix(1))
-    val lmm = Cat(Str("0x"), Str(insn(26,7).toUFix, 16))
+    val bmm = hex(bmmv << UInt(1))
+    val jmm = hex(jmmv << UInt(1))
+    val lmm = Cat(Str("0x"), Str(insn(26,7).toUInt, 16))
 
     val laddr = Cat(Str(immv), lparen, x(rs1), rparen)
     val saddr = Cat(Str(bmmv), lparen, x(rs1), rparen)
@@ -350,8 +350,8 @@ object Disassemble
     val opts = Seq(r0, r1, r2, f1, f2, f3, fx, xf1, xf2, z, i, b, j, l,  ld, st,
                    fld, fst, amo, r2_p)
     val maxLen = opts.map(_.getWidth).reduce(_ max _)
-    val padded = opts.map(x => x.toUFix << UFix(maxLen - x.getWidth))
-    AVec(padded)(fmt.toUFix)
+    val padded = opts.map(x => x.toUInt << UInt(maxLen - x.getWidth))
+    AVec(padded)(fmt.toUInt)
   }
 
   private def FMT_R0  = Bits(0, 5)

@@ -54,7 +54,7 @@ object PCR
   val FROMHOST = 31
 }
 
-class PCR(implicit conf: SodorConfiguration) extends Mod
+class PCR(implicit conf: SodorConfiguration) extends Module
 {
   val io = new Bundle {
     val host = new HTIFIO()
@@ -62,14 +62,14 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
     val w = new ioWritePort(conf.nxpr, conf.xprlen)
     
     val status = new Status().asOutput
-    val ptbr = UFix(OUTPUT, PADDR_BITS)
-    val evec = UFix(OUTPUT, VADDR_BITS)
+    val ptbr = UInt(OUTPUT, PADDR_BITS)
+    val evec = UInt(OUTPUT, VADDR_BITS)
     val exception = Bool(INPUT)
-    val cause = UFix(INPUT, 6)
+    val cause = UInt(INPUT, 6)
     val badvaddr_wen = Bool(INPUT)
     val vec_irq_aux = Bits(INPUT, conf.xprlen)
     val vec_irq_aux_wen = Bool(INPUT)
-    val pc = UFix(INPUT, VADDR_BITS+1)
+    val pc = UInt(INPUT, VADDR_BITS+1)
     val eret = Bool(INPUT)
     val ei = Bool(INPUT)
     val di = Bool(INPUT)
@@ -78,10 +78,10 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
     val irq_ipi = Bool(OUTPUT)
     val replay = Bool(OUTPUT)
     val vecbank = Bits(OUTPUT, 8)
-    val vecbankcnt = UFix(OUTPUT, 4)
-    val vec_appvl = UFix(INPUT, 12)
-    val vec_nxregs = UFix(INPUT, 6)
-    val vec_nfregs = UFix(INPUT, 6)
+    val vecbankcnt = UInt(OUTPUT, 4)
+    val vec_appvl = UInt(INPUT, 12)
+    val vec_nxregs = UInt(INPUT, 6)
+    val vec_nfregs = UInt(INPUT, 6)
   }
   import PCR._
  
@@ -96,8 +96,8 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
   val reg_coreid = Reg(Bits(width = 16))
   val reg_k0 = Reg(Bits(width = conf.xprlen))
   val reg_k1 = Reg(Bits(width = conf.xprlen))
-  val reg_ptbr = Reg(UFix(width = PADDR_BITS))
-  val reg_vecbank = RegReset(Fix(-1,8).toBits)
+  val reg_ptbr = Reg(UInt(width = PADDR_BITS))
+  val reg_vecbank = RegReset(SInt(-1,8).toBits)
   val reg_error_mode  = RegReset(Bool(false))
   val reg_status = Reg(new Status) // reset down below
 
@@ -132,13 +132,13 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
 
   io.status := reg_status
   io.ptbr_wen := wen && waddr === PTBR
-  io.evec := Mux(io.exception, reg_ebase, reg_epc).toUFix
+  io.evec := Mux(io.exception, reg_ebase, reg_epc).toUInt
   io.ptbr := reg_ptbr
   io.host.debug.error_mode := reg_error_mode
   io.r.data := rdata
 
   io.vecbank := reg_vecbank
-  var cnt = UFix(0,4)
+  var cnt = UInt(0,4)
   for (i <- 0 until 8)
     cnt = cnt + reg_vecbank(i)
   io.vecbankcnt := cnt(3,0)
@@ -149,8 +149,8 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
 //    println("wdata size: " + wdata.getWidth)
 //    println("vaddrbits : " + VADDR_BITS)
 //    val (upper, lower) = Split(wdata, VADDR_BITS)
-//    val sign = Mux(lower.toFix < Fix(0), upper.andR, upper.orR)
-//    reg_badvaddr := Cat(sign, lower).toFix
+//    val sign = Mux(lower.toSInt < SInt(0), upper.andR, upper.orR)
+//    reg_badvaddr := Cat(sign, lower).toSInt
     reg_badvaddr := wdata
   }
 
@@ -161,7 +161,7 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
     reg_status.s := true
     reg_status.ps := reg_status.s
     reg_status.et := false
-    reg_epc := io.pc.toFix
+    reg_epc := io.pc.toSInt
     reg_cause := io.cause
   }
   
@@ -180,7 +180,7 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
 //  io.host.ipi_req.bits := io.w.data
 //  io.replay := io.host.ipi_req.valid && !io.host.ipi_req.ready
 
-  when (host_pcr_req_fire && !host_pcr_bits.rw && host_pcr_bits.addr === TOHOST) { reg_tohost := UFix(0) }
+  when (host_pcr_req_fire && !host_pcr_bits.rw && host_pcr_bits.addr === TOHOST) { reg_tohost := UInt(0) }
 
   val read_impl = Bits(2)
   val read_ptbr = reg_ptbr(PADDR_BITS-1,PGIDX_BITS) << PGIDX_BITS
@@ -205,17 +205,17 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
       reg_status.ef := false // Sodor has no FPU unit
       if (!conf.rvc) reg_status.ec := false
     }
-    when (waddr === EPC)      { reg_epc := wdata(VADDR_BITS,0).toFix }
-    when (waddr === EVEC)     { reg_ebase := wdata(VADDR_BITS-1,0).toFix }
-    when (waddr === COUNT)    { reg_count := wdata.toUFix }
-    when (waddr === COMPARE)  { reg_compare := wdata(31,0).toUFix; r_irq_timer := Bool(false); }
+    when (waddr === EPC)      { reg_epc := wdata(VADDR_BITS,0).toSInt }
+    when (waddr === EVEC)     { reg_ebase := wdata(VADDR_BITS-1,0).toSInt }
+    when (waddr === COUNT)    { reg_count := wdata.toUInt }
+    when (waddr === COMPARE)  { reg_compare := wdata(31,0).toUInt; r_irq_timer := Bool(false); }
     when (waddr === COREID)   { reg_coreid := wdata(15,0) }
-    when (waddr === FROMHOST) { when (reg_fromhost === UFix(0) || io.w.en) { reg_fromhost := wdata } }
-    when (waddr === TOHOST)   { when (reg_tohost === UFix(0)) { reg_tohost := wdata } }
+    when (waddr === FROMHOST) { when (reg_fromhost === UInt(0) || io.w.en) { reg_fromhost := wdata } }
+    when (waddr === TOHOST)   { when (reg_tohost === UInt(0)) { reg_tohost := wdata } }
     when (waddr === CLR_IPI)  { r_irq_ipi := wdata(0) }
     when (waddr === K0)       { reg_k0 := wdata; }
     when (waddr === K1)       { reg_k1 := wdata; }
-    when (waddr === PTBR)     { reg_ptbr := Cat(wdata(PADDR_BITS-1, PGIDX_BITS), Bits(0, PGIDX_BITS)).toUFix; }
+    when (waddr === PTBR)     { reg_ptbr := Cat(wdata(PADDR_BITS-1, PGIDX_BITS), Bits(0, PGIDX_BITS)).toUInt; }
     when (waddr === VECBANK)  { reg_vecbank:= wdata(7,0) }
   }
 
@@ -239,7 +239,7 @@ class PCR(implicit conf: SodorConfiguration) extends Mod
 
 class ioReadPort(d: Int, w: Int) extends Bundle
 {
-  val addr = UFix(INPUT, log2Up(d))
+  val addr = UInt(INPUT, log2Up(d))
   val en   = Bool(INPUT)
   val data = Bits(OUTPUT, w)
   override def clone = new ioReadPort(d, w).asInstanceOf[this.type]
@@ -247,7 +247,7 @@ class ioReadPort(d: Int, w: Int) extends Bundle
 
 class ioWritePort(d: Int, w: Int) extends Bundle
 {
-  val addr = UFix(INPUT, log2Up(d))
+  val addr = UInt(INPUT, log2Up(d))
   val en   = Bool(INPUT)
   val data = Bits(INPUT, w)
   override def clone = new ioWritePort(d, w).asInstanceOf[this.type]

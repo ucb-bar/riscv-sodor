@@ -18,14 +18,14 @@ class CtlToDatIo extends Bundle()
 {
    val stall    = Bool(OUTPUT)
    val if_kill  = Bool(OUTPUT) 
-   val pc_sel   = UFix(OUTPUT, 3)
-   val op1_sel  = UFix(OUTPUT, 1)
-   val op2_sel  = UFix(OUTPUT, 2)
-   val alu_fun  = UFix(OUTPUT, 5)
-   val wb_sel   = UFix(OUTPUT, 2)
+   val pc_sel   = UInt(OUTPUT, 3)
+   val op1_sel  = UInt(OUTPUT, 1)
+   val op2_sel  = UInt(OUTPUT, 2)
+   val alu_fun  = UInt(OUTPUT, 5)
+   val wb_sel   = UInt(OUTPUT, 2)
    val wa_sel   = Bool(OUTPUT) 
    val rf_wen   = Bool(OUTPUT) 
-   val pcr_fcn  = UFix(OUTPUT, 2) 
+   val pcr_fcn  = UInt(OUTPUT, 2) 
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -37,7 +37,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
 
-class CtlPath(implicit conf: SodorConfiguration) extends Mod
+class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
   val io = new CpathIo();
 
@@ -93,7 +93,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Mod
  
    // Branch Logic   
    val ctrl_pc_sel
-      = Lookup(cs_br_type, UFix(0, 3), 
+      = Lookup(cs_br_type, UInt(0, 3), 
             Array(   BR_N  -> PC_4, 
                      BR_NE -> Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      BR_EQ -> Mux( io.dat.br_eq,  PC_BR, PC_4),

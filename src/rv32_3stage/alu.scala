@@ -45,13 +45,13 @@ import ALU._
 class ALUIO(implicit conf: SodorConfiguration) extends Bundle {
 //  val dw = Bits(INPUT, SZ_DW)
   val fn = Bits(INPUT, SZ_ALU_FN)
-  val in2 = UFix(INPUT, conf.xprlen)
-  val in1 = UFix(INPUT, conf.xprlen)
-  val out = UFix(OUTPUT, conf.xprlen)
-  val adder_out = UFix(OUTPUT, conf.xprlen)
+  val in2 = UInt(INPUT, conf.xprlen)
+  val in1 = UInt(INPUT, conf.xprlen)
+  val out = UInt(OUTPUT, conf.xprlen)
+  val adder_out = UInt(OUTPUT, conf.xprlen)
 }
 
-class ALU(implicit conf: SodorConfiguration) extends Mod
+class ALU(implicit conf: SodorConfiguration) extends Module
 {
   val io = new ALUIO
 
@@ -66,15 +66,15 @@ class ALU(implicit conf: SodorConfiguration) extends Mod
 
   // SLL, SRL, SRA
   require(conf.xprlen == 32)
-//  val shamt = Cat(io.in2(5) & (io.dw === DW_64), io.in2(4,0)).toUFix
-//  val shin_hi_32 = Mux(isSub(io.fn), Fill(32, io.in1(31)), UFix(0,32))
+//  val shamt = Cat(io.in2(5) & (io.dw === DW_64), io.in2(4,0)).toUInt
+//  val shin_hi_32 = Mux(isSub(io.fn), Fill(32, io.in1(31)), UInt(0,32))
 //  val shin_hi = Mux(io.dw === DW_64, io.in1(63,32), shin_hi_32) 
 //  val shin_hi = shin_hi_32
 //  val shin_r = Cat(shin_hi, io.in1(31,0))
-  val shamt = io.in2(4,0).toUFix
+  val shamt = io.in2(4,0).toUInt
   val shin_r = io.in1(31,0)
   val shin = Mux(io.fn === FN_SR  || io.fn === FN_SRA, shin_r, Reverse(shin_r))
-  val shout_r = (Cat(isSub(io.fn) & shin(msb), shin).toFix >> shamt)(msb,0)
+  val shout_r = (Cat(isSub(io.fn) & shin(msb), shin).toSInt >> shamt)(msb,0)
   val shout_l = Reverse(shout_r)
 
   val bitwise_logic =
@@ -92,7 +92,7 @@ class ALU(implicit conf: SodorConfiguration) extends Mod
         bitwise_logic))))
 
 //  val out_hi = Mux(io.dw === DW_64, out64(63,32), Fill(32, out64(31)))
-//  io.out := Cat(out_hi, out64(31,0)).toUFix
-  io.out := out_xpr_length(31,0).toUFix
+//  io.out := Cat(out_hi, out64(31,0)).toUInt
+  io.out := out_xpr_length(31,0).toUInt
   io.adder_out := sum
 }

@@ -41,11 +41,11 @@ object MicrocodeCompiler
    // run through instructions.scala, build mapping bewteen 
    // Instruction Name (String) -> Bits
    // used for building opcodeDispatchTable
-   def generateInstructionList (): Map[String, UFix] =
+   def generateInstructionList (): Map[String, UInt] =
    {
-      var inst_list = Map[String, UFix]();
+      var inst_list = Map[String, UInt]();
       val instClass = Common.Instructions.getClass();
-      val b = UFix(0,32);
+      val b = UInt(0,32);
       val bitsClass = b.getClass();
       
       for (m <- instClass.getMethods()) 
@@ -55,17 +55,17 @@ object MicrocodeCompiler
          if (rtype == bitsClass) 
          {
             val i = m.invoke(Common.Instructions);
-            inst_list += ((name, i.asInstanceOf[UFix])); 
+            inst_list += ((name, i.asInstanceOf[UInt])); 
          }
       }
       
       return inst_list
    }
 
-   def generateDispatchTable (labelTargets: Map[String,Int]): Array[(UFix, UFix)]=
+   def generateDispatchTable (labelTargets: Map[String,Int]): Array[(UInt, UInt)]=
    {
       println("Generating Opcode Dispatch Table...");
-      var dispatch_targets = ArrayBuffer[(UFix, UFix)]();
+      var dispatch_targets = ArrayBuffer[(UInt, UInt)]();
       val inst_list        = generateInstructionList();
                                             
       for ((inst_str, inst_bits) <- inst_list)
@@ -73,7 +73,7 @@ object MicrocodeCompiler
          if (labelTargets.contains(inst_str))
          {
             printf("  Inst: %5s Addr: %d\n", inst_str,  labelTargets(inst_str));
-            dispatch_targets += ((inst_bits -> UFix(labelTargets(inst_str))));
+            dispatch_targets += ((inst_bits -> UInt(labelTargets(inst_str))));
          }
       }
 

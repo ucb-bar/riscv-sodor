@@ -18,7 +18,7 @@ import Common.Constants._
 
 class DatToCtlIo extends Bundle() 
 {
-   val inst     = UFix(OUTPUT, 32)
+   val inst     = UInt(OUTPUT, 32)
    val alu_zero = Bool(OUTPUT)
 }
 
@@ -32,7 +32,7 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }  
 
 
-class DatPath(implicit conf: SodorConfiguration) extends Mod
+class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = new DpathIo()
 
@@ -80,9 +80,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    imm := MuxCase(Bits(0), Array(
              (io.ctl.is_sel === IS_I)  -> Cat(Fill(ir(21),(20)),ir(21,10)), 
              (io.ctl.is_sel === IS_BS) -> Cat(Fill(ir(31),(20)),ir(31,27),ir(16,10)),
-             (io.ctl.is_sel === IS_L)  -> Cat(ir(26,7),Fix(0,12)),
-             (io.ctl.is_sel === IS_J)  -> Cat(Fill(ir(31),(6)), ir(31,7),UFix(0,1)),
-             (io.ctl.is_sel === IS_BR) -> Cat(Fill(ir(31),(19)),ir(31,27),ir(16,10),UFix(0,1))
+             (io.ctl.is_sel === IS_L)  -> Cat(ir(26,7),SInt(0,12)),
+             (io.ctl.is_sel === IS_J)  -> Cat(Fill(ir(31),(6)), ir(31,7),UInt(0,1)),
+             (io.ctl.is_sel === IS_BR) -> Cat(Fill(ir(31),(19)),ir(31,27),ir(16,10),UInt(0,1))
            ))
 
      
@@ -90,18 +90,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
    
    // Register File (Single Port)
    // also holds the PC register
-   val rs1 = ir(26, 22).toUFix
-   val rs2 = ir(21, 17).toUFix
-   val rd  = ir(31, 27).toUFix
+   val rs1 = ir(26, 22).toUInt
+   val rs2 = ir(21, 17).toUInt
+   val rd  = ir(31, 27).toUInt
 
-   val reg_addr  = MuxCase(UFix(0), Array(
+   val reg_addr  = MuxCase(UInt(0), Array(
                      (io.ctl.reg_sel === RS_PC)  -> PC, 
                      (io.ctl.reg_sel === RS_RD)  -> rd,
                      (io.ctl.reg_sel === RS_RS1) -> rs1,
                      (io.ctl.reg_sel === RS_RS2) -> rs2,
                      (io.ctl.reg_sel === RS_RA)  -> RA,
                      (io.ctl.reg_sel === RS_X0)  -> X0,
-                     (io.ctl.reg_sel === RS_CP)  -> (rs1 + UFix(33,7))
+                     (io.ctl.reg_sel === RS_CP)  -> (rs1 + UInt(33,7))
                    ))
  
    //note: I could be far more clever and save myself on wasted registers here...
@@ -109,25 +109,25 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
 //   val regfile = Mem(65){ Bits(resetVal = Bits(0, conf.xprlen)) }
    val regfile = Vec.fill(65){ RegReset(Bits(0, conf.xprlen)) }
 
-   when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr != UFix(0))
+   when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr != UInt(0))
    {
       regfile(reg_addr) := bus
    }
    
-   reg_rdata :=  Mux((reg_addr === UFix(0)), Bits(0, conf.xprlen), 
+   reg_rdata :=  Mux((reg_addr === UInt(0)), Bits(0, conf.xprlen), 
                                               regfile(reg_addr))
 
 
    // ALU
-   val alu_shamt = reg_b(4,0).toUFix
+   val alu_shamt = reg_b(4,0).toUInt
 
-   alu := MuxCase(Bits(0), Array[(Bool, UFix)](
+   alu := MuxCase(Bits(0), Array[(Bool, UInt)](
               (io.ctl.alu_op === ALU_COPY_A)  ->  reg_a,
               (io.ctl.alu_op === ALU_COPY_B)  ->  reg_b,
-              (io.ctl.alu_op === ALU_INC_A_1) ->  (reg_a  +  UFix(1)),
-              (io.ctl.alu_op === ALU_DEC_A_1) ->  (reg_a  -  UFix(1)),
-              (io.ctl.alu_op === ALU_INC_A_4) ->  (reg_a  +  UFix(4)),
-              (io.ctl.alu_op === ALU_DEC_A_4) ->  (reg_a  -  UFix(4)),
+              (io.ctl.alu_op === ALU_INC_A_1) ->  (reg_a  +  UInt(1)),
+              (io.ctl.alu_op === ALU_DEC_A_1) ->  (reg_a  -  UInt(1)),
+              (io.ctl.alu_op === ALU_INC_A_4) ->  (reg_a  +  UInt(4)),
+              (io.ctl.alu_op === ALU_DEC_A_4) ->  (reg_a  -  UInt(4)),
               (io.ctl.alu_op === ALU_ADD)     ->  (reg_a  +  reg_b),
               (io.ctl.alu_op === ALU_SUB)     ->  (reg_a  -  reg_b),
               (io.ctl.alu_op === ALU_SLL)     -> ((reg_a << alu_shamt)(conf.xprlen-1,0)),
@@ -138,21 +138,21 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a < reg_b),
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  UFix(START_ADDR)
+              (io.ctl.alu_op === ALU_INIT_PC) ->  UInt(START_ADDR)
             ))
 
 
   
    // Output Signals to the Control Path
-   io.dat.alu_zero := (alu === UFix(0))
+   io.dat.alu_zero := (alu === UInt(0))
    
    // Output Signals to the Memory
-   io.mem.req.bits.addr := reg_ma.toUFix
+   io.mem.req.bits.addr := reg_ma.toUInt
    io.mem.req.bits.data := bus
                               
     
    // Co-processor Registers
-   val pcr = Mod(new PCR())
+   val pcr = Module(new PCR())
    pcr.io.host <> io.host
    pcr.io.r.addr := rs1
    pcr.io.r.en   := io.ctl.en_reg && !io.ctl.reg_wr && io.ctl.reg_sel === RS_CP
@@ -163,11 +163,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Mod
  
    
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UFix(0, conf.xprlen))
-   tsc_reg := tsc_reg + UFix(1)
+   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UFix(0, conf.xprlen))
-   when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + UFix(1) }
+   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + UInt(1) }
  
 
    // Printout
