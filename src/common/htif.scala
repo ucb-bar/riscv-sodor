@@ -24,11 +24,11 @@ class HTIFIO() extends Bundle
 {
    val reset = Bool(INPUT)
    val debug = new DebugIO
-   val pcr_req = (new FIFOIO(new PCRReq(addr_width = 6))).flip
-   val pcr_rep = new FIFOIO(Bits(width = 64))
+   val pcr_req = (new Decoupled(new PCRReq(addr_width = 6))).flip
+   val pcr_rep = new Decoupled(Bits(width = 64))
 
-   val mem_req = (new FIFOIO(new PCRReq(addr_width = 64))).flip
-   val mem_rep = new PipeIO(Bits(width = 64))
+   val mem_req = (new Decoupled(new PCRReq(addr_width = 64))).flip
+   val mem_rep = new Valid(Bits(width = 64))
 }
 
 
