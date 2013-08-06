@@ -57,7 +57,9 @@ clean-tests:
 
 clean:
 	-find sbt -type d -name target -exec rm -rf {} \+
-	make -C $(patsubst %,emulator/%,$(all_targets)) clean
+	for d in $(patsubst %,emulator/%,$(all_targets)) ; do \
+		make -C $$d clean ; \
+	done
 
 reports: test-results.xml report-cpi report-bp report-stats
 

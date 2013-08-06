@@ -78,7 +78,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val wb_data = Bits(width = conf.xprlen)
  
    // Register File
-   val regfile = Mem(32, Bits(width = conf.xprlen))
+   val regfile = Mem(Bits(width = conf.xprlen), 32)
 
    when (io.ctl.rf_wen && (wb_addr != UInt(0)))
    {

@@ -41,7 +41,7 @@ trait MemoryOpConstants
 // from the pov of the datapath
 class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
 {
-   val req    = new Decoupled(new MemReq(data_width))
+   val req    = Decoupled(new MemReq(data_width))
    val resp   = (new Valid(new MemResp(data_width))).flip
   override def clone = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
@@ -77,8 +77,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
    val num_banks = 2
    val num_lines = num_bytes / num_bytes_per_line
    println("\n    Sodor Tile: creating Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val data_bank0 = Mem(num_lines, Bits(width = 8*num_bytes_per_line/num_banks))
-   val data_bank1 = Mem(num_lines, Bits(width = 8*num_bytes_per_line/num_banks))
+   val data_bank0 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines)
+   val data_bank1 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines)
 
 
    // constants

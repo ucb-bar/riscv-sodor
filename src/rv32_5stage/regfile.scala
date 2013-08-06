@@ -28,7 +28,7 @@ class RegisterFile(implicit conf: SodorConfiguration) extends Module
 {
    val io = new RFileIo()
 
-   val regfile = Mem(32, Bits(width = conf.xprlen))
+   val regfile = Mem(Bits(width = conf.xprlen), 32)
 
    when (io.wen && (io.waddr != UInt(0)))
    {
