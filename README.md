@@ -6,7 +6,7 @@ Author : Christopher Celio (celio@eecs.berkeley.edu)
 Date   : 2013 July 16
 
 This repo has been put together to demonstrate a number of simple [RISC-V](http://riscv.org)
-integer pipelines:
+integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 
 * 1-stage (essentially an ISA simulator)
 * 2-stage (demonstrates pipelining in Chisel)
@@ -43,14 +43,11 @@ Building the processor emulators
 ================================
 
 Because this repository is designed to be used as RISC-V processor
-examples written in Chisel (and a regressive testsuite for Chisel updates),
-No external [RISC-V tools](http://riscv.org) are used. The assumption is that
-[riscv-gcc](https://github.com/ucb-bar/riscv-gcc) is not available
-on the local system.
-
-RISC-V unit tests and benchmarks were compiled and committed into the sodor
-repositories. The only prerequisites are thus those to build the core
-emulators themselves.
+examples written in [Chisel](http://chisel.eecs.berkeley.edu) (and a regressive testsuite for Chisel updates),
+no external [RISC-V tools](http://riscv.org) are used (with the exception of the RISC-V [front-end server](https://github.com/ucb-bar/riscv-fesvr)). 
+The assumption is that [riscv-gcc](https://github.com/ucb-bar/riscv-gcc) is not
+available on the local system.  Thus, RISC-V unit tests and benchmarks were
+compiled and committed into the sodor repositories. 
 
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
@@ -59,11 +56,7 @@ Install the RISC-V front-end server to talk between the host and RISC-V target p
     $ cd riscv-fesvr
     $ ./configure --prefix=/usr/local
     $ make install
-
-This repository packages [SBT](http://github.com/harrah/xsbt/wiki/Getting-Started-Setup)
-(Scala Built Tool) for convenience. You may find it necessary to increase
-the memory size (on the java sbt-launch.jar command line) from 512M to 2G.
-
+ 
 Build the sodor emulators
 
     $ git clone https://github.com/ucb-bar/riscv-sodor.git
@@ -78,15 +71,17 @@ Install the executables on the local system
 Clean all generated files
 
     $ make clean
-
+  
 
 (Alternative) Build together with Chisel sources
 ------------------------------------------------
-
-By default sbt will fetch the Chisel package specified in project/build.scala.
+ 
+This repository packages [SBT](http://github.com/harrah/xsbt/wiki/Getting-Started-Setup) 
+(Scala Built Tool) for convenience.  By default SBT will fetch the Chisel
+package specified in project/build.scala.
 
 If you are a developer on Chisel and are using sodor cores to test your changes
-to the Chisel repo, it is convienient to rebuild the Chisel package before
+to the Chisel repository, it is convienient to rebuild the Chisel package before
 the sodor cores. To do that, fetch the Chisel repo from github and pass the
 path to the local Chisel source directory to the configure script.
 
@@ -118,30 +113,37 @@ Gathering the results
 ---------------------------------------------------------
 
     $ make run-emulator-debug
+ 
+When run in debug mode, all processors will generate .vcd information (viewable
+by your favorite waveform viewer). **NOTE:** The current build system assumes
+that the user has "vcd2vpd" installed.  If not, you will need to make the
+appropriate changes to emulator/common/Makefile.include to remove references to
+"vcd2vpd".
+ 
+All processors can also spit out cycle-by-cycle log information: see
+emulator/common/Makefile.include and add a "+verbose" to the emulator binary
+arguments list. **WARNING:** log files may become very large!
 
-
-All processors can spit out cycle-by-cycle log information: see
-emulator/common/Makefile.include and add a "+verbose" to the fesvr binary
-arguments list (front-end server). WARNING: log files may become very large!
 By default, assembly tests already use "+verbose" and the longer running
-benchmarks do not. See the rule "run-bmarks: $(global\_bmarks\_outgz)..." which,
-if uncommented, will run the benchmarks in log mode and save the output to a
-.gz file (you can use "zcat vvadd.out.gz | vim -" to read these files
-easily enough, if vim is your thing).
+benchmarks do not. See the Makefile rule "run-bmarks:
+$(global\_bmarks\_outgz)..." which, if uncommented, will run the benchmarks in
+log mode and save the output to a .gz file (you can use "zcat vvadd.out.gz |
+vim -" to read these files easily enough, if vim is your thing).
 
-All processors can also spit out .vcd information (viewable by your favorite
-waveform viewer). See ./Makefile to add the "--vcd" flag to Chisel, and
+Although already done for you by the build system, to generate .vcd files, see
+./Makefile to add the "--vcd" flag to Chisel, and
 emulator/common/Makefile.include to add the "-v${vcdfilename}" flag to the
-fesvr binary. You should see example lines using these flags commented out.
-By default, the assembly tests write to a file called cpu.vcd.
+emulator binary. Currently, the .vcd files are converted to .vpd files and then
+the .vcd files are deleted. If you do not have vcd2vpd, you will want to remove
+references to vcd2vpd in emulator/common/Makefile.include. 
 
 The 1-stage and 3-stage can run the bmarks using the proxy-kernel (pk),
 which allows it to trap and emulate illegal instructions (e.g., div/rem), and
 allows the use of printf from within the bmark application! (This assumes the
 benchmarks have been compiled for use on a proxy kernel. For example, bare
-metal programs begin at PC=0x2000, whereas the proxy kernel expects main to be
-located at 0x10000. This is controlled by the tests/riscv-bmarks/Makefile
-SUPERVISOR\_MODE variable).
+metal programs begin at PC=0x2000, whereas the proxy kernel expects the
+benchmark's main to be located at 0x10000. This is controlled by the
+tests/riscv-bmarks/Makefile SUPERVISOR\_MODE variable).
 
 Have fun!
 

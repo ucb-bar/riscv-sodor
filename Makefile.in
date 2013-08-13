@@ -3,20 +3,22 @@
 #-----------------------------------------------------------------------
 # Christopher Celio (celio@eecs.berkeley.edu)
 #
-# This makefile will generate an emulator from chisel code
+# This makefile will generate a processor emulator from chisel code.
+# 
+# Many different processors are provided. To switch between which processor(s)
+# you would like to build, simply set the $(targets) variable as appropriate. 
 
-# Many different processors are provided. To switch between which 
-# processor you would like to build, change the bash environment 
-# variable $MK_TARGET_PROC as follows:
+all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode
+targets     := $(all_targets)
+ 
+# To switch between which processor the Makefile would like to build, it will
+# change the bash environment variable $MK_TARGET_PROC as follows:
 #   "export MK_TARGET_PROC=rv32_1stage"
 #   "export MK_TARGET_PROC=rv32_2stage"
 #   "export MK_TARGET_PROC=rv32_5stage"
 #   "export MK_TARGET_PROC=rv32_ucode"
 
 include @top_builddir@/prefix.mk
-
-all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode
-targets     := $(all_targets)
 
 MK_TARGET_PROC?=rv32_1stage
 
@@ -70,7 +72,7 @@ report-bp: $(patsubst %,%-report-bp,$(targets))
 report-stats: $(patsubst %,%-report-stats,$(targets))
 
 chisel-timestamp: $(wildcard $(chiseldir)/src/main/scala/*.scala)
-	cd $(chiseldir) && sbt publish-local
+	cd $(chiseldir) && $(SBT) publish-local
 	date > $@
 
 test-results.xml: $(wildcard $(patsubst %,emulator/%/output/*.out,$(targets)))

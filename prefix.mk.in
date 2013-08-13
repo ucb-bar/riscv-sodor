@@ -12,4 +12,4 @@ chiseldir       := @chiseldir@
 
 CXX := @CXX@
 SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar
-#SBT := sbt
+

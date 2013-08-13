@@ -11,7 +11,10 @@ object BuildSettings extends Build {
     version      := buildVersion,
     scalaVersion := buildScalaVersion,
     traceLevel   := 15,
-
+    resolvers ++= Seq(
+      "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
+      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
+    ),
     libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.0-SNAPSHOT"
   )
 
