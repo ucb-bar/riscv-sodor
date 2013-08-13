@@ -216,6 +216,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.pcr_fcn    := cs_pcr_fcn
    
    io.imem.req.valid := Bool(true)
+   io.imem.req.bits.fcn := M_XRD
+   io.imem.req.bits.typ := MT_WU
    io.ctl.mem_val    := cs_mem_en.toBool
    io.ctl.mem_fcn    := cs_mem_fcn
    

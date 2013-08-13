@@ -26,7 +26,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
   val dmem = new MemPortIo(conf.xprlen)
 }
 
-class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(resetSignal)
+class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new CoreIo()
   val c  = Module(new CtlPath())

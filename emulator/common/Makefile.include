@@ -26,19 +26,19 @@ PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
 TRACERPATH?=$(common)
 TRACER?=tracer
 
-CXX := g++
-CXXFLAGS := $(CXXFLAGS) -O1 -std=c++0x
+CXX := g++-4.7
+CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11
 
 CXXSRCS := disasm htif_emulator
 CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
 CXXDEBUGFLAGS := -DDEBUG
 
-LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -L. -ldramsim -lfesvr -lpthread
+LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -L. -lfesvr -lpthread
 
 OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER))
 DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER))
 
-CHISEL_ARGS := --noIoDebug --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src
+CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src
 CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
 
 # To find emulator.cpp

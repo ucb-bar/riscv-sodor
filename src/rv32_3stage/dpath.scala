@@ -302,7 +302,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Handle Reset
 
-   when (reset.toBool)
+   when (this.reset)
    {
       wb_reg_ctrl.rf_wen    := Bool(false)
       wb_reg_ctrl.pcr_fcn   := PCR_N
