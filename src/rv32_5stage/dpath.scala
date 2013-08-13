@@ -317,7 +317,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    pcr.io.w.en   := mem_reg_ctrl_pcr_fcn === PCR_T
    pcr.io.w.data := mem_reg_rs2_data
 
- 
+  pcr.io.exception := Bool(false)
  
    // WB Mux
    mem_wbdata := MuxCase(mem_reg_alu_out, Array(

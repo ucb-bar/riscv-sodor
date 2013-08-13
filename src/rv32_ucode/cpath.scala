@@ -64,7 +64,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Micro-PC State Register
    val upc_state_next = UInt()
-   val upc_state = Reg(UInt(), updateVal = upc_state_next, resetVal = UInt(label_target_map("INIT_PC"), label_sz))
+   val upc_state = Reg(UInt(), update = upc_state_next, resetVal = UInt(label_target_map("INIT_PC"), label_sz))
 
    // Micro-code ROM
    val micro_code = Vec(rombits)
