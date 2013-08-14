@@ -28,7 +28,7 @@ class HTIFIO() extends Bundle
    val pcr_rep = Decoupled(Bits(width = 64))
 
    val mem_req = Decoupled(new PCRReq(addr_width = 64)).flip
-   val mem_rep = new Valid(Bits(width = 64))
+   val mem_rep = new ValidIO(Bits(width = 64))
 }
 
 
