@@ -26,7 +26,6 @@ PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
 TRACERPATH?=$(common)
 TRACER?=tracer
 
-CXX := g++-4.7
 CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11
 
 CXXSRCS := disasm htif_emulator

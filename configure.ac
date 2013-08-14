@@ -1,6 +1,6 @@
 AC_INIT(sodor, 1.0)
 
-AC_PROG_CC
+AC_PROG_CXX
 
 # Chisel/Scala sources
 AC_ARG_WITH(chisel, [  --with-chisel           path to chisel sources])
