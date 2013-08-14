@@ -160,6 +160,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    pcr.io.w.addr := rs1
    pcr.io.w.en   := io.ctl.en_reg && io.ctl.reg_wr && io.ctl.reg_sel === RS_CP
    pcr.io.w.data := bus
+   pcr.io.exception := Bool(false)     // for now, the ucode does NOT support exceptions
+   pcr.io.eret      := Bool(false)     // although these signals are unused, we need to 
+   pcr.io.badvaddr_wen := Bool(false)  // tie them down anyways.
+   pcr.io.vec_irq_aux_wen := Bool(false)
+   pcr.io.vec_irq_aux := Bits(0)
  
    
    // Time Stamp Counter & Retired Instruction Counter 
