@@ -170,6 +170,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    pcr.io.w.en   := io.ctl.pcr_fcn === PCR_T
    pcr.io.w.data := exe_rs2_data
 
+   pcr.io.exception := Bool(false)
+
  
    // WB Mux
    exe_wbdata := MuxCase(exe_alu_out, Array(
