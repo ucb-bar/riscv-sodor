@@ -15,7 +15,7 @@ object BuildSettings extends Build {
       "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
     ),
-    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.0-SNAPSHOT"
+    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.0"
   )
 
   lazy val common = Project("common", file("common"), settings = buildSettings
