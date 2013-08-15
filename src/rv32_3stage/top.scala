@@ -24,7 +24,7 @@ class Top extends Module
    val io = new TopIO()
 
    implicit val sodor_conf = SodorConfiguration()
-   val reset_signal = RegUpdate(RegUpdate(io.htif.reset))
+   val reset_signal = Reg(next=Reg(next=io.htif.reset))
    
    val tile = Module(new SodorTile)
   
@@ -35,7 +35,7 @@ class Top extends Module
    tile.io.host.mem_req <> Queue(io.htif.mem_req)
    io.htif.mem_rep <> tile.io.host.mem_rep
 
-   io.debug.error_mode := RegUpdate(tile.io.host.debug.error_mode)
+   io.debug.error_mode := Reg(next=tile.io.host.debug.error_mode)
 }
 
 object elaborate {

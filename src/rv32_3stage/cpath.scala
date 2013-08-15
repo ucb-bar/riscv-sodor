@@ -180,7 +180,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // catch exceptions, eret in execute stage
    // address exceptions/eret in WB stage
 
-   val wb_exception = RegReset(Bool(false))
+   val wb_exception = Reg(init=Bool(false))
    val wb_exc_cause = Reg(UInt(width = 5))
    
    

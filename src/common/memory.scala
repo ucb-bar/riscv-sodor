@@ -126,8 +126,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
    val htif_idx = io.htif_port.req.bits.addr >> UInt(idx_lsb)
    val htif_read_data_out = Cat(data_bank1(htif_idx), data_bank0(htif_idx))
 
-   io.htif_port.resp.valid      := RegUpdate(io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   io.htif_port.resp.bits.data  := RegUpdate(htif_read_data_out)
+   io.htif_port.resp.valid      := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
+   io.htif_port.resp.bits.data  := Reg(next=htif_read_data_out)
 
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {

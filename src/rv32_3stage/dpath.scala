@@ -40,10 +40,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = RegReset(UInt(START_ADDR, conf.xprlen))
+   val if_reg_pc = Reg(init=UInt(START_ADDR, conf.xprlen))
     
-   val exe_reg_pc   = RegReset(UInt(0, conf.xprlen))
-   val exe_reg_inst = RegReset(BUBBLE)
+   val exe_reg_pc   = Reg(init=UInt(0, conf.xprlen))
+   val exe_reg_inst = Reg(init=BUBBLE)
 
    val wb_reg_ctrl     = Reg(new CtrlSignals)
    val wb_reg_alu      = Reg(Bits(width = conf.xprlen))
@@ -241,11 +241,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exception_target := pcr.io.evec
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
 
    // TODO properly figure out how to measure retired inst count
-   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (!io.ctl.if_stall && !io.ctl.exception && !hazard_stall) { irt_reg := irt_reg + UInt(1) }
 
 
@@ -279,11 +279,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(hazard_stall, Str("HAZ"), Str("   "))
       , if_reg_pc(19,0)
       , exe_reg_pc(19,0)
-      , Mux(RegUpdate(hazard_stall), UInt(0), RegUpdate(exe_reg_pc)(19,0))
+      , Mux(Reg(next=hazard_stall), UInt(0), Reg(next=exe_reg_pc)(19,0))
       , Disassemble(if_inst, true)
       , Disassemble(exe_reg_inst, true)
-      , Mux(RegUpdate(hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE, true), Disassemble(RegUpdate(exe_reg_inst), true))
-      , Mux(RegUpdate(hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE), Disassemble(RegUpdate(exe_reg_inst)))
+      , Mux(Reg(next=hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE, true), Disassemble(Reg(next=exe_reg_inst), true))
+      , Mux(Reg(next=hazard_stall || io.ctl.exe_kill), Disassemble(BUBBLE), Disassemble(Reg(next=exe_reg_inst)))
       , Mux(io.ctl.if_stall, Str("stall"), Str("     "))
       , Mux(hazard_stall, Str("HAZ"), Str("   "))
       , Mux(io.ctl.pc_sel  === UInt(1), Str("Br/J"),

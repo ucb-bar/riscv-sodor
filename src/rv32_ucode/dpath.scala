@@ -59,20 +59,20 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
 
    // IR Register
-   val ir    = RegReset(Bits(0,32))
+   val ir    = Reg(init=Bits(0,32))
    when (io.ctl.ld_ir) { ir := bus }
    io.dat.inst := ir
     
    // A Register
-   val reg_a = RegReset(Bits(0xaaaa,conf.xprlen))
+   val reg_a = Reg(init=Bits(0xaaaa,conf.xprlen))
    when (io.ctl.ld_a) { reg_a := bus }
      
    // B Register
-   val reg_b = RegReset(Bits(0xbbbb,conf.xprlen))
+   val reg_b = Reg(init=Bits(0xbbbb,conf.xprlen))
    when (io.ctl.ld_b) { reg_b := bus }
     
    // MA Register
-   val reg_ma  = RegReset(Bits(0xeeee,conf.xprlen))
+   val reg_ma  = Reg(init=Bits(0xeeee,conf.xprlen))
    when (io.ctl.ld_ma) { reg_ma := bus }
  
 
@@ -107,7 +107,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //note: I could be far more clever and save myself on wasted registers here...
    //32 x-registers, 32 cp-registers, 1 pc-register
 //   val regfile = Mem(65){ Bits(resetVal = Bits(0, conf.xprlen)) }
-   val regfile = Vec.fill(65){ RegReset(Bits(0, conf.xprlen)) }
+   val regfile = Vec.fill(65){ Reg(init=Bits(0, conf.xprlen)) }
 
    when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr != UInt(0))
    {
@@ -168,10 +168,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + UInt(1) }
  
 

@@ -133,9 +133,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_wbaddr      = Reg(UInt())
    val mem_reg_wbaddr      = Reg(UInt())
    val wb_reg_wbaddr       = Reg(UInt())
-   val exe_reg_ctrl_rf_wen = RegReset(Bool(false))
-   val mem_reg_ctrl_rf_wen = RegReset(Bool(false))
-   val wb_reg_ctrl_rf_wen  = RegReset(Bool(false))
+   val exe_reg_ctrl_rf_wen = Reg(init=Bool(false))
+   val mem_reg_ctrl_rf_wen = Reg(init=Bool(false))
+   val wb_reg_ctrl_rf_wen  = Reg(init=Bool(false))
    
    // TODO rename stall==hazard_stall full_stall == cmiss_stall
    val full_stall = Bool()
@@ -165,7 +165,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    wb_reg_ctrl_rf_wen  := mem_reg_ctrl_rf_wen
 
    
-   val exe_inst_is_load = RegReset(Bool(false))
+   val exe_inst_is_load = Reg(init=Bool(false))
    
    when (!full_stall)
    {

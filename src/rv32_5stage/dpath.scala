@@ -42,30 +42,30 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Pipeline State Registers
    
    // Instruction Fetch State
-   val if_reg_pc             = RegReset(UInt(START_ADDR, conf.xprlen))
+   val if_reg_pc             = Reg(init=UInt(START_ADDR, conf.xprlen))
    
    // Instruction Decode State
-   val dec_reg_inst          = RegReset(BUBBLE)
-   val dec_reg_pc            = RegReset(UInt(0, conf.xprlen))
+   val dec_reg_inst          = Reg(init=BUBBLE)
+   val dec_reg_pc            = Reg(init=UInt(0, conf.xprlen))
    
    // Execute State
-   val exe_reg_inst          = RegReset(BUBBLE)
+   val exe_reg_inst          = Reg(init=BUBBLE)
 //   val exe_reg_pc            = Reg(){ UInt() }
-   val exe_reg_pc            = RegReset(UInt(0, conf.xprlen))
+   val exe_reg_pc            = Reg(init=UInt(0, conf.xprlen))
    val exe_reg_wbaddr        = Reg(UInt())
    val exe_reg_rs1_addr      = Reg(UInt())
    val exe_reg_rs2_addr      = Reg(UInt())
    val exe_reg_op1_data      = Reg(Bits())
    val exe_reg_op2_data      = Reg(Bits())
    val exe_reg_rs2_data      = Reg(Bits())
-   val exe_reg_ctrl_br_type  = RegReset(BR_N)
+   val exe_reg_ctrl_br_type  = Reg(init=BR_N)
    val exe_reg_ctrl_op2_sel  = Reg(UInt())
    val exe_reg_ctrl_alu_fun  = Reg(UInt())
    val exe_reg_ctrl_wb_sel   = Reg(UInt())
-   val exe_reg_ctrl_rf_wen   = RegReset(Bool(false))
-   val exe_reg_ctrl_mem_val  = RegReset(Bool(false))
-   val exe_reg_ctrl_mem_fcn  = RegReset(M_X)
-   val exe_reg_ctrl_pcr_fcn  = RegReset(PCR_N)
+   val exe_reg_ctrl_rf_wen   = Reg(init=Bool(false))
+   val exe_reg_ctrl_mem_val  = Reg(init=Bool(false))
+   val exe_reg_ctrl_mem_fcn  = Reg(init=M_X)
+   val exe_reg_ctrl_pcr_fcn  = Reg(init=PCR_N)
    
    // Memory State
    val mem_reg_pc            = Reg(UInt())
@@ -75,16 +75,16 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val mem_reg_rs2_addr      = Reg(UInt())
    val mem_reg_op1_data      = Reg(Bits())
    val mem_reg_rs2_data      = Reg(Bits())
-   val mem_reg_ctrl_rf_wen   = RegReset(Bool(false))
-   val mem_reg_ctrl_mem_val  = RegReset(Bool(false))
-   val mem_reg_ctrl_mem_fcn  = RegReset(M_X)
+   val mem_reg_ctrl_rf_wen   = Reg(init=Bool(false))
+   val mem_reg_ctrl_mem_val  = Reg(init=Bool(false))
+   val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
    val mem_reg_ctrl_wb_sel   = Reg(UInt())
-   val mem_reg_ctrl_pcr_fcn  = RegReset(PCR_N)
+   val mem_reg_ctrl_pcr_fcn  = Reg(init=PCR_N)
 
    // Writeback State
    val wb_reg_wbaddr         = Reg(UInt())
    val wb_reg_wbdata         = Reg(Bits(width = conf.xprlen))
-   val wb_reg_ctrl_rf_wen    = RegReset(Bool(false))
+   val wb_reg_ctrl_rf_wen    = Reg(init=Bool(false))
 
 
    //**********************************
@@ -366,10 +366,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (!io.ctl.full_stall && !io.ctl.dec_stall) { irt_reg := irt_reg + UInt(1) }
         
                                      
@@ -379,13 +379,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , if_reg_pc
       , dec_reg_pc
       , exe_reg_pc
-      , RegUpdate(exe_reg_pc)
-      , RegUpdate(RegUpdate(exe_reg_pc))
+      , Reg(next=exe_reg_pc)
+      , Reg(next=Reg(next=exe_reg_pc))
       , Disassemble(if_inst, true)
       , Disassemble(dec_reg_inst, true)
       , Disassemble(exe_reg_inst, true)
-      , RegUpdate(Disassemble(exe_reg_inst, true))
-      , RegUpdate(RegUpdate(Disassemble(exe_reg_inst, true)))
+      , Reg(next=Disassemble(exe_reg_inst, true))
+      , Reg(next=Reg(next=Disassemble(exe_reg_inst, true)))
       , Mux(io.ctl.full_stall, Str("FREEZE"), 
         Mux(io.ctl.dec_stall, Str("STALL "), Str(" ")))
       , Mux(io.ctl.exe_pc_sel === UInt(1), Str("BR"),

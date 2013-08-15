@@ -47,7 +47,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exception_target = UInt()
  
    // PC Register
-   val pc_reg = RegReset(UInt(START_ADDR, conf.xprlen))
+   val pc_reg = Reg(init=UInt(START_ADDR, conf.xprlen))
 
    when (!io.ctl.stall) 
    {
@@ -161,10 +161,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exception_target := pcr.io.evec
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (!io.ctl.stall && !io.ctl.exception) { irt_reg := irt_reg + UInt(1) }
 
   

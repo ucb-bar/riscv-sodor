@@ -38,11 +38,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = RegReset(UInt(START_ADDR, conf.xprlen))
+   val if_reg_pc = Reg(init=UInt(START_ADDR, conf.xprlen))
    
-   val exe_reg_pc       = RegReset(UInt(0, conf.xprlen))
-   val exe_reg_pc_plus4 = RegReset(UInt(0, conf.xprlen))
-   val exe_reg_inst     = RegReset(BUBBLE)
+   val exe_reg_pc       = Reg(init=UInt(0, conf.xprlen))
+   val exe_reg_pc_plus4 = Reg(init=UInt(0, conf.xprlen))
+   val exe_reg_inst     = Reg(init=BUBBLE)
    
    //**********************************
    // Instruction Fetch Stage
@@ -195,10 +195,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          
 
    // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = RegReset(UInt(0, conf.xprlen))
+   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
 
-   val irt_reg = RegReset(UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + UInt(1) }
 
         
