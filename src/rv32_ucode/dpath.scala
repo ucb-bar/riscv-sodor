@@ -136,7 +136,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_AND)     ->  (reg_a & reg_b),
               (io.ctl.alu_op === ALU_OR)      ->  (reg_a | reg_b),
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
-              (io.ctl.alu_op === ALU_SLT)     ->  (reg_a < reg_b),
+              (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.toSInt < reg_b.toSInt).toUInt,
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
               (io.ctl.alu_op === ALU_INIT_PC) ->  UInt(START_ADDR)
             ))

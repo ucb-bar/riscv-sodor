@@ -215,33 +215,33 @@ output:
 	mkdir -p $@
 
 output/%.run: output/%.hex emulator
-	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none 2> /dev/null
+	./emulator +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none 2> /dev/null
 
 output/%.out: output/%.hex emulator
-	-./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
+	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
 
 output/%.vpd: output/%.hex emulator-debug
-	-./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
 
 
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
 $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator 
-	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2> $@
+	./emulator +max-cycles=$(bmark_timeout) +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2> $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug
-	./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
+	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
     
 else                                                   
 
 $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator $(PK_HEX) output
-	-$(PK_PATH) ./emulator +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $@
+	-$(PK_PATH) ./emulator +max-cycles=$(bmark_timeout) $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator $(PK_HEX) output
-	$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
-#	$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) +verbose $(seed) pk $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+#	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) pk $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug $(PK_HEX) output
-	-$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
-#	-$(PK_PATH) ./emulator-debug +dramsim=$(srcDir)/emulator/common/dramsim2_ini +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
+	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
+#	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
     
 endif
 

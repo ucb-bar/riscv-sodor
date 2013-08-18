@@ -47,7 +47,7 @@ examples written in [Chisel](http://chisel.eecs.berkeley.edu) (and a regressive 
 no external [RISC-V tools](http://riscv.org) are used (with the exception of the RISC-V [front-end server](https://github.com/ucb-bar/riscv-fesvr)). 
 The assumption is that [riscv-gcc](https://github.com/ucb-bar/riscv-gcc) is not
 available on the local system.  Thus, RISC-V unit tests and benchmarks were
-compiled and committed into the sodor repositories. 
+compiled and committed to the sodor repository in the ./install directory (as are the .dump files). 
 
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
