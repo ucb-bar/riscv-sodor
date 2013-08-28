@@ -95,7 +95,7 @@ emulator/%/generated-src/timestamp: emulator/%/emulator
 	install -d $(dir $@)
 	date > $@
 
-emulator/%/generated-src-debug/timestamp:
+emulator/%/generated-src-debug/timestamp: emulator/%/emulator-debug
 	@echo
 	@echo running basedir/Makefile: make run-emulator-debug
 	@echo
@@ -106,6 +106,8 @@ emulator/%/generated-src-debug/timestamp:
 emulator/%/emulator: $(prerequisites)
 	make -C $(dir $@)
 
+emulator/%/emulator-debug: $(prerequisites)
+	make -C $(dir $@) emulator-debug
 
 .PHONY: run-emulator target clean clean-tests
 
