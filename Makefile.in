@@ -111,3 +111,34 @@ emulator/%/emulator-debug: $(prerequisites)
 
 .PHONY: run-emulator target clean clean-tests
 
+# Because we are using recursive makefiles and emulator is an actual file.
+emulator/rv32_1stage/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_1stage/*.scala)
+
+emulator/rv32_2stage/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_2stage/*.scala)
+
+emulator/rv32_3stage/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_3stage/*.scala)
+
+emulator/rv32_5stage/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_5stage/*.scala)
+
+emulator/rv32_ucode/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_ucode/*.scala)
+
+emulator/rv32_1stage/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_1stage/*.scala)
+
+emulator/rv32_2stage/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_2stage/*.scala)
+
+emulator/rv32_3stage/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_3stage/*.scala)
+
+emulator/rv32_5stage/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_5stage/*.scala)
+
+emulator/rv32_ucode/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
+                                 $(wildcard $(srcDir)/src/rv32_ucode/*.scala)
+
