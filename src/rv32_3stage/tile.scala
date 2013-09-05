@@ -33,14 +33,16 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
 
    // notice that while the core is put into reset, the scratchpad needs to be
    // alive so that the HTIF can load in the program.
-   val core   = Module(new Core(resetSignal = io.host.reset))
-   val memory = Module(new ScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
-   val arbiter = Module(new SodorMemArbiter) // only used for single port memory
+   val core     = Module(new Core(resetSignal = io.host.reset))
+
+   val memory   = Module(new ScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
+//   val memory = Module(new ZScaleScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
+   val arbiter  = Module(new SodorMemArbiter) // only used for single port memory
 
    if (NUM_MEMORY_PORTS == 1)
    {
-      core.io.imem <> arbiter.io.imem
-      core.io.dmem <> arbiter.io.dmem
+      core.io.imem   <> arbiter.io.imem
+      core.io.dmem   <> arbiter.io.dmem
       arbiter.io.mem <> memory.io.core_ports(0)
    }
    else
@@ -48,6 +50,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
       core.io.imem <> memory.io.core_ports(0)
       core.io.dmem <> memory.io.core_ports(1)
    }
+
 
    // HTIF/memory request
    memory.io.htif_port.req.valid     := io.host.mem_req.valid

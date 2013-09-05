@@ -18,20 +18,24 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
 
 class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
-  val io = new CoreIo()
-  val c  = Module(new CtlPath())
-  val d  = Module(new DatPath())
-  
-  c.io.ctl  <> d.io.ctl
-  c.io.dat  <> d.io.dat
-  
-  c.io.imem <> io.imem
-  d.io.imem <> io.imem
-  
-  c.io.dmem <> io.dmem
-  d.io.dmem <> io.dmem
-  
-  d.io.host <> io.host
+   val io = new CoreIo()
+
+   val fe = Module(new FrontEnd())
+   val c  = Module(new CtlPath())
+   val d  = Module(new DatPath())
+
+   fe.io.imem <> io.imem
+   fe.io.cpu <> c.io.imem
+   fe.io.cpu <> d.io.imem
+
+   c.io.ctl  <> d.io.ctl
+   c.io.dat  <> d.io.dat
+   
+   
+   c.io.dmem <> io.dmem
+   d.io.dmem <> io.dmem
+   
+   d.io.host <> io.host
 }
 
 }

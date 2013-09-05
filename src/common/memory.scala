@@ -1,5 +1,5 @@
 //**************************************************************************
-// Scratchpad Memory
+// Scratchpad Memory (asynchronous)
 //--------------------------------------------------------------------------
 //
 // Christopher Celio
@@ -9,7 +9,7 @@
 // (host-target interface).
 //
 // Assumes that if the port is ready, it will be performed immediately
-// For now, don't detect write collisions
+// For now, don't detect write collisions.
 // For now, written combinationally (except the HTIF read response), which is
 // required for the 1-stage.
 

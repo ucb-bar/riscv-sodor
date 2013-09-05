@@ -59,6 +59,7 @@ int main(int argc, char** argv)
       fprintf(vcdfile, "$var reg %d NDISASM instruction $end\n", disasm_len*8);
       fprintf(vcdfile, "$var reg 64 NCYCLE cycle $end\n");
       fprintf(vcdfile, "$upscope $end\n");
+      fprintf(vcdfile, "$enddefinitions $end\n");
    }
  
    // The chisel generated code
@@ -183,7 +184,7 @@ int main(int argc, char** argv)
          if (vcd)
          {
             insn_t insn;
-            insn.bits = dut.Top_tile_core_d__exe_reg_inst.lo_word();
+            insn.bits = dut.Top_tile_core_d__exe_inst.lo_word();
             std::string inst_disasm = disasm.disassemble(insn); 
             inst_disasm.resize(disasm_len, ' ');
             dat_t<disasm_len*8> disasm_dat;

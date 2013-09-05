@@ -16,8 +16,6 @@ import ALU._
 
 class CtrlSignals extends Bundle() 
 {
-   val if_stall  = Bool()    // hazard on memory port: stall IF
-   val if_kill   = Bool()    // squash IF stage (branch mispredict)
    val exe_kill  = Bool()    // squash EX stage (exception/eret occurred)
    val pc_sel    = UInt(width = PC_4.getWidth) 
    val brjmp_sel = Bool()
@@ -42,7 +40,7 @@ class CtrlSignals extends Bundle()
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val imem = new MemPortIo(conf.xprlen)
+   val imem = new FrontEndCpuIO().flip()
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = new DatToCtlIo().flip()
    val ctl  = new CtrlSignals().asOutput
@@ -55,7 +53,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   val io = new CpathIo()     //                                                                                                    |   is eret
                              //                                                                                                    |   |  is syscall
    val csignals =            //              is jmp?                                               bypassable?                     |   |  |  is privileged
-      ListLookup(io.dat.inst,//              |                                                     |                               |   |  |  | 
+      ListLookup(io.imem.resp.bits.inst,//              |                                                     |                               |   |  |  | 
                              List(N,  BR_N , N, OP1_RS1, OP2_IMI, FN_X   , WB_X , WA_X , REN_0, N, MEN_0, MWR_X, MT_X,  PCR_N, M_N, N, N, N),
                Array(        /*  val | BR   |  | op1   |  op2   |  ALU   |  wb   | wa   | rf   |  | mem  | mem  | mask |  pcr |    |   */
                              /* inst | type |  |  sel  |   sel  |   fcn  |  sel  | sel  | wen  |  |  en  |  wr  | type |  fcn |    |   */
@@ -144,15 +142,11 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
                            
-//   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
-   // not using caches, not using back pressure just yet
-   // the above line is wrong though: cs_mem_en and resp.valid are in different stages
-
-   val ifkill = !(ctrl_pc_sel === PC_4) 
 
 
-   io.ctl.if_stall   := !io.imem.resp.valid
-   io.ctl.if_kill    := ifkill
+   val take_pc = io.ctl.pc_sel != PC_4 
+   io.imem.req.valid := !(ctrl_pc_sel === PC_4)
+
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
    io.ctl.brjmp_sel  := cs_brjmp_sel.toBool
@@ -166,10 +160,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.pcr_fcn    := Mux(exe_exception, PCR_N, cs_pcr_fcn)
    
    // Memory Requests
-   io.imem.req.valid    := Bool(true)
-   io.imem.req.bits.fcn := M_XRD
-   io.imem.req.bits.typ := MT_WU
-
    io.ctl.dmem_val   := cs_mem_en.toBool
    io.ctl.dmem_fcn   := cs_mem_fcn
    io.ctl.dmem_typ   := cs_msk_sel

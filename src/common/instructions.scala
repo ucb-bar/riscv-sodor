@@ -483,7 +483,7 @@ object Disassemble
     ERET->      List(Str("eret      "), FMT_0),
     FENCE->     List(Str("fence     "), FMT_0),
     FENCE_I->   List(Str("fence.i   "), FMT_0),
-    MFPCR->     List(Str("mfpcr     "), FMT_R2),
+    MFPCR->     List(Str("mfpcr     "), FMT_R2_P),
     MTPCR->     List(Str("mtpcr     "), FMT_R2_P), 
     RDTIME->    List(Str("rdtime    "), FMT_R0),
     RDCYCLE->   List(Str("rdcycle   "), FMT_R0),

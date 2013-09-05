@@ -15,7 +15,7 @@ trait SodorProcConstants
    //************************************
    // Machine Parameters
    
-   val NUM_MEMORY_PORTS = 1 // number of ports to memory (1 or 2)
+   val NUM_MEMORY_PORTS = 2 // number of ports to memory (1 or 2)
 
 }
    
