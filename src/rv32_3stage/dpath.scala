@@ -47,11 +47,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
 
-   val wb_reg_ctrl     = Reg(new CtrlSignals)
-   val wb_reg_alu      = Reg(Bits(width=conf.xprlen))
-   val wb_reg_sdata    = Reg(Bits(width=conf.xprlen))
-   val wb_reg_rs1_addr = Reg(UInt(width=log2Up(32))) // needed for PCR
-   val wb_reg_wbaddr   = Reg(UInt(width=log2Up(32)))
+   val wb_reg_ctrl     = Reg(outType = new CtrlSignals)
+   val wb_reg_alu      = Reg(outType = Bits(width=conf.xprlen))
+   val wb_reg_rs1_addr = Reg(outType = UInt(width=log2Up(32))) // needed for PCR
+   val wb_reg_wbaddr   = Reg(outType = UInt(width=log2Up(32)))
    
    val wb_hazard_stall = Bool() // hazard detected, stall in IF/EXE required
 
@@ -153,7 +152,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exe_brjmp_target := exe_pc + Cat(imm_brjmp(conf.xprlen-2,0), UInt(0,1)).toUInt
    exe_jump_reg_target := alu.io.adder_out 
 
-   val exe_pc_plus4 = exe_pc + UInt(4)
 
    // datapath to controlpath outputs
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
@@ -173,10 +171,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
 
    wb_reg_alu := exe_alu_out
-   wb_reg_sdata := exe_rs2_data
    wb_reg_rs1_addr := exe_rs1_addr
    wb_reg_wbaddr := exe_wbaddr
-
+     
+   
+   // datapath to data memory outputs
+   io.dmem.req.valid     := io.ctl.dmem_val
+   io.dmem.req.bits.fcn  := io.ctl.dmem_fcn
+   io.dmem.req.bits.typ  := io.ctl.dmem_typ
+   io.dmem.req.bits.addr := exe_alu_out
+   io.dmem.req.bits.data := exe_rs2_data
+                                 
    //**********************************
    // Writeback Stage
                                   
@@ -226,16 +231,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (wb_reg_ctrl.wb_sel === WB_TSC) -> tsc_reg,
                   (wb_reg_ctrl.wb_sel === WB_IRT) -> irt_reg
                   )).toSInt()
-                                 
-   
-   // datapath to data memory outputs
-   // TODO make synchronous memory
-   io.dmem.req.valid     := wb_reg_ctrl.dmem_val
-   io.dmem.req.bits.fcn  := wb_reg_ctrl.dmem_fcn
-   io.dmem.req.bits.typ  := wb_reg_ctrl.dmem_typ
-   io.dmem.req.bits.addr := wb_reg_alu.toUInt 
-   io.dmem.req.bits.data := wb_reg_sdata
-   
+                                
    
    //**********************************
    // Printout
@@ -262,6 +258,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , wb_wbdata
       , Mux(io.ctl.exception, Str("E"), Str("_"))
       , io.ctl.exc_cause
+//      , Mux(io.ctl.dmem_val, Str("V"), Str("_"))
+//      , io.dmem.req.bits.data
       )
 
    //**********************************

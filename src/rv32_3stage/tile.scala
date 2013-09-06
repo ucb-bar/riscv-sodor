@@ -7,6 +7,7 @@
 //
 // Describes a RISCV 3-stage processor, heavily optimized for low-area.
 //   - Configurable number of ports to memory (Princeton vs Harvard)
+//   - synchronous memory
 //   - No div/mul/rem
 //   - No FPU
 //   - implements supervisor mode (can trap to handle the above instructions)
@@ -35,8 +36,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    // alive so that the HTIF can load in the program.
    val core     = Module(new Core(resetSignal = io.host.reset))
 
-   val memory   = Module(new ScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
-//   val memory = Module(new ZScaleScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
+   // synchronouse memory
+   val memory = Module(new ZScaleScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
    val arbiter  = Module(new SodorMemArbiter) // only used for single port memory
 
    if (NUM_MEMORY_PORTS == 1)
