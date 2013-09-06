@@ -5,12 +5,16 @@
 // Christopher Celio
 // 2013 Jun 28
 //
-// Describes a RISCV 3-stage processor, heavily optimized for low-area.
+// Describes a RISCV 3-stage processor, heavily optimized for low-area.  This
+// core is designed to be the one "realistic" core within Sodor. 
+
+// Features:
 //   - Configurable number of ports to memory (Princeton vs Harvard)
 //   - synchronous memory
-//   - No div/mul/rem
-//   - No FPU
-//   - implements supervisor mode (can trap to handle the above instructions)
+//   - RV32IS
+//       - No div/mul/rem
+//       - No FPU
+//       - implements supervisor mode (can trap to handle the above instructions)
 //    
  
 package Sodor

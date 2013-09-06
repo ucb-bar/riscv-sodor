@@ -10,7 +10,7 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 
 * 1-stage (essentially an ISA simulator)
 * 2-stage (demonstrates pipelining in Chisel)
-* 3-stage ("Princeton-style" memory, optimized for area)
+* 3-stage ("Princeton-style", uses sequential memory)
 * 5-stage (can toggle between fully bypassed or fully interlocked)
 * "bus"-based micro-coded implementation
 
@@ -20,9 +20,10 @@ not implement sub-word memory accesses nor supervisor mode (the 1-stage and
 3-stage being the exceptions).
 
 All processors talk to a simple scratchpad memory (asynchronous,
-single-cycle), with no backing outer memory. Programs are loaded in via a
-Host-target Interface (HTIF) port (while the core is kept in reset),
-effectively making the scratchpads 3-port memories (instruction, data, HTIF).
+single-cycle), with no backing outer memory (the 3-stage is again the exception
+\- its scratchpad is synchronous). Programs are loaded in via a Host-target
+Interface (HTIF) port (while the core is kept in reset), effectively making the
+scratchpads 3-port memories (instruction, data, HTIF).
 
 This repository is set up to use the C++-backend of Chisel to generate and run
 the Sodor emulators.  Users wishing to use the Verilog-backend will need to
