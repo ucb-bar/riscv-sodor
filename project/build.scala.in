@@ -13,10 +13,9 @@ object BuildSettings extends Build {
     traceLevel   := 15,
     resolvers ++= Seq(
       "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
-      "scct-github-repository" at "http://mtkopone.github.com/scct/maven-repo"
+      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
     ),
-    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.0.2"
+    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "release.latest"
   )
 
   lazy val common = Project("common", file("common"), settings = buildSettings

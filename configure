@@ -2264,7 +2264,7 @@ fi
 chiseldir=$with_chisel
 
 
-ac_config_files="$ac_config_files prefix.mk Makefile project/build.properties project/build.scala emulator/rv32_1stage/Makefile emulator/rv32_2stage/Makefile emulator/rv32_3stage/Makefile emulator/rv32_5stage/Makefile emulator/rv32_ucode/Makefile"
+ac_config_files="$ac_config_files prefix.mk Makefile project/plugins.sbt project/build.properties project/build.scala emulator/rv32_1stage/Makefile emulator/rv32_2stage/Makefile emulator/rv32_3stage/Makefile emulator/rv32_5stage/Makefile emulator/rv32_ucode/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -2835,6 +2835,7 @@ do
   case $ac_config_target in
     "prefix.mk") CONFIG_FILES="$CONFIG_FILES prefix.mk" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+    "project/plugins.sbt") CONFIG_FILES="$CONFIG_FILES project/plugins.sbt" ;;
     "project/build.properties") CONFIG_FILES="$CONFIG_FILES project/build.properties" ;;
     "project/build.scala") CONFIG_FILES="$CONFIG_FILES project/build.scala" ;;
     "emulator/rv32_1stage/Makefile") CONFIG_FILES="$CONFIG_FILES emulator/rv32_1stage/Makefile" ;;

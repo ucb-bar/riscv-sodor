@@ -10,6 +10,7 @@ AC_SUBST(chiseldir, $with_chisel)
 AC_OUTPUT(
     prefix.mk
     Makefile
+    project/plugins.sbt
     project/build.properties
     project/build.scala
     emulator/rv32_1stage/Makefile
