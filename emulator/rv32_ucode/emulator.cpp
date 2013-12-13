@@ -177,7 +177,7 @@ int main(int argc, char** argv)
       {
          if (log)
          {
-            dut.print(logfile);
+            dut.print(logfile, logfile);
          }
 
          if (vcd)

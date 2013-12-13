@@ -55,6 +55,7 @@ Install the RISC-V front-end server to talk between the host and RISC-V target p
 
     $ git clone https://github.com/ucb-bar/riscv-fesvr.git
     $ cd riscv-fesvr
+    $ git checkout cf8867448d02ba99ee5a2163dbee0e3dada348dd 
     $ ./configure --prefix=/usr/local
     $ make install
  
@@ -72,7 +73,11 @@ Install the executables on the local system
 Clean all generated files
 
     $ make clean
-  
+
+
+(The riscv-fesvr is still undergoing rapid development, thus you need to
+checkout a specific version that is known to work with the current version of
+riscv-sodor).
 
 (Alternative) Build together with Chisel sources
 ------------------------------------------------
