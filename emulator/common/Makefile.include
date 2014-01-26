@@ -96,47 +96,31 @@ test:
 
 
 # Globally installed assembly tests
-global_tstdir = $(install)/riscv-tests
+global_tstdir = $(install)/tests
 
 global_asm_tests += \
+	add addi \
+	amoadd_w amoand_w amomax_w amomaxu_w amomin_w amominu_w amoor_w amoswap_w \
+	and andi \
+	auipc \
+	beq bge bgeu blt bltu bne \
+	div divu \
+	fence_i \
+	j jal jalr \
+	lb lbu lh lhu lw \
+	lui \
+	mul mulh mulhu mulhsu \
+	or ori \
+	rem remu \
+	sb sh sw \
+	sll slli \
+	slt slti \
+	sra srai \
+	srl srli \
+	sub \
+	xor xori \
 	riscv_example \
-	riscv-v1_addi \
-	riscv-v1_bne \
-	riscv-v1_simple \
-	riscv-v1_sw \
-	riscv-v2_addi \
-	riscv-v2_add \
-	riscv-v2_and \
-	riscv-v2_andi \
-	riscv-v2_beq \
-	riscv-v2_bge \
-	riscv-v2_bgeu \
-	riscv-v2_blt \
-	riscv-v2_bltu \
-	riscv-v2_bne \
-	riscv-v2_j \
-	riscv-v2_jal \
-	riscv-v2_jalr  \
-	riscv-v2_lui \
-	riscv-v2_lw \
-	riscv-v2_or \
-	riscv-v2_ori \
-	riscv-v2_simple \
-	riscv-v2_slt \
-	riscv-v2_sltu \
-	riscv-v2_slti \
-	riscv-v2_sltiu \
-	riscv-v2_slli \
-	riscv-v2_sll \
-	riscv-v2_srli \
-	riscv-v2_srl \
-	riscv-v2_sub \
-	riscv-v2_sw \
-	riscv-v2_xor \
-	riscv-v2_xori \
-	riscv-v2_auipc \
-
-# Local assembly tests
+	# Local assembly tests
 local_tstdir = ../../test/riscv-tests
 
 
