@@ -127,9 +127,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    //**********************************
    // Decode Stage
-   val dec_rs1_addr = dec_reg_inst(26, 22).toUInt
-   val dec_rs2_addr = dec_reg_inst(21, 17).toUInt
-   val dec_wbaddr  = Mux(io.ctl.wa_sel, dec_reg_inst(31, 27).toUInt, RA)
+   val dec_rs1_addr = dec_reg_inst(19, 15).toUInt
+   val dec_rs2_addr = dec_reg_inst(24, 20).toUInt
+   val dec_wbaddr  = Mux(io.ctl.wa_sel, dec_reg_inst(11, 7).toUInt, RA)
    
  
    // Register File
@@ -144,24 +144,27 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
  
    // immediates
-   val imm_btype = Cat(dec_reg_inst(31,27), dec_reg_inst(16,10))
-   val imm_itype = dec_reg_inst(21,10)
-   val imm_ltype = dec_reg_inst(26,7)
-   val imm_jtype = dec_reg_inst(31,7)
+   val imm_itype  = dec_reg_inst(31,20)
+   val imm_stype  = Cat(dec_reg_inst(31,25), dec_reg_inst(11,7))
+   val imm_sbtype = Cat(dec_reg_inst(31), dec_reg_inst(7), dec_reg_inst(30, 25), dec_reg_inst(11,8))
+   val imm_utype  = dec_reg_inst(31, 12)
+   val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
 
    // sign-extend immediates
-   val imm_itype_sext = Cat(Fill(imm_itype(11), 20), imm_itype)
-   val imm_btype_sext = Cat(Fill(imm_btype(11), 20), imm_btype)
-   val imm_ltype_sext = Cat(Fill(imm_ltype(19), 12), imm_ltype)
-   val imm_jtype_sext = Cat(Fill(imm_jtype(24),  7), imm_jtype)
+   val imm_itype_sext  = Cat(Fill(imm_itype(11), 20), imm_itype)
+   val imm_stype_sext  = Cat(Fill(imm_stype(11), 20), imm_stype)
+   val imm_sbtype_sext = Cat(Fill(imm_sbtype(11), 19), imm_sbtype, UInt(0,1))
+   val imm_utype_sext  = Cat(imm_utype, Fill(UInt(0,1), 12))
+   val imm_ujtype_sext = Cat(Fill(imm_ujtype(19), 11), imm_ujtype, UInt(0,1))
 
    // Operand 2 Mux   
    val dec_alu_op2 = MuxCase(UInt(0), Array(
-               (io.ctl.op2_sel === OP2_RS2)   -> rf_rs2_data,
-               (io.ctl.op2_sel === OP2_ITYPE) -> imm_itype_sext,
-               (io.ctl.op2_sel === OP2_BTYPE) -> imm_btype_sext,
-               (io.ctl.op2_sel === OP2_LTYPE) -> Cat(imm_ltype_sext(19,0), Fill(UInt(0),12)),
-               (io.ctl.op2_sel === OP2_JTYPE) -> imm_jtype_sext
+               (io.ctl.op2_sel === OP2_RS2)    -> rf_rs2_data,
+               (io.ctl.op2_sel === OP2_ITYPE)  -> imm_itype_sext,
+               (io.ctl.op2_sel === OP2_STYPE)  -> imm_stype_sext,
+               (io.ctl.op2_sel === OP2_SBTYPE) -> imm_sbtype_sext, 
+               (io.ctl.op2_sel === OP2_UTYPE)  -> imm_utype_sext,
+               (io.ctl.op2_sel === OP2_UJTYPE) -> imm_ujtype_sext
                )).toUInt
 
 
@@ -381,11 +384,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_reg_pc
       , Reg(next=exe_reg_pc)
       , Reg(next=Reg(next=exe_reg_pc))
-      , Disassemble(if_inst, true)
-      , Disassemble(dec_reg_inst, true)
-      , Disassemble(exe_reg_inst, true)
-      , Reg(next=Disassemble(exe_reg_inst, true))
-      , Reg(next=Reg(next=Disassemble(exe_reg_inst, true)))
+      , UInt(0)//Disassemble(if_inst, true)
+      , UInt(0)//Disassemble(dec_reg_inst, true)
+      , UInt(0)//Disassemble(exe_reg_inst, true)
+      , UInt(0)//Reg(next=Disassemble(exe_reg_inst, true))
+      , UInt(0)//Reg(next=Reg(next=Disassemble(exe_reg_inst, true)))
       , Mux(io.ctl.full_stall, Str("FREEZE"), 
         Mux(io.ctl.dec_stall, Str("STALL "), Str(" ")))
       , Mux(io.ctl.exe_pc_sel === UInt(1), Str("BR"),
@@ -393,7 +396,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         Mux(io.ctl.exe_pc_sel === UInt(3), Str("JR"),
         Mux(io.ctl.exe_pc_sel === UInt(4), Str("EX"),
         Mux(io.ctl.exe_pc_sel === UInt(0), Str("  "), Str("??"))))))
-      , Disassemble(exe_reg_inst)
+      , UInt(0) //Disassemble(exe_reg_inst)
       )
  
 }
