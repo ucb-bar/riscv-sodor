@@ -1,0 +1,100 @@
+
+../../install/tests/amoswap_w:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	50b02973 	csrr	a0,hartid
+    2004:	00091063 	bnez	a0,2004 <_start+0x4>
+    2008:	04000913 	li	a0,64
+    200c:	50a93073 	csrc	status,a0
+
+00002010 <test_2>:
+    2010:	80000937 	lui	a0,0x80000
+    2014:	80000993 	li	a1,-2048
+    2018:	00000a97 	auipc	a3,0x0
+    201c:	130a8a93 	add	a3,a3,304 # 2130 <begin_signature>
+    2020:	012aa023 	sw	a0,0(a3)
+    2024:	00000013 	nop
+    2028:	00000013 	nop
+    202c:	00000013 	nop
+    2030:	00000013 	nop
+    2034:	00000013 	nop
+    2038:	00000013 	nop
+    203c:	00000013 	nop
+    2040:	00000013 	nop
+    2044:	00000013 	nop
+    2048:	00000013 	nop
+    204c:	00000013 	nop
+    2050:	00000013 	nop
+    2054:	00000013 	nop
+    2058:	00000013 	nop
+    205c:	00000013 	nop
+    2060:	00000013 	nop
+    2064:	00000013 	nop
+    2068:	00000013 	nop
+    206c:	00000013 	nop
+    2070:	00000013 	nop
+    2074:	00000013 	nop
+    2078:	00000013 	nop
+    207c:	00000013 	nop
+    2080:	00000013 	nop
+    2084:	00000013 	nop
+    2088:	00000013 	nop
+    208c:	00000013 	nop
+    2090:	00000013 	nop
+    2094:	093aab2f 	amoswap.w	a4,a1,(a3)
+    2098:	80000eb7 	lui	t3,0x80000
+    209c:	00200e13 	li	t2,2
+    20a0:	07db1063 	bne	a4,t3,2100 <fail>
+
+000020a4 <test_3>:
+    20a4:	000aab83 	lw	a5,0(a3)
+    20a8:	80000e93 	li	t3,-2048
+    20ac:	00300e13 	li	t2,3
+    20b0:	05db9863 	bne	a5,t3,2100 <fail>
+
+000020b4 <test_4>:
+    20b4:	800009b7 	lui	a1,0x80000
+    20b8:	00004b37 	lui	a4,0x4
+    20bc:	016a8bb3 	add	a5,a3,a4
+    20c0:	000ba003 	lw	zero,0(a5)
+    20c4:	016b8bb3 	add	a5,a5,a4
+    20c8:	000ba003 	lw	zero,0(a5)
+    20cc:	016b8bb3 	add	a5,a5,a4
+    20d0:	000ba003 	lw	zero,0(a5)
+    20d4:	016b8bb3 	add	a5,a5,a4
+    20d8:	000ba003 	lw	zero,0(a5)
+    20dc:	093aab2f 	amoswap.w	a4,a1,(a3)
+    20e0:	80000e93 	li	t3,-2048
+    20e4:	00400e13 	li	t2,4
+    20e8:	01db1c63 	bne	a4,t3,2100 <fail>
+
+000020ec <test_5>:
+    20ec:	000aab83 	lw	a5,0(a3)
+    20f0:	80000eb7 	lui	t3,0x80000
+    20f4:	00500e13 	li	t2,5
+    20f8:	01db9463 	bne	a5,t3,2100 <fail>
+    20fc:	01c01e63 	bne	zero,t2,2118 <pass>
+
+00002100 <fail>:
+    2100:	0ff0000f 	fence
+    2104:	000e0863 	beqz	t2,2114 <fail+0x14>
+    2108:	001e1e13 	sll	t2,t2,0x1
+    210c:	001e6e13 	or	t2,t2,1
+    2110:	51ee1073 	csrw	tohost,t2
+    2114:	00000063 	b	2114 <fail+0x14>
+
+00002118 <pass>:
+    2118:	0ff0000f 	fence
+    211c:	51e0d073 	csrw	tohost,1
+    2120:	00000063 	b	2120 <pass+0x8>
+    2124:	00000013 	nop
+    2128:	00000013 	nop
+    212c:	00000013 	nop
+
+Disassembly of section .bss:
+
+00002130 <amo_operand>:
+	...

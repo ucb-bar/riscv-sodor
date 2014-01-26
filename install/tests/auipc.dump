@@ -1,0 +1,47 @@
+
+../../install/tests/auipc:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	50b02973 	csrr	a0,hartid
+    2004:	00091063 	bnez	a0,2004 <_start+0x4>
+    2008:	04000913 	li	a0,64
+    200c:	50a93073 	csrc	status,a0
+
+00002010 <test_2>:
+    2010:	00001917 	auipc	a0,0x1
+    2014:	004009ef 	jal	a1,2018 <test_2+0x8>
+    2018:	00c9d993 	srl	a1,a1,0xc
+    201c:	00c99993 	sll	a1,a1,0xc
+    2020:	41390933 	sub	a0,a0,a1
+    2024:	00001eb7 	lui	t3,0x1
+    2028:	00200e13 	li	t2,2
+    202c:	03d91463 	bne	a0,t3,2054 <fail>
+
+00002030 <test_3>:
+    2030:	fffff917 	auipc	a0,0xfffff
+    2034:	004009ef 	jal	a1,2038 <test_3+0x8>
+    2038:	00c9d993 	srl	a1,a1,0xc
+    203c:	00c99993 	sll	a1,a1,0xc
+    2040:	41390933 	sub	a0,a0,a1
+    2044:	fffffeb7 	lui	t3,0xfffff
+    2048:	00300e13 	li	t2,3
+    204c:	01d91463 	bne	a0,t3,2054 <fail>
+    2050:	01c01e63 	bne	zero,t2,206c <pass>
+
+00002054 <fail>:
+    2054:	0ff0000f 	fence
+    2058:	000e0863 	beqz	t2,2068 <fail+0x14>
+    205c:	001e1e13 	sll	t2,t2,0x1
+    2060:	001e6e13 	or	t2,t2,1
+    2064:	51ee1073 	csrw	tohost,t2
+    2068:	00000063 	b	2068 <fail+0x14>
+
+0000206c <pass>:
+    206c:	0ff0000f 	fence
+    2070:	51e0d073 	csrw	tohost,1
+    2074:	00000063 	b	2074 <pass+0x8>
+    2078:	00000013 	nop
+    207c:	00000013 	nop

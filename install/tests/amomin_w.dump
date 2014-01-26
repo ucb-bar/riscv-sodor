@@ -1,0 +1,64 @@
+
+../../install/tests/amomin_w:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	50b02973 	csrr	a0,hartid
+    2004:	00091063 	bnez	a0,2004 <_start+0x4>
+    2008:	04000913 	li	a0,64
+    200c:	50a93073 	csrc	status,a0
+
+00002010 <test_2>:
+    2010:	80000937 	lui	a0,0x80000
+    2014:	80000993 	li	a1,-2048
+    2018:	00000a97 	auipc	a3,0x0
+    201c:	0a0a8a93 	add	a3,a3,160 # 20a0 <begin_signature>
+    2020:	012aa023 	sw	a0,0(a3)
+    2024:	813aab2f 	amomin.w	a4,a1,(a3)
+    2028:	80000eb7 	lui	t3,0x80000
+    202c:	00200e13 	li	t2,2
+    2030:	05db1063 	bne	a4,t3,2070 <fail>
+
+00002034 <test_3>:
+    2034:	000aab83 	lw	a5,0(a3)
+    2038:	80000eb7 	lui	t3,0x80000
+    203c:	00300e13 	li	t2,3
+    2040:	03db9863 	bne	a5,t3,2070 <fail>
+
+00002044 <test_4>:
+    2044:	fff00993 	li	a1,-1
+    2048:	000aa023 	sw	zero,0(a3)
+    204c:	813aab2f 	amomin.w	a4,a1,(a3)
+    2050:	00000e93 	li	t3,0
+    2054:	00400e13 	li	t2,4
+    2058:	01db1c63 	bne	a4,t3,2070 <fail>
+
+0000205c <test_5>:
+    205c:	000aab83 	lw	a5,0(a3)
+    2060:	fff00e93 	li	t3,-1
+    2064:	00500e13 	li	t2,5
+    2068:	01db9463 	bne	a5,t3,2070 <fail>
+    206c:	01c01e63 	bne	zero,t2,2088 <pass>
+
+00002070 <fail>:
+    2070:	0ff0000f 	fence
+    2074:	000e0863 	beqz	t2,2084 <fail+0x14>
+    2078:	001e1e13 	sll	t2,t2,0x1
+    207c:	001e6e13 	or	t2,t2,1
+    2080:	51ee1073 	csrw	tohost,t2
+    2084:	00000063 	b	2084 <fail+0x14>
+
+00002088 <pass>:
+    2088:	0ff0000f 	fence
+    208c:	51e0d073 	csrw	tohost,1
+    2090:	00000063 	b	2090 <pass+0x8>
+    2094:	00000013 	nop
+    2098:	00000013 	nop
+    209c:	00000013 	nop
+
+Disassembly of section .bss:
+
+000020a0 <amo_operand>:
+	...
