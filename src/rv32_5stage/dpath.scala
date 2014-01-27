@@ -152,6 +152,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
 
    val zimm = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
+   val pcu  = Cat(dec_reg_pc(31,12), Fill(UInt(0), 12))
 
    // sign-extend immediates
    val imm_itype_sext  = Cat(Fill(imm_itype(11), 20), imm_itype)
@@ -185,6 +186,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       // roll the OP1 mux into the bypass mux logic
       dec_op1_data := MuxCase(rf_rs1_data, Array(
                            ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
+                           ((io.ctl.op1_sel === OP1_PCU)) -> pcu,
                            ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc,
                            ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
                            ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
@@ -208,7 +210,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       // Rely only on control interlocking to resolve hazards
       dec_op1_data := MuxCase(rf_rs1_data, Array(
                           ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
-                          ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc
+                          ((io.ctl.op1_sel === OP1_PCU))  -> pcu, 
+                          ((io.ctl.op1_sel === OP1_PC))   -> dec_reg_pc
                           ))
       dec_rs2_data := rf_rs2_data
       dec_op2_data := dec_alu_op2

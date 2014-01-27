@@ -55,15 +55,16 @@ trait ScalarOpConstants
    val OP1_RS1   = UInt(0, 2) // Register Source #1
    val OP1_PC    = UInt(1, 2) // PC
    val OP1_ZIMM  = UInt(2, 2) // Zero-extended Immediate from RS1 field
+   val OP1_PCU   = UInt(3, 2) // Upper 20 bits of PC (used by AUIPC)
    val OP1_X     = UInt(0, 2)  
 
    // RS2 Operand Select Signal
    val OP2_RS2    = UInt(0, 3) // Register Source #2
    val OP2_ITYPE  = UInt(1, 3) // immediate, I-type
    val OP2_STYPE  = UInt(2, 3) // immediate, S-type
-   val OP2_SBTYPE = UInt(3, 3)
+   val OP2_SBTYPE = UInt(3, 3) // immediate, B
    val OP2_UTYPE  = UInt(4, 3) // immediate, U-type
-   val OP2_UJTYPE = UInt(5, 3) // immediate, UJ-type
+   val OP2_UJTYPE = UInt(5, 3) // immediate, J-type
    val OP2_X      = UInt(0, 3)
    
    // Register Operand Output Enable Signal
@@ -85,7 +86,7 @@ trait ScalarOpConstants
    val ALU_XOR    = UInt ( 7, 4)
    val ALU_SLT    = UInt ( 8, 4)
    val ALU_SLTU   = UInt ( 9, 4)
-   val ALU_COPY_2 = UInt(10, 4)
+   val ALU_COPY_2 = UInt ( 10,4)
    val ALU_X      = UInt ( 0, 4)
     
    // Writeback Address Select Signal
