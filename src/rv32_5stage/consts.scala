@@ -52,9 +52,10 @@ trait ScalarOpConstants
    val BR_JR    = UInt(8, 4)  // Jump Register
  
    // RS1 Operand Select Signal
-   val OP1_RS1   = UInt(0, 1) // Register Source #1
-   val OP1_PC    = UInt(1, 1) // PC
-   val OP1_X     = UInt(0, 1)  
+   val OP1_RS1   = UInt(0, 2) // Register Source #1
+   val OP1_PC    = UInt(1, 2) // PC
+   val OP1_ZIMM  = UInt(2, 2) // Zero-extended Immediate from RS1 field
+   val OP1_X     = UInt(0, 2)  
 
    // RS2 Operand Select Signal
    val OP2_RS2    = UInt(0, 3) // Register Source #2
@@ -96,7 +97,7 @@ trait ScalarOpConstants
    val WB_ALU  = UInt(0, 2)
    val WB_MEM  = UInt(1, 2)
    val WB_PC4  = UInt(2, 2)
-   val WB_PCR  = UInt(3, 2)
+   val WB_CSR  = UInt(3, 2)
    val WB_X    = UInt(0, 2)
    
    // Memory Write Signal
@@ -117,11 +118,6 @@ trait ScalarOpConstants
    val MSK_W   = UInt(4, 3)
    val MSK_X   = UInt(4, 3)
                      
-   // Enable Co-processor Register Signal (ToHost Register, etc.)
-   val PCR_N   = UInt(0,2)
-   val PCR_F   = UInt(1,2)
-   val PCR_T   = UInt(2,2)
-     
  
    // The Bubble Instruction (Machine generated NOP)
    // Insert (XOR x0,x0,x0) which is different from software compiler 

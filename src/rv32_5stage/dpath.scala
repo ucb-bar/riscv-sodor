@@ -65,7 +65,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_rf_wen   = Reg(init=Bool(false))
    val exe_reg_ctrl_mem_val  = Reg(init=Bool(false))
    val exe_reg_ctrl_mem_fcn  = Reg(init=M_X)
-   val exe_reg_ctrl_pcr_fcn  = Reg(init=PCR_N)
+   val exe_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
    
    // Memory State
    val mem_reg_pc            = Reg(UInt())
@@ -74,12 +74,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val mem_reg_rs1_addr      = Reg(UInt())
    val mem_reg_rs2_addr      = Reg(UInt())
    val mem_reg_op1_data      = Reg(Bits())
+   val mem_reg_op2_data      = Reg(Bits())
    val mem_reg_rs2_data      = Reg(Bits())
    val mem_reg_ctrl_rf_wen   = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_val  = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
    val mem_reg_ctrl_wb_sel   = Reg(UInt())
-   val mem_reg_ctrl_pcr_fcn  = Reg(init=PCR_N)
+   val mem_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
 
    // Writeback State
    val wb_reg_wbaddr         = Reg(UInt())
@@ -150,6 +151,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_utype  = dec_reg_inst(31, 12)
    val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
 
+   val zimm = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
+
    // sign-extend immediates
    val imm_itype_sext  = Cat(Fill(imm_itype(11), 20), imm_itype)
    val imm_stype_sext  = Cat(Fill(imm_stype(11), 20), imm_stype)
@@ -181,6 +184,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       // roll the OP1 mux into the bypass mux logic
       dec_op1_data := MuxCase(rf_rs1_data, Array(
+                           ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
                            ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc,
                            ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
                            ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
@@ -201,8 +205,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    else
    {
-      //rely only on control interlocking to resolve hazards
-      dec_op1_data := Mux(io.ctl.op1_sel === OP1_PC, dec_reg_pc, rf_rs1_data)
+      // Rely only on control interlocking to resolve hazards
+      dec_op1_data := MuxCase(rf_rs1_data, Array(
+                          ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
+                          ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc
+                          ))
       dec_rs2_data := rf_rs2_data
       dec_op2_data := dec_alu_op2
    }
@@ -228,7 +235,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_ctrl_rf_wen   := Bool(false)
          exe_reg_ctrl_mem_val  := Bool(false)
          exe_reg_ctrl_mem_fcn  := M_X
-         exe_reg_ctrl_pcr_fcn  := PCR_N
+         exe_reg_ctrl_csr_cmd  := CSR.N
          exe_reg_ctrl_br_type  := BR_N
       }
       .otherwise
@@ -238,7 +245,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_ctrl_rf_wen   := io.ctl.rf_wen
          exe_reg_ctrl_mem_val  := io.ctl.mem_val  
          exe_reg_ctrl_mem_fcn  := io.ctl.mem_fcn   
-         exe_reg_ctrl_pcr_fcn  := io.ctl.pcr_fcn
+         exe_reg_ctrl_csr_cmd  := io.ctl.csr_cmd
          exe_reg_ctrl_br_type  := io.ctl.br_type
       }
    }
@@ -251,7 +258,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       exe_reg_ctrl_rf_wen   := Bool(false)
       exe_reg_ctrl_mem_val  := Bool(false)
       exe_reg_ctrl_mem_fcn  := M_X
-      exe_reg_ctrl_pcr_fcn  := PCR_N
+      exe_reg_ctrl_csr_cmd  := CSR.N
       exe_reg_ctrl_br_type  := BR_N
    }
 
@@ -283,7 +290,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   ))
 
    // Branch/Jump Target Calculation
-   val brjmp_offset    = Cat(exe_reg_op2_data(conf.xprlen-1,0), UInt(0,1)).toUInt
+   val brjmp_offset    = exe_reg_op2_data//Cat(exe_reg_op2_data(conf.xprlen-1,0), UInt(0,1)).toUInt
    exe_brjmp_target    := exe_reg_pc + brjmp_offset
    exe_jump_reg_target := exe_adder_out
 
@@ -298,11 +305,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       mem_reg_rs1_addr      := exe_reg_rs1_addr
       mem_reg_rs2_addr      := exe_reg_rs2_addr
       mem_reg_op1_data      := exe_reg_op1_data
+      mem_reg_op2_data      := exe_reg_op2_data
       mem_reg_rs2_data      := exe_reg_rs2_data
       mem_reg_ctrl_rf_wen   := exe_reg_ctrl_rf_wen
       mem_reg_ctrl_mem_val  := exe_reg_ctrl_mem_val
       mem_reg_ctrl_mem_fcn  := exe_reg_ctrl_mem_fcn
-      mem_reg_ctrl_pcr_fcn  := exe_reg_ctrl_pcr_fcn
+      mem_reg_ctrl_csr_cmd  := exe_reg_ctrl_csr_cmd
       mem_reg_ctrl_wb_sel   := exe_reg_ctrl_wb_sel
    }
 
@@ -310,24 +318,22 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Memory Stage
    
-   // Co-processor Registers
-   val pcr = Module(new PCR())
-   pcr.io.host <> io.host
-   pcr.io.r.addr := mem_reg_rs1_addr
-   pcr.io.r.en   := mem_reg_ctrl_pcr_fcn != PCR_N
-   val pcr_out = pcr.io.r.data
-   pcr.io.w.addr := mem_reg_rs1_addr
-   pcr.io.w.en   := mem_reg_ctrl_pcr_fcn === PCR_T
-   pcr.io.w.data := mem_reg_rs2_data
+   // Control Status Registers
+   val csr = Module(new CSRFile())
+   csr.io.host <> io.host
+   csr.io.rw.addr  := mem_reg_op2_data(11,0)
+   csr.io.rw.wdata := mem_reg_op1_data
+   csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
+   val csr_out = csr.io.rw.rdata
 
-  pcr.io.exception := Bool(false)
+   csr.io.exception := Bool(false)
  
    // WB Mux
    mem_wbdata := MuxCase(mem_reg_alu_out, Array(
                   (mem_reg_ctrl_wb_sel === WB_ALU) -> mem_reg_alu_out,
                   (mem_reg_ctrl_wb_sel === WB_PC4) -> mem_reg_alu_out,
                   (mem_reg_ctrl_wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
-                  (mem_reg_ctrl_wb_sel === WB_PCR) -> pcr_out
+                  (mem_reg_ctrl_wb_sel === WB_CSR) -> csr_out
                   )).toSInt()
 
 
@@ -377,7 +383,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         
                                      
    // Printout
-   printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%s, %s, %s, %s, %s] %s %s ExeInst: %s\n"
+   /*printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%s, %s, %s, %s, %s] %s %s ExeInst: %s\n"
       , tsc_reg(31,0)
       , if_reg_pc
       , dec_reg_pc
@@ -397,7 +403,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         Mux(io.ctl.exe_pc_sel === UInt(4), Str("EX"),
         Mux(io.ctl.exe_pc_sel === UInt(0), Str("  "), Str("??"))))))
       , UInt(0) //Disassemble(exe_reg_inst)
-      )
+      )*/
  
 }
 
