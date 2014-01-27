@@ -5,11 +5,6 @@ import Node._
 import Constants._
 import Util._
 
-class DebugIO extends Bundle
-{
-   val error_mode  = Bool(OUTPUT)
-}
-
 
 class PCRReq(addr_width: Int) extends Bundle
 {
@@ -23,10 +18,13 @@ class PCRReq(addr_width: Int) extends Bundle
 class HTIFIO() extends Bundle
 {
    val reset = Bool(INPUT)
-   val debug = new DebugIO
-   val pcr_req = Decoupled(new PCRReq(addr_width = 6)).flip
+   val debug_stats_pcr = Bool(OUTPUT)
+   val id = UInt(INPUT, 1)
+   val pcr_req = Decoupled(new PCRReq(addr_width = 12)).flip
    val pcr_rep = Decoupled(Bits(width = 64))
-
+   val ipi_req = Decoupled(Bits(width = 1))
+   val ipi_rep = Decoupled(Bool()).flip
+   
    val mem_req = Decoupled(new PCRReq(addr_width = 64)).flip
    val mem_rep = new ValidIO(Bits(width = 64))
 }
