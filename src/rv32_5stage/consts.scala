@@ -22,7 +22,7 @@ trait SodorProcConstants
                                   // entirely on interlocking to handle
                                   // pipeline hazards.
 
-//   val XPRLEN = 32                // native width of machine
+  // val XPRLEN = 32              // native width of machine
                                   // (i.e., the width of a register in 
                                   // the general-purpose register file)
 }
@@ -124,7 +124,7 @@ trait ScalarOpConstants
    // generated NOPs which are (ADDI x0, x0, 0).
    // Reasoning for this is to let visualizers and stat-trackers differentiate
    // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x233, 32)
+   val BUBBLE  = Bits(0x5033, 32)
 
    val RA = UInt(1) // address of the return address register
   
