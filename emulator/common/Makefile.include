@@ -100,7 +100,6 @@ global_tstdir = $(install)/tests
 
 global_asm_tests += \
 	add addi \
-	amoadd_w amoand_w amomax_w amomaxu_w amomin_w amominu_w amoor_w amoswap_w \
 	and andi \
 	auipc \
 	beq bge bgeu blt bltu bne \
@@ -109,7 +108,6 @@ global_asm_tests += \
 	j jal jalr \
 	lb lbu lh lhu lw \
 	lui \
-	mul mulh mulhu mulhsu \
 	or ori \
 	rem remu \
 	sb sh sw \
