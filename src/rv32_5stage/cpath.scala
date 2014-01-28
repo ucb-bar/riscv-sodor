@@ -83,7 +83,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   SRA    -> List(Y, BR_N  , OP1_RS1 , OP2_RS2   , OEN_1, OEN_1, ALU_SRA , WB_ALU, WA_RD, REN_1, MEN_0, M_X  , CSR.N),
                   SRL    -> List(Y, BR_N  , OP1_RS1 , OP2_RS2   , OEN_1, OEN_1, ALU_SRL , WB_ALU, WA_RD, REN_1, MEN_0, M_X  , CSR.N),
                  
-                  JAL    -> List(Y, BR_J  , OP1_RS1 , OP2_UJTYPE, OEN_0, OEN_0, ALU_X   , WB_PC4, WA_RA, REN_1, MEN_0, M_X  , CSR.N),
+                  JAL    -> List(Y, BR_J  , OP1_RS1 , OP2_UJTYPE, OEN_0, OEN_0, ALU_X   , WB_PC4, WA_RD, REN_1, MEN_0, M_X  , CSR.N),
                   JALR   -> List(Y, BR_JR , OP1_RS1 , OP2_ITYPE , OEN_1, OEN_0, ALU_X   , WB_PC4, WA_RD, REN_1, MEN_0, M_X  , CSR.N),
                   BEQ    -> List(Y, BR_EQ , OP1_RS1 , OP2_SBTYPE, OEN_1, OEN_1, ALU_X   , WB_X  , WA_X , REN_0, MEN_0, M_X  , CSR.N),
                   BNE    -> List(Y, BR_NE , OP1_RS1 , OP2_SBTYPE, OEN_1, OEN_1, ALU_X   , WB_X  , WA_X , REN_0, MEN_0, M_X  , CSR.N),

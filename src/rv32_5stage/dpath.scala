@@ -150,6 +150,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_sbtype = Cat(dec_reg_inst(31), dec_reg_inst(7), dec_reg_inst(30, 25), dec_reg_inst(11,8))
    val imm_utype  = dec_reg_inst(31, 12)
    val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
+   val immujreg = Reg(UInt(32))
+   immujreg := imm_ujtype
 
    val zimm = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
    val pcu  = Cat(dec_reg_pc(31,12), Fill(UInt(0), 12))
@@ -325,7 +327,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val csr = Module(new CSRFile())
    csr.io.host <> io.host
    csr.io.rw.addr  := mem_reg_op2_data(11,0)
-   csr.io.rw.wdata := mem_reg_op1_data
+   csr.io.rw.wdata := mem_reg_op1_data(30, 0)
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
    val csr_out = csr.io.rw.rdata
 
