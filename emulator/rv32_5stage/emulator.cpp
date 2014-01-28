@@ -218,6 +218,10 @@ int main(int argc, char** argv)
    {
       fprintf(logfile, "*** PASSED ***\n");
    }
+   else 
+   {
+     return htif->exit_code();
+   }
 
 #if 0
    // XXX Top_tile_core_d__irt_reg does not exists

@@ -30,6 +30,8 @@ public:
       htif_pthread_t::start();
    }
 
+   bool done();
+
    void tick                
    (
       // these are inputs into the htif, from the testharness

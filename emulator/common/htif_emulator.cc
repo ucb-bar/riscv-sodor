@@ -61,10 +61,18 @@ void htif_emulator_t::tick(
       return;
    }
 
+   // Check if the host processed a tohost command to end the simulation.  If so,
+   // we need to exit before calling recv, or the program will hang, since there
+   // is no longer a target thread.
+   if (exitcode) 
+   {
+     return;
+   }
+
    // receive packet from fesvr
    packet_header_t hdr;
    recv(&hdr, sizeof(hdr));
-
+   
    char buf[hdr.get_packet_size()];
    memcpy(buf, &hdr, sizeof(hdr));
    recv(buf + sizeof(hdr), hdr.get_payload_size());
@@ -176,5 +184,10 @@ void htif_emulator_t::tick(
       abort();
    }
    seqno++;
+}
+
+bool htif_emulator_t::done() 
+{
+  return exitcode != 0;
 }
  
