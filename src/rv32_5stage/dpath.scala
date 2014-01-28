@@ -65,6 +65,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_rf_wen   = Reg(init=Bool(false))
    val exe_reg_ctrl_mem_val  = Reg(init=Bool(false))
    val exe_reg_ctrl_mem_fcn  = Reg(init=M_X)
+   val exe_reg_ctrl_mem_typ  = Reg(init=MT_X)
    val exe_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
    
    // Memory State
@@ -79,6 +80,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val mem_reg_ctrl_rf_wen   = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_val  = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
+   val mem_reg_ctrl_mem_typ  = Reg(init=MT_X)
    val mem_reg_ctrl_wb_sel   = Reg(UInt())
    val mem_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
 
@@ -150,8 +152,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_sbtype = Cat(dec_reg_inst(31), dec_reg_inst(7), dec_reg_inst(30, 25), dec_reg_inst(11,8))
    val imm_utype  = dec_reg_inst(31, 12)
    val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
-   val immujreg = Reg(UInt(32))
-   immujreg := imm_ujtype
 
    val zimm = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
    val pcu  = Cat(dec_reg_pc(31,12), Fill(UInt(0), 12))
@@ -249,7 +249,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_wbaddr        := dec_wbaddr
          exe_reg_ctrl_rf_wen   := io.ctl.rf_wen
          exe_reg_ctrl_mem_val  := io.ctl.mem_val  
-         exe_reg_ctrl_mem_fcn  := io.ctl.mem_fcn   
+         exe_reg_ctrl_mem_fcn  := io.ctl.mem_fcn 
+         exe_reg_ctrl_mem_typ  := io.ctl.mem_typ
          exe_reg_ctrl_csr_cmd  := io.ctl.csr_cmd
          exe_reg_ctrl_br_type  := io.ctl.br_type
       }
@@ -315,6 +316,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       mem_reg_ctrl_rf_wen   := exe_reg_ctrl_rf_wen
       mem_reg_ctrl_mem_val  := exe_reg_ctrl_mem_val
       mem_reg_ctrl_mem_fcn  := exe_reg_ctrl_mem_fcn
+      mem_reg_ctrl_mem_typ  := exe_reg_ctrl_mem_typ
       mem_reg_ctrl_csr_cmd  := exe_reg_ctrl_csr_cmd
       mem_reg_ctrl_wb_sel   := exe_reg_ctrl_wb_sel
    }
@@ -375,8 +377,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.valid     := mem_reg_ctrl_mem_val
    io.dmem.req.bits.addr := mem_reg_alu_out.toUInt
    io.dmem.req.bits.fcn  := mem_reg_ctrl_mem_fcn
+   io.dmem.req.bits.typ  := mem_reg_ctrl_mem_typ
    io.dmem.req.bits.data := mem_reg_rs2_data
-   io.dmem.req.bits.typ  := MT_WU //for now only support word accesses
  
    
    // Time Stamp Counter & Retired Instruction Counter 
