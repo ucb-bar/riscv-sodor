@@ -1,4 +1,4 @@
-include @top_builddir@/prefix.mk
+include ../../prefix.mk
 
 MK_TARGET_PROC  := rv32_2stage
 
