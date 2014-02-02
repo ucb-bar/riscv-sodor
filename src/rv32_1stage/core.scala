@@ -32,6 +32,7 @@ class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends 
   
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat
+  c.io.resetSignal := resetSignal
   
   c.io.imem <> io.imem
   d.io.imem <> io.imem

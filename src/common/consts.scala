@@ -20,7 +20,7 @@ trait ExcCauseConstants
   val EXCEPTION_ILLEGAL    = UInt(2, EXC_CAUSE_SZ)
   val EXCEPTION_PRIVILEGED = UInt(3, EXC_CAUSE_SZ)
   //fpu == 4
-  val EXCEPTION_SYSCALL    = UInt(6, EXC_CAUSE_SZ)
+  val EXCEPTION_SCALL    = UInt(6, EXC_CAUSE_SZ)
   //ma ld == 8
   //ma st == 9
   //dtlb ld == 10

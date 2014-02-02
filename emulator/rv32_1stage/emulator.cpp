@@ -17,6 +17,7 @@ void handle_sigterm(int sig)
 
 int main(int argc, char** argv)
 {
+   fprintf(stderr, "In main().\n");
    unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
    uint64_t max_cycles = 0;
    uint64_t trace_count = 0;
@@ -65,7 +66,8 @@ int main(int argc, char** argv)
    Top_t dut; // design under test, aka, your chisel code
    srand(random_seed);
    dut.init(random_seed != 0);
-  
+ 
+   fprintf(stderr, "Initialized dut.\n");
    if (loadmem)
    {
       //  mem_t<32,32768> Top_tile_memory__data_bank1;
@@ -111,9 +113,12 @@ int main(int argc, char** argv)
       }
    }
 
+   fprintf(stderr, "Loaded memory.\n");
+
    // Instantiate HTIF
    htif = new htif_emulator_t(memory_size, std::vector<std::string>(argv + 1, argv + argc));
-    
+   fprintf(stderr, "Instantiated HTIF.\n");
+
    // i'm using uint64_t for these variables, so they shouldn't be larger
    // (also consequences all the way to the Chisel memory)
    assert (dut.Top__io_htif_pcr_rep_bits.width() <= 64);
@@ -166,7 +171,7 @@ int main(int argc, char** argv)
       dut.Top__io_htif_reset = htif->reset;
          
   
-      if (dut.Top__io_debug_error_mode.lo_word())
+      if (dut.Top__io_debug_stats_pcr.lo_word())
       {
          failure = "entered error mode";
          fprintf(stderr, "Error Mode\n");
@@ -218,10 +223,17 @@ int main(int argc, char** argv)
    {
       fprintf(logfile, "*** PASSED ***\n");
    }
+   else 
+   {
+     return htif->exit_code();
+   }
 
+#if 0
+   // XXX Top_tile_core_d__irt_reg does not exists
    int retired_insts = dut.Top_tile_core_d__irt_reg.lo_word();
    int time_stamp_counter = dut.Top_tile_core_d__tsc_reg.lo_word();
    fprintf(logfile, "# IPC: %f\n", (float) retired_insts / time_stamp_counter);
+#endif
 
    delete htif;
 
