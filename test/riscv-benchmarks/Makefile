@@ -9,7 +9,7 @@ default: all
 bmarkdir = .
 
 instname = riscv-bmarks
-instbasedir = $(UCB_VLSI_HOME)/install
+instbasedir = ../../install
 
 #--------------------------------------------------------------------
 # Sources
@@ -50,10 +50,10 @@ HOST_OPTS = -std=gnu99 -DPREALLOCATE=0 -DHOST_DEBUG=1
 HOST_COMP = gcc $(HOST_OPTS)
 
 RISCV_GCC = riscv-gcc
-RISCV_GCC_OPTS = -Wa,-march=RVIMAFDXhwacha -std=gnu99 -O2 -nostdlib -nostartfiles -ffast-math
-RISCV_LINK = riscv-gcc -T $(bmarkdir)/common/test.ld $(incs)
-RISCV_LINK_MT = riscv-gcc -T $(bmarkdir)/common/test-mt.ld
-RISCV_LINK_OPTS = -lc
+RISCV_GCC_OPTS = -m32 -Wa,-march=RVIMAFDXhwacha -std=gnu99 -O2 -nostdlib -nostartfiles -ffast-math
+RISCV_LINK = riscv-gcc  -T $(bmarkdir)/common/test.ld $(incs)
+RISCV_LINK_MT = riscv-gcc  -T $(bmarkdir)/common/test-mt.ld
+RISCV_LINK_OPTS = -lc -m32
 RISCV_OBJDUMP = riscv-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
 RISCV_SIM = spike
 
@@ -77,7 +77,7 @@ bmarks_defs   = -DPREALLOCATE=1 -DHOST_DEBUG=0
 bmarks_cycles = 80000
 
 %.hex: %
-	elf2hex 16 32768 $< > $@
+	elf2hex 16 16384 $< > $@
 
 $(bmarks_riscv_dump): %.riscv.dump: %.riscv
 	$(RISCV_OBJDUMP) $< > $@
@@ -124,17 +124,19 @@ all: riscv
 #------------------------------------------------------------
 # Install
 
-date_suffix = $(shell date +%Y-%m-%d_%H-%M)
-install_dir = $(instbasedir)/$(instname)-$(date_suffix)
-latest_install = $(shell ls -1 -d $(instbasedir)/$(instname)* | tail -n 1)
+#date_suffix = $(shell date +%Y-%m-%d_%H-%M)
+install_dir = $(instbasedir)/$(instname) #-$(date_suffix)
+#latest_install = $(shell ls -1 -d $(instbasedir)/$(instname)* | tail -n 1)
 
-install:
+$(install_dir):
 	mkdir $(install_dir)
-	cp -r $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(install_dir)
 
-install-link:
-	rm -rf $(instbasedir)/$(instname)
-	ln -s $(latest_install) $(instbasedir)/$(instname)
+install: $(install_dir)
+	cp -r $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(install_dir)
+
+#install-link:
+#	rm -rf $(instbasedir)/$(instname)
+#	ln -s $(latest_install) $(instbasedir)/$(instname)
 
 #------------------------------------------------------------
 # Clean up
