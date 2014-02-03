@@ -37,7 +37,7 @@ void htif_emulator_t::tick(
    // if we receive a response back from the chip, send it to the fesvr
    if (pcr_rep_valid)
    {
-      //fprintf(stderr, "\n\tPCR reply VALID, data: %lx\n\n", pcr_rep_bits);
+      fprintf(stderr, "\n\tPCR reply VALID, data: %lx\n\n", pcr_rep_bits);
       packet_header_t ack(HTIF_CMD_ACK, seqno, 1, 0);
       send(&ack, sizeof(ack));
       send(&pcr_rep_bits, sizeof(pcr_rep_bits));
@@ -122,7 +122,7 @@ void htif_emulator_t::tick(
          reg_t coreid = hdr.addr >> 20;
          reg_t regno = hdr.addr & ((1<<20)-1);
          assert(hdr.data_size == 1);
-
+         fprintf(stderr, "RW control reg %d.\n", regno);
          if (coreid == 0xFFFFF) // system control register space
          {
             uint64_t scr = 0; 
@@ -144,11 +144,12 @@ void htif_emulator_t::tick(
          // send HTIF request to chip
          uint64_t new_val;
          memcpy(&new_val, p.get_payload(), sizeof(new_val));
-
+         fprintf(stderr, "Checking reset.\n");
          // handle reset specially, since it's not a register that resides on chip
          if (hdr.cmd == HTIF_CMD_WRITE_CONTROL_REG && regno == PCR_RESET)
          {
             uint64_t old_val = reset;
+            fprintf(stderr, "HTIF Emulator changing reset from %d to %d.\n", reset, new_val);
             if (reset && !(new_val & 1))
             {
                reset = false;
@@ -175,7 +176,6 @@ void htif_emulator_t::tick(
 
             state = PENDING_TARGET;
          }
-
          break;
       }
       default:
