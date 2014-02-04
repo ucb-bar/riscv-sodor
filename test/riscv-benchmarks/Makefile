@@ -133,7 +133,7 @@ install_dir = $(instbasedir)/$(instname) #-$(date_suffix)
 $(install_dir):
 	mkdir $(install_dir)
 
-install: $(install_dir)
+install: $(install_dir) $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(bmarks_riscv_hex) 
 	cp -r $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(install_dir)
 
 #install-link:
