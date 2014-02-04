@@ -15,16 +15,19 @@ instbasedir = ../../install
 # Sources
 #--------------------------------------------------------------------
 
+# Commented-out benchmarks are not appropriate for the Sodor cores
+# due to use of multiply, floating point, vectors, or multicore.
+
 bmarks = \
 	median \
 	qsort \
 	towers \
 	vvadd \
-	multiply \
-	dgemm \
+#	multiply \
+#	dgemm \
 	dhrystone \
-	spmv \
-	mt-vvadd \
+#	spmv \
+	#mt-vvadd \
 	#mt-matmul \
 	#vec-vvadd \
 	#vec-cmplxmult \
@@ -35,12 +38,12 @@ bmarks_host = \
 	qsort \
 	towers \
 	vvadd \
-	multiply \
-	dgemm \
-	spmv \
-	vec-vvadd \
-	vec-cmplxmult \
-	vec-matmul \
+#	multiply \
+#	dgemm \
+#	spmv \
+#	vec-vvadd \
+#	vec-cmplxmult \
+#	vec-matmul \
 
 #--------------------------------------------------------------------
 # Build rules
@@ -50,9 +53,8 @@ HOST_OPTS = -std=gnu99 -DPREALLOCATE=0 -DHOST_DEBUG=1
 HOST_COMP = gcc $(HOST_OPTS)
 
 RISCV_GCC = riscv-gcc
-RISCV_GCC_OPTS = -m32 -Wa,-march=RVIMAFDXhwacha -std=gnu99 -O2 -nostdlib -nostartfiles -ffast-math
-RISCV_LINK = riscv-gcc  -T $(bmarkdir)/common/test.ld $(incs)
-RISCV_LINK_MT = riscv-gcc  -T $(bmarkdir)/common/test-mt.ld
+RISCV_GCC_OPTS = -m32 -std=gnu99 -O2 -nostdlib -nostartfiles #-Wa,-march=RVIMAFDXhwacha 
+RISCV_LINK = riscv-gcc  -m32 -T $(bmarkdir)/common/test.ld $(incs)
 RISCV_LINK_OPTS = -lc -m32
 RISCV_OBJDUMP = riscv-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
 RISCV_SIM = spike

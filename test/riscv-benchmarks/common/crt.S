@@ -44,62 +44,20 @@ _start:
   li  x30,0
   li  x31,0
 
-#ifdef __riscv64
-  li a0, SR_U64 | SR_S64
-  csrs status, a0
-#endif
+# Commented code sets up trap vector for processors supporting
+# supervisor mode--add this back later when we support that again.
 
-  # enable fp and accelerator
-  li a0, SR_EF | SR_EA
-  csrs status, a0
+#1:
+#
+#  lui a0, %hi(trap_entry)    
+#  add a0, a0, %lo(trap_entry)
+#  csrw evec, a0
+#
+#  lui a0, %hi(main)    
+#  add a0, a0, %lo(main)
+#  csrw epc, a0
+#
 
-  ## if that didn't stick, we don't have an FPU, so don't initialize it
-  csrr t0, status
-  and t0, t0, SR_EF
-  beqz t0, 1f
-
-  fssr    x0
-  fmv.s.x f0, x0
-  fmv.s.x f1, x0
-  fmv.s.x f2, x0
-  fmv.s.x f3, x0
-  fmv.s.x f4, x0
-  fmv.s.x f5, x0
-  fmv.s.x f6, x0
-  fmv.s.x f7, x0
-  fmv.s.x f8, x0
-  fmv.s.x f9, x0
-  fmv.s.x f10,x0
-  fmv.s.x f11,x0
-  fmv.s.x f12,x0
-  fmv.s.x f13,x0
-  fmv.s.x f14,x0
-  fmv.s.x f15,x0
-  fmv.s.x f16,x0
-  fmv.s.x f17,x0
-  fmv.s.x f18,x0
-  fmv.s.x f19,x0
-  fmv.s.x f20,x0
-  fmv.s.x f21,x0
-  fmv.s.x f22,x0
-  fmv.s.x f23,x0
-  fmv.s.x f24,x0
-  fmv.s.x f25,x0
-  fmv.s.x f26,x0
-  fmv.s.x f27,x0
-  fmv.s.x f28,x0
-  fmv.s.x f29,x0
-  fmv.s.x f30,x0
-  fmv.s.x f31,x0
-1:
-
-  lui a0, %hi(trap_entry)    
-  add a0, a0, %lo(trap_entry)
-  csrw evec, a0
-
-  lui a0, %hi(main)    
-  add a0, a0, %lo(main)
-  csrw epc, a0
 
   # only allow core 0 to proceed
 1:csrr a0, hartid
@@ -108,30 +66,32 @@ _start:
   la  sp,stacktop
   
   # jmp to main as a user program
-  sret 
+  jal main
+  nop
+  nop
 1:b 1b
 
-.align 4
-.globl trap_entry
-trap_entry:                # only check for SYS_exit, otherwise crash out
-  li a3, 1337              # magic "bad things" happened error code
-  csrr a1, cause
-  li a2, 6                 # syscall exception number
-  bne a1, a2, exit_error
-handle_syscall:
-  li a1, 93                # SYS_exit number
-  bne v0, a1, exit_error
-  li a1, 1                 # successful exit code
-  move a3, a0
-  bne a3, a1, exit_error
-  csrw tohost, a1          # exit successfully (tohost == 1)
-1:b 1b
-exit_error:
-  sll a3, a3, 1
-  or  a3, a3, 1
-  csrw tohost, a3
-1:b 1b
-
+#.align 4
+#.globl trap_entry
+#trap_entry:                # only check for SYS_exit, otherwise crash out
+#  li a3, 1337              # magic "bad things" happened error code
+#  csrr a1, cause
+#  li a2, 6                 # syscall exception number
+#  bne a1, a2, exit_error
+#handle_syscall:
+#  li a1, 93                # SYS_exit number
+#  bne v0, a1, exit_error
+#  li a1, 1                 # successful exit code
+#  move a3, a0
+#  bne a3, a1, exit_error
+#  csrw tohost, a1          # exit successfully (tohost == 1)
+#1:b 1b
+#exit_error:
+#  sll a3, a3, 1
+#  or  a3, a3, 1
+#  csrw tohost, a3
+#1:b 1b
+#
   .bss
   .globl stacktop
 
