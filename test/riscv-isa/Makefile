@@ -69,7 +69,11 @@ junk += $(tests) $(tests_dump) $(tests_hex) $(tests_out)
 $(install_dir)/%: %
 	cp $< $(install_dir)/;
 
+$(install_dir):
+	mkdir $(install_dir);
+
 install: \
+	$(install_dir) \
 	$(addprefix $(install_dir)/, $(tests)) \
 	$(addprefix $(install_dir)/, $(tests_dump)) \
 	$(addprefix $(install_dir)/, $(tests_hex))
