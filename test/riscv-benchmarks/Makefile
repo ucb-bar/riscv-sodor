@@ -23,9 +23,9 @@ bmarks = \
 	qsort \
 	towers \
 	vvadd \
+	dhrystone \
 #	multiply \
 #	dgemm \
-	dhrystone \
 #	spmv \
 	#mt-vvadd \
 	#mt-matmul \
@@ -38,6 +38,7 @@ bmarks_host = \
 	qsort \
 	towers \
 	vvadd \
+	dhrystone 
 #	multiply \
 #	dgemm \
 #	spmv \

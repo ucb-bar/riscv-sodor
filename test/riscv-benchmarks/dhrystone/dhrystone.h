@@ -381,10 +381,12 @@ extern clock_t	clock();
 
 #define HZ 976563
 #define Too_Small_Time 50
+#ifndef rdcyclce
 #define rdcycle() ({ \
   long __x; \
   asm volatile("rdcycle %0; srl %0, %0, 10" : "=r"(__x)); \
   __x; })
+#endif
 #define CLOCK_TYPE "rdcycle()"
 #define Start_Timer() Begin_Time = rdcycle()
 #define Stop_Timer() End_Time = rdcycle()
