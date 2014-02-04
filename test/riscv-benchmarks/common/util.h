@@ -44,14 +44,11 @@ void finishTest(int test_result)
   exit(0);
 #else
    {
-      // perform exit syscall
+      // Set the tohost CSR to test_result to end simulation.
       asm volatile(
-          "move a0,%0 ;"
-          "li a1,0    ;"
-          "li a2,0    ;"
-          "li a3,0    ;"
-          "li v0,%1   ;"
-          "scall" : : "r"(test_result) , "i"(SYS_exit));
+          "csrw tohost, %0" 
+          : "=r"(test_result)
+          : "0"(test_result)); 
    }
 #endif
 }

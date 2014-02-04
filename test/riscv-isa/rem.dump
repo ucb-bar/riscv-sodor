@@ -1,0 +1,97 @@
+
+rem:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	50b02973 	csrr	a0,hartid
+    2004:	00091063 	bnez	a0,2004 <_start+0x4>
+    2008:	04000913 	li	a0,64
+    200c:	50a93073 	csrc	status,a0
+
+00002010 <test_2>:
+    2010:	01400093 	li	ra,20
+    2014:	00600113 	li	s0,6
+    2018:	0220e1b3 	rem	s1,ra,s0
+    201c:	00200e93 	li	t3,2
+    2020:	00200e13 	li	t2,2
+    2024:	0dd19463 	bne	s1,t3,20ec <fail>
+
+00002028 <test_3>:
+    2028:	fec00093 	li	ra,-20
+    202c:	00600113 	li	s0,6
+    2030:	0220e1b3 	rem	s1,ra,s0
+    2034:	ffe00e93 	li	t3,-2
+    2038:	00300e13 	li	t2,3
+    203c:	0bd19863 	bne	s1,t3,20ec <fail>
+
+00002040 <test_4>:
+    2040:	01400093 	li	ra,20
+    2044:	ffa00113 	li	s0,-6
+    2048:	0220e1b3 	rem	s1,ra,s0
+    204c:	00200e93 	li	t3,2
+    2050:	00400e13 	li	t2,4
+    2054:	09d19c63 	bne	s1,t3,20ec <fail>
+
+00002058 <test_5>:
+    2058:	fec00093 	li	ra,-20
+    205c:	ffa00113 	li	s0,-6
+    2060:	0220e1b3 	rem	s1,ra,s0
+    2064:	ffe00e93 	li	t3,-2
+    2068:	00500e13 	li	t2,5
+    206c:	09d19063 	bne	s1,t3,20ec <fail>
+
+00002070 <test_6>:
+    2070:	00000093 	li	ra,0
+    2074:	00100113 	li	s0,1
+    2078:	0220e1b3 	rem	s1,ra,s0
+    207c:	00000e93 	li	t3,0
+    2080:	00600e13 	li	t2,6
+    2084:	07d19463 	bne	s1,t3,20ec <fail>
+
+00002088 <test_7>:
+    2088:	00000093 	li	ra,0
+    208c:	fff00113 	li	s0,-1
+    2090:	0220e1b3 	rem	s1,ra,s0
+    2094:	00000e93 	li	t3,0
+    2098:	00700e13 	li	t2,7
+    209c:	05d19863 	bne	s1,t3,20ec <fail>
+
+000020a0 <test_8>:
+    20a0:	00000093 	li	ra,0
+    20a4:	00000113 	li	s0,0
+    20a8:	0220e1b3 	rem	s1,ra,s0
+    20ac:	00000e93 	li	t3,0
+    20b0:	00800e13 	li	t2,8
+    20b4:	03d19c63 	bne	s1,t3,20ec <fail>
+
+000020b8 <test_9>:
+    20b8:	00100093 	li	ra,1
+    20bc:	00000113 	li	s0,0
+    20c0:	0220e1b3 	rem	s1,ra,s0
+    20c4:	00100e93 	li	t3,1
+    20c8:	00900e13 	li	t2,9
+    20cc:	03d19063 	bne	s1,t3,20ec <fail>
+
+000020d0 <test_10>:
+    20d0:	00000093 	li	ra,0
+    20d4:	00000113 	li	s0,0
+    20d8:	0220e1b3 	rem	s1,ra,s0
+    20dc:	00000e93 	li	t3,0
+    20e0:	00a00e13 	li	t2,10
+    20e4:	01d19463 	bne	s1,t3,20ec <fail>
+    20e8:	01c01e63 	bne	zero,t2,2104 <pass>
+
+000020ec <fail>:
+    20ec:	0ff0000f 	fence
+    20f0:	000e0863 	beqz	t2,2100 <fail+0x14>
+    20f4:	001e1e13 	sll	t2,t2,0x1
+    20f8:	001e6e13 	or	t2,t2,1
+    20fc:	51ee1073 	csrw	tohost,t2
+    2100:	00000063 	b	2100 <fail+0x14>
+
+00002104 <pass>:
+    2104:	0ff0000f 	fence
+    2108:	51e0d073 	csrw	tohost,1
+    210c:	00000063 	b	210c <pass+0x8>
