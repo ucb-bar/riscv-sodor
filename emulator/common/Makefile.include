@@ -131,11 +131,10 @@ local_asm_tests := \
 global_bmarkdir = $(install)/riscv-bmarks
 global_bmarks = \
 	median \
-#	mix_manufacturing \
-#	multiply \
-#	qsort \
-#	towers \
-#	vvadd \
+	qsort \
+	towers \
+	vvadd \
+  dhrystone
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
@@ -186,7 +185,7 @@ $(addprefix output/, $(addsuffix .hex, $(global_asm_tests))): output/%.hex: $(gl
 	mkdir -p output
 	ln -fs $< $@
 
-$(addprefix output/, $(addsuffix .hex, $(global_bmarks))): output/%.hex: $(global_bmarkdir)/%.hex
+$(addprefix output/, $(addsuffix .hex, $(global_bmarks))): output/%.hex: $(global_bmarkdir)/%.riscv.hex
 	mkdir -p output
 	ln -fs $< $@
 
@@ -194,16 +193,12 @@ output:
 	mkdir -p $@
 
 output/%.run: output/%.hex emulator
-	env > e2.txt
-	ldd ./emulator
 	./emulator +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none 2> /dev/null
 
 output/%.out: output/%.hex emulator
-	ldd ./emulator > ldd.txt
 	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
 
 output/%.vpd: output/%.hex emulator-debug
-	ldd ./emulator
 	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
 
 
@@ -211,21 +206,23 @@ output/%.vpd: output/%.hex emulator-debug
 ifeq ($(SUPERVISOR_MODE),"false")
  
 $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator 
-	./emulator +max-cycles=$(bmark_timeout) +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2> $@
+	./emulator +max-cycles=$(bmark_timeout) +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
     
 else                                                   
 
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator $(PK_HEX) output
-	-$(PK_PATH) ./emulator +max-cycles=$(bmark_timeout) $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $@
-$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator $(PK_HEX) output
-	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+# NO SUPERVISOR MODE TESTS FOR NOW
+
+#$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator $(PK_HEX) output
+#	-$(PK_PATH) ./emulator +max-cycles=$(bmark_timeout) $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $@
+#$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator $(PK_HEX) output
+#	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
 #	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) pk $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
-$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug $(PK_HEX) output
-	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
-	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
-    
+#$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug $(PK_HEX) output
+#	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
+#	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
+#    
 endif
 
 run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))

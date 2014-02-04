@@ -17,7 +17,6 @@ void handle_sigterm(int sig)
 
 int main(int argc, char** argv)
 {
-   fprintf(stderr, "In main().\n");
    unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
    uint64_t max_cycles = 0;
    uint64_t trace_count = 0;
@@ -33,7 +32,6 @@ int main(int argc, char** argv)
    // for disassembly
    char inst_str[1024];
    uint64_t reg_inst = 0;
-
 
    for (int i = 1; i < argc; i++)
    {
@@ -67,7 +65,6 @@ int main(int argc, char** argv)
    srand(random_seed);
    dut.init(random_seed != 0);
  
-   fprintf(stderr, "Initialized dut.\n");
    if (loadmem)
    {
       //  mem_t<32,32768> Top_tile_memory__data_bank1;
