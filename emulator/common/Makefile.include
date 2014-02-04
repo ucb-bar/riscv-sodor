@@ -130,8 +130,8 @@ local_asm_tests := \
 # Globally installed benchmarks
 global_bmarkdir = $(install)/riscv-bmarks
 global_bmarks = \
-	median \
 	qsort \
+	median \
 	towers \
 	vvadd \
 	dhrystone
@@ -150,7 +150,7 @@ global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
 global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
 
 asm_test_timeout ?=30000
-bmark_timeout ?=100000
+bmark_timeout ?=1000000
                            
 # allow some processors to override testmod when running benchmarks
 filetype=riscv.hex
@@ -209,7 +209,9 @@ $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator
 	./emulator +max-cycles=$(bmark_timeout) +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
-    
+$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+ 
 else                                                   
 
 # NO SUPERVISOR MODE TESTS FOR NOW
