@@ -96,7 +96,7 @@ test:
 
 
 # Globally installed assembly tests
-global_tstdir = $(install)/tests
+global_tstdir = $(install)/riscv-isa
 
 global_asm_tests += \
 	add addi \
@@ -134,7 +134,7 @@ global_bmarks = \
 	qsort \
 	towers \
 	vvadd \
-  dhrystone
+	dhrystone
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
