@@ -102,7 +102,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   CSRRWI -> List(Y, BR_N  , OP1_ZIMM, OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.W),
                   CSRRSI -> List(Y, BR_N  , OP1_ZIMM, OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.S),
                   CSRRW  -> List(Y, BR_N  , OP1_RS1 , OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.W),
-                  CSRRS  -> List(Y, BR_N  , OP1_RS1 , OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.S)
+                  CSRRS  -> List(Y, BR_N  , OP1_RS1 , OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.S),
+                  CSRRC  -> List(Y, BR_N  , OP1_RS1 , OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.C),
+                  CSRRCI -> List(Y, BR_N  , OP1_ZIMM, OP2_ITYPE , OEN_1, OEN_1, ALU_COPY_2,WB_CSR, WA_RD, REN_1, MEN_0, M_X , MT_X, CSR.C)
                   ))
 
    // Put these control signals in variables
@@ -136,13 +138,15 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val dec_wbaddr  = Mux(cs_wa_sel.toBool, io.dat.dec_inst(11, 7).toUInt, RA)
    val dec_rs1_oen = Mux(deckill, Bool(false), cs_rs1_oen.toBool)
    val dec_rs2_oen = Mux(deckill, Bool(false), cs_rs2_oen.toBool)
-
+   
    val exe_reg_wbaddr      = Reg(UInt())
    val mem_reg_wbaddr      = Reg(UInt())
    val wb_reg_wbaddr       = Reg(UInt())
    val exe_reg_ctrl_rf_wen = Reg(init=Bool(false))
    val mem_reg_ctrl_rf_wen = Reg(init=Bool(false))
    val wb_reg_ctrl_rf_wen  = Reg(init=Bool(false))
+
+   val exe_reg_is_csr = Reg(init=Bool(false))
    
    // TODO rename stall==hazard_stall full_stall == cmiss_stall
    val full_stall = Bool()
@@ -152,11 +156,13 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
       {
          exe_reg_wbaddr      := UInt(0)
          exe_reg_ctrl_rf_wen := Bool(false)
+         exe_reg_is_csr      := Bool(false)
       }
       .otherwise
       {
          exe_reg_wbaddr      := dec_wbaddr
-         exe_reg_ctrl_rf_wen := cs_rf_wen.toBool   
+         exe_reg_ctrl_rf_wen := cs_rf_wen.toBool  
+         exe_reg_is_csr      := cs_csr_cmd != CSR.N
       }
    }
    .elsewhen (stall && !full_stall)
@@ -164,6 +170,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
       // kill exe stage
       exe_reg_wbaddr      := UInt(0)
       exe_reg_ctrl_rf_wen := Bool(false)
+      exe_reg_is_csr      := Bool(false)
    }
    
    mem_reg_wbaddr      := exe_reg_wbaddr
@@ -187,7 +194,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    {
       // stall for load-use hazard
       stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs1_oen) ||
-               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) 
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) ||
+               ((exe_reg_is_csr))
    }
    else
    {
@@ -199,7 +207,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != UInt(0)) && mem_reg_ctrl_rf_wen && dec_rs2_oen) ||
                ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr != UInt(0)) &&  wb_reg_ctrl_rf_wen && dec_rs2_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs1_oen) ||
-               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) 
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != UInt(0)) && dec_rs2_oen) ||
+               ((exe_reg_is_csr))
    }
   
    
