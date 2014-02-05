@@ -184,7 +184,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    
    // Printout
-   /*
+   val tsc_reg = Reg(init=UInt(0,32))
+   tsc_reg := tsc_reg + UInt(1)
+
    printf("Cyc= %d PC= 0x%x %s %s%s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] %s Mem[%s %d: 0x%x]\n"
       , tsc_reg(31,0)
       , pc_reg
@@ -205,7 +207,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , io.ctl.debug_dmem_typ
       , io.dmem.resp.bits.data
       )
-    */
+    
 }
 
  

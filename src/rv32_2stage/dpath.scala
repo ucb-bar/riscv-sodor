@@ -210,7 +210,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         
    
    // Printout
-/*   printf("Cyc= %d PC= (0x%x,0x%x) [%s,%s] Exe: %s %s%s%s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x]\n"
+   printf("Cyc= %d PC= (0x%x,0x%x) [%s,%s] Exe: %s %s%s%s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x]\n"
       , tsc_reg(31,0)
       , if_reg_pc
       , exe_reg_pc
@@ -230,7 +230,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_wbaddr
       , exe_wbdata
       )
- */
 }
 
  

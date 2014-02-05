@@ -390,18 +390,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         
                                      
    // Printout
-   /*printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%s, %s, %s, %s, %s] %s %s ExeInst: %s\n"
+   printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%s, %s, %s, %s, %s] %s %s ExeInst: %s\n"
       , tsc_reg(31,0)
       , if_reg_pc
       , dec_reg_pc
       , exe_reg_pc
       , Reg(next=exe_reg_pc)
       , Reg(next=Reg(next=exe_reg_pc))
-      , UInt(0)//Disassemble(if_inst, true)
-      , UInt(0)//Disassemble(dec_reg_inst, true)
-      , UInt(0)//Disassemble(exe_reg_inst, true)
-      , UInt(0)//Reg(next=Disassemble(exe_reg_inst, true))
-      , UInt(0)//Reg(next=Reg(next=Disassemble(exe_reg_inst, true)))
+      , Disassemble(if_inst, true)
+      , Disassemble(dec_reg_inst, true)
+      , Disassemble(exe_reg_inst, true)
+      , Reg(next=Disassemble(exe_reg_inst, true))
+      , Reg(next=Reg(next=Disassemble(exe_reg_inst, true)))
       , Mux(io.ctl.full_stall, Str("FREEZE"), 
         Mux(io.ctl.dec_stall, Str("STALL "), Str(" ")))
       , Mux(io.ctl.exe_pc_sel === UInt(1), Str("BR"),
@@ -409,8 +409,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         Mux(io.ctl.exe_pc_sel === UInt(3), Str("JR"),
         Mux(io.ctl.exe_pc_sel === UInt(4), Str("EX"),
         Mux(io.ctl.exe_pc_sel === UInt(0), Str("  "), Str("??"))))))
-      , UInt(0) //Disassemble(exe_reg_inst)
-      )*/
+      , Disassemble(exe_reg_inst)
+      )
  
 }
 
