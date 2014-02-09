@@ -14,3 +14,10 @@ install/share
 *.vpd
 .DS_Store
 sbt/*/target
+chisel-timestamp
+common/*
+config.*
+emulator/*
+prefix.mk
+project/*
+rv32_*
