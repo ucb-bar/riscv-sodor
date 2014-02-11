@@ -15,11 +15,11 @@ object ReferenceChipBackend {
 }
 
 class TopIO() extends Bundle  {
-  val debug = new Common.DebugIO
+  val debug_stats_pcr = Bool(OUTPUT)
   val htif  = new Common.HTIFIO()
 }
 
-class Top extends Module
+class Top extends Module 
 {
    val io = new TopIO()
 
@@ -29,13 +29,15 @@ class Top extends Module
    val tile = Module(new SodorTile)
   
    tile.io.host.reset := reset_signal
+   tile.io.host.id := UInt(0,1)
    tile.io.host.pcr_req <> Queue(io.htif.pcr_req)
+   printf("pcr_rep.bits = %d, pcr_req.addr = 0x%x\n", io.htif.pcr_rep.bits, io.htif.pcr_req.bits.addr)
    io.htif.pcr_rep <> Queue(tile.io.host.pcr_rep)
 
    tile.io.host.mem_req <> Queue(io.htif.mem_req)
    io.htif.mem_rep <> tile.io.host.mem_rep
 
-   io.debug.error_mode := Reg(next=tile.io.host.debug.error_mode)
+   io.debug_stats_pcr := Reg(next=tile.io.host.debug_stats_pcr)
 }
 
 object elaborate {

@@ -33,7 +33,6 @@ int main(int argc, char** argv)
    char inst_str[1024];
    uint64_t reg_inst = 0;
 
-
    for (int i = 1; i < argc; i++)
    {
       std::string arg = argv[i];
@@ -65,7 +64,7 @@ int main(int argc, char** argv)
    Top_t dut; // design under test, aka, your chisel code
    srand(random_seed);
    dut.init(random_seed != 0);
-  
+ 
    if (loadmem)
    {
       //  mem_t<32,32768> Top_tile_memory__data_bank1;
@@ -111,9 +110,12 @@ int main(int argc, char** argv)
       }
    }
 
+   fprintf(stderr, "Loaded memory.\n");
+
    // Instantiate HTIF
    htif = new htif_emulator_t(memory_size, std::vector<std::string>(argv + 1, argv + argc));
-    
+   fprintf(stderr, "Instantiated HTIF.\n");
+
    // i'm using uint64_t for these variables, so they shouldn't be larger
    // (also consequences all the way to the Chisel memory)
    assert (dut.Top__io_htif_pcr_rep_bits.width() <= 64);
@@ -166,7 +168,7 @@ int main(int argc, char** argv)
       dut.Top__io_htif_reset = htif->reset;
          
   
-      if (dut.Top__io_debug_error_mode.lo_word())
+      if (dut.Top__io_debug_stats_pcr.lo_word())
       {
          failure = "entered error mode";
          fprintf(stderr, "Error Mode\n");
@@ -217,6 +219,10 @@ int main(int argc, char** argv)
    else if (htif->exit_code() <= 1)
    {
       fprintf(logfile, "*** PASSED ***\n");
+   }
+   else 
+   {
+     return htif->exit_code();
    }
 
 #if 0

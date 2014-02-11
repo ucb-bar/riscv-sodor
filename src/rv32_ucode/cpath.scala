@@ -19,6 +19,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class CtlToDatIo extends Bundle() 
 {
+   val csr_cmd = UInt(OUTPUT, CSR.SZ)
    val ld_ir   = Bool(OUTPUT)
    val reg_sel = UInt(OUTPUT, RS_X.getWidth())
    val reg_wr  = Bool(OUTPUT)
@@ -94,10 +95,11 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   
     
    // Extract Control Signals from UOP
-   // TODO XXX this method is hacky, and will break if the widths of any of the signals changes
+   // TODO XXX this method is hacky, and will break if the widths of any of the signals change
    // unfortunately the above method breaks in Verilog
    val cs = new Bundle()
             {
+               val csr_cmd        = UInt(width = CSR.SZ)
                val ld_ir          = Bool()  
                val reg_sel        = UInt(width = RS_X.getWidth())  
                val reg_wr         = Bool()  
@@ -114,7 +116,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                val ubr            = UInt(width = UBR_N.getWidth())  
                val upc_rom_target = UInt(width = label_sz)  
             }
-
+       
+            cs.csr_cmd        := uop(31+CSR.SZ, 32)
             cs.ld_ir          := uop(31)
             cs.reg_sel        := uop(30,28).toUInt
             cs.reg_wr         := uop(27)
@@ -129,6 +132,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
             cs.is_sel         := uop(14,12).toUInt
             cs.en_imm         := uop(11)
             cs.ubr            := uop(10,8).toUInt
+            require(label_sz == 8, "Label size must be 8")
             cs.upc_rom_target := uop(label_sz-1,0).toUInt
                   
 
@@ -155,6 +159,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                         
 
    // Cpath Control Interface
+   io.ctl.csr_cmd := cs.csr_cmd
    io.ctl.ld_ir   := cs.ld_ir      
    io.ctl.reg_sel := cs.reg_sel   
    io.ctl.reg_wr  := cs.reg_wr     

@@ -12,7 +12,8 @@ package constants
 
 import Chisel._
 import Node._
-   
+import Common._
+
 trait SodorProcConstants
 {
     
@@ -28,7 +29,7 @@ trait ScalarOpConstants
 {
    //************************************
    // Micro-code Generated Control Signals 
-   
+  
    // Load IR Register Signal
    val LDIR_0  = UInt(0, 1)
    val LDIR_1  = UInt(1, 1)
@@ -40,9 +41,10 @@ trait ScalarOpConstants
    val RS_RS1  = UInt(2, 3)
    val RS_RS2  = UInt(3, 3)
    val RS_RA   = UInt(4, 3)
-   val RS_X0   = UInt(5, 3)
-   val RS_CP   = UInt(6, 3)
-   val RS_X    = UInt(5, 3)
+   val RS_CA   = UInt(5, 3)
+   val RS_CR   = UInt(6, 3)
+   val RS_X0   = UInt(7, 3)
+   val RS_X    = UInt(7, 3)
                       
    // Register File Write Signal
    val RWR_0   = UInt(0, 1)
@@ -82,6 +84,7 @@ trait ScalarOpConstants
    val ALU_SLT      = UInt (14, 5)
    val ALU_SLTU     = UInt (15, 5)
    val ALU_INIT_PC  = UInt (16, 5)  // output START_ADDR, used to initialize the PC register
+   val ALU_MASK_12  = UInt (17, 5)  // output A with lower 12 bits cleared (AUIPC)
    val ALU_X        = UInt ( 0, 5)
 
    // ALU Enable Signal
@@ -104,11 +107,12 @@ trait ScalarOpConstants
    val MEN_X   = UInt(0, 1)
                       
    // Immediate Extend Select
-   val IS_I   = UInt(0, 3)  //I-Type (LDs,ALU) ,  sign-extend             : ({ 20{inst[21]}, inst[21:10] })  
-   val IS_BS  = UInt(1, 3)  //B-Type (Stores)  ,  sign-extend             : ({ 20{inst[31]}, inst[31:27], inst[16:10] })         
-   val IS_L   = UInt(2, 3)  //L-Type (LUI)     ,  sign-extend             : ({ {inst[26:7], {12{1'b0}} })                        
-   val IS_J   = UInt(3, 3)  //J-Type (J/JAL)   ,  sign-extend and shift 1b: ({  6{inst[31]}, inst[31: 7], 1'b0 })                 
-   val IS_BR  = UInt(4, 3)  //B-Type (Branches),  sign-extend and shift 1b: ({ 19{inst[31]}, inst[31:27], inst[16:10], 1'b0 })  
+   val IS_I   = UInt(0, 3)  //I-Type (LDs,ALU) ,  sign-extend             : ({ 20{inst[31:20] })  
+   val IS_S   = UInt(1, 3)  //S-Type (Stores)  ,  sign-extend             : ({ 20{inst[31:25]}, inst[11:7] })         
+   val IS_U   = UInt(2, 3)  //U-Type (LUI)     ,  sign-extend             : ({ {inst[31:12], {12{1'b0}} })                        
+   val IS_J   = UInt(3, 3)  //J-Type (JAL)     ,  sign-extend and shift 1b: ({  11{inst[31]}, inst[19: 12], inst[20], inst[30:21], 1'b0 })                 
+   val IS_B   = UInt(4, 3)  //B-Type (Branches),  sign-extend and shift 1b: ({ 19{inst[31]}, inst[7], inst[30:25], inst[11:8], 1'b0 })
+   val IS_Z   = UInt(5, 3)  //Z-Type (CSRR*I)  ,  zero-extended rs1 field : ({ 27{1'b0}, inst[19:15] })
    val IS_X   = UInt(0, 3)  
                    
    // Immediate Enable Signal
@@ -148,7 +152,6 @@ trait ScalarOpConstants
    val MSK_HU  = UInt(3, 3)
    val MSK_W   = UInt(4, 3)
    val MSK_X   = UInt(4, 3)
- 
 }
 
 }
