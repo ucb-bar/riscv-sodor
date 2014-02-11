@@ -201,7 +201,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , reg_a
       , reg_b
       );
-  printf("csr.io.rw.cmd = 0x%x, addr=0x%x, wdata=%x, rdata=%x\n", csr.io.rw.cmd, csr.io.rw.addr, csr.io.rw.wdata, csr.io.rw.rdata)
   
 }
 

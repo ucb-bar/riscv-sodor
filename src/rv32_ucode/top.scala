@@ -31,7 +31,6 @@ class Top extends Module
    tile.io.host.reset := reset_signal
    tile.io.host.id := UInt(0,1)
    tile.io.host.pcr_req <> Queue(io.htif.pcr_req)
-   printf("pcr_rep.bits = %d, pcr_req.addr = 0x%x\n", io.htif.pcr_rep.bits, io.htif.pcr_req.bits.addr)
    io.htif.pcr_rep <> Queue(tile.io.host.pcr_rep)
 
    tile.io.host.mem_req <> Queue(io.htif.mem_req)

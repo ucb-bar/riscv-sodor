@@ -19,6 +19,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class CtlToDatIo extends Bundle() 
 {
+   val msk_sel = UInt(OUTPUT, MSK_SZ)
    val csr_cmd = UInt(OUTPUT, CSR.SZ)
    val ld_ir   = Bool(OUTPUT)
    val reg_sel = UInt(OUTPUT, RS_X.getWidth())
@@ -99,6 +100,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // unfortunately the above method breaks in Verilog
    val cs = new Bundle()
             {
+               val msk_sel        = UInt(width = MSK_SZ)
                val csr_cmd        = UInt(width = CSR.SZ)
                val ld_ir          = Bool()  
                val reg_sel        = UInt(width = RS_X.getWidth())  
@@ -116,8 +118,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                val ubr            = UInt(width = UBR_N.getWidth())  
                val upc_rom_target = UInt(width = label_sz)  
             }
-       
-            cs.csr_cmd        := uop(31+CSR.SZ, 32)
+            cs.msk_sel        := uop(36, 34) 
+            cs.csr_cmd        := uop(33, 32)
             cs.ld_ir          := uop(31)
             cs.reg_sel        := uop(30,28).toUInt
             cs.reg_wr         := uop(27)
@@ -159,6 +161,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                         
 
    // Cpath Control Interface
+   io.ctl.msk_sel := cs.msk_sel
    io.ctl.csr_cmd := cs.csr_cmd
    io.ctl.ld_ir   := cs.ld_ir      
    io.ctl.reg_sel := cs.reg_sel   
@@ -179,7 +182,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
  
    // Memory Interface
    io.mem.req.bits.fcn:= Mux(cs.en_mem && cs.mem_wr, M_XWR, M_XRD)
-   io.mem.req.bits.typ:= MT_WU
+   io.mem.req.bits.typ:= cs.msk_sel
    io.mem.req.valid   := cs.en_mem.toBool 
 
 }

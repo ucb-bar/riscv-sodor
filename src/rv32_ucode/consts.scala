@@ -25,7 +25,7 @@ trait SodorProcConstants
   
 }
 
-trait ScalarOpConstants
+trait ScalarOpConstants extends MemoryOpConstants
 {
    //************************************
    // Micro-code Generated Control Signals 
@@ -146,12 +146,13 @@ trait ScalarOpConstants
    val PC   = UInt(32)    //pc             register
                          
    // Memory Mask Type Signal
-   val MSK_B   = UInt(0, 3)
+   val MSK_SZ  = 3
+   /*val MSK_B   = UInt(0, 3)
    val MSK_BU  = UInt(1, 3)
    val MSK_H   = UInt(2, 3)
    val MSK_HU  = UInt(3, 3)
    val MSK_W   = UInt(4, 3)
-   val MSK_X   = UInt(4, 3)
+   val MSK_X   = UInt(4, 3)*/
 }
 
 }
