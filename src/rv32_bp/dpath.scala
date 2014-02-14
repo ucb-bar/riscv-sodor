@@ -22,7 +22,7 @@ class DatToCtlIo extends Bundle()
    val exe_br_ltu  = Bool(OUTPUT)
    val exe_br_type = UInt(OUTPUT,  4)
 
-   val dec_pred_taken = Bool(OUTPUT)
+   val if_pred_taken      = Bool(OUTPUT)
    val exe_wrong_target   = Bool(OUTPUT) 
    val mem_ctrl_dmem_val  = Bool(OUTPUT)
 }
@@ -49,8 +49,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Instruction Decode State
    val dec_reg_inst          = Reg(init=BUBBLE)
    val dec_reg_pc            = Reg(init=UInt(0, conf.xprlen))
-   val dec_pred_target       = UInt()
-   val dec_pred_taken        = Bool()
+   val dec_reg_pred_target   = Reg(init=UInt(0, conf.xprlen))
+   val dec_reg_pred_taken    = Reg(init=Bool(false))
 
    // Execute State
    val exe_reg_inst          = Reg(init=BUBBLE)
@@ -98,31 +98,31 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Instruction Fetch Stage
    val if_pc_next          = UInt()
+   val if_pc_plus4         = UInt()
    val exe_brjmp_target    = UInt()
    val exe_jump_reg_target = UInt()
+   val exe_pc_next         = UInt()
 
    when (!io.ctl.dec_stall && !io.ctl.full_stall) 
    {
-      if_reg_pc := if_pc_next
+      if_reg_pc       := if_pc_next
    }
 
-   val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
-   val exe_pc_next = MuxCase(if_pc_plus4, Array(
-                          (io.ctl.exe_pc_sel === PC_PLUS4) -> if_pc_plus4,
-                          (io.ctl.exe_pc_sel === PC_BRJMP) -> exe_brjmp_target,
-                          (io.ctl.exe_pc_sel === PC_JALR)  -> exe_jump_reg_target
-                          ))
+   if_pc_plus4 := (if_reg_pc + UInt(4, conf.xprlen))               
    val btb = Module(new BTB())
-   btb.io.if_reg_pc             := if_reg_pc
+   btb.io.if_pc_reg             := if_reg_pc
    btb.io.exe_reg_pc            := exe_reg_pc
    btb.io.exe_pc_next           := exe_pc_next
    btb.io.exe_reg_ctrl_br_type  := exe_reg_ctrl_br_type
    btb.io.exe_reg_pred_taken    := exe_reg_pred_taken
    btb.io.exe_pc_sel            := io.ctl.exe_pc_sel
-                        
-   if_pc_next := Mux(dec_pred_taken && !io.ctl.mispredict, 
-                      dec_pred_target, 
-                      exe_pc_next)
+   
+   val if_pred_taken  = btb.io.if_pred_taken
+   val if_pred_target = btb.io.if_pred_target
+
+   if_pc_next := MuxCase(if_pc_plus4, Array(
+     (if_pred_taken && !io.ctl.mispredict) -> if_pred_target,
+     io.ctl.mispredict -> exe_pc_next))
   
    // Instruction Memory
    io.imem.req.bits.addr := if_reg_pc
@@ -132,15 +132,20 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       when (io.ctl.if_kill)
       {
-         dec_reg_inst := BUBBLE
+         dec_reg_inst         := BUBBLE
+         dec_reg_pred_taken   := Bool(false)
+         dec_reg_pred_target  := UInt(0, conf.xprlen)
       }
       .otherwise
       {
          dec_reg_inst := if_inst
+         dec_reg_pred_taken   := if_pred_taken
+         dec_reg_pred_target  := if_pred_target
       }
 
-      dec_reg_pc := if_reg_pc
+      dec_reg_pc        := if_reg_pc
    }
+
 
    
    //**********************************
@@ -246,8 +251,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       exe_reg_ctrl_op2_sel  := io.ctl.op2_sel  
       exe_reg_ctrl_alu_fun  := io.ctl.alu_fun  
       exe_reg_ctrl_wb_sel   := io.ctl.wb_sel 
-      exe_reg_pred_target   := dec_pred_target
-      exe_reg_pred_taken    := dec_pred_taken
+      exe_reg_pred_target   := dec_reg_pred_target
+      exe_reg_pred_taken    := dec_reg_pred_taken
 
       when (io.ctl.dec_kill)
       {
@@ -271,8 +276,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_ctrl_mem_typ  := io.ctl.mem_typ
          exe_reg_ctrl_csr_cmd  := io.ctl.csr_cmd
          exe_reg_ctrl_br_type  := io.ctl.br_type
-         exe_reg_pred_target   := dec_pred_target
-         exe_reg_pred_taken    := dec_pred_taken
+         exe_reg_pred_target   := dec_reg_pred_target
+         exe_reg_pred_taken    := dec_reg_pred_taken
       }
    }
    .elsewhen (io.ctl.dec_stall && !io.ctl.full_stall)
@@ -290,8 +295,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       exe_reg_pred_taken    := Bool(false)
    }
 
-   dec_pred_taken   := btb.io.dec_pred_taken
-   dec_pred_target  := btb.io.dec_pred_target
 
    //**********************************
    // Execute Stage
@@ -325,6 +328,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_wrong_target = exe_reg_pred_target != exe_pc_next   
    exe_brjmp_target     := exe_reg_pc + brjmp_offset
    exe_jump_reg_target  := exe_adder_out
+
+   exe_pc_next := MuxCase(exe_pc_plus4, Array(
+                          (io.ctl.exe_pc_sel === PC_PLUS4) -> exe_pc_plus4,
+                          (io.ctl.exe_pc_sel === PC_BRJMP) -> exe_brjmp_target,
+                          (io.ctl.exe_pc_sel === PC_JALR)  -> exe_jump_reg_target
+                          ))
 
    when (!io.ctl.full_stall)
    {
@@ -396,7 +405,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dat.mem_ctrl_dmem_val := mem_reg_ctrl_mem_val
    
    io.dat.exe_wrong_target  := exe_wrong_target    
-   io.dat.dec_pred_taken    := dec_pred_taken
+   io.dat.if_pred_taken     := if_pred_taken
 
    // datapath to data memory outputs
    io.dmem.req.valid     := mem_reg_ctrl_mem_val

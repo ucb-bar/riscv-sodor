@@ -112,6 +112,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val cs_val_inst :: cs_br_type :: cs_op1_sel :: cs_op2_sel :: cs_rs1_oen :: cs_rs2_oen :: cs_alu_fun :: cs_wb_sel :: cs_wa_sel :: cs_rf_wen :: cs_mem_en :: cs_mem_fcn :: cs_msk_sel :: cs_csr_cmd :: Nil = csignals
 
    // BTB Logic
+   val dec_reg_pred_taken = Reg(init=Bool(false))
    val exe_reg_pred_taken = Reg(init=Bool(false))
  
    // Branch Logic   
@@ -154,9 +155,20 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    
    // TODO rename stall==hazard_stall full_stall == cmiss_stall
    val full_stall = Bool()
-
+  
+   
+   
    when (!stall && !full_stall)
    {
+      when (ifkill)
+      {
+         dec_reg_pred_taken := Bool(false)
+      }
+      .otherwise
+      {
+         dec_reg_pred_taken := io.dat.if_pred_taken
+      }
+
       when (deckill)
       {
          exe_reg_wbaddr      := UInt(0)
@@ -169,7 +181,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_wbaddr      := dec_wbaddr
          exe_reg_ctrl_rf_wen := cs_rf_wen.toBool  
          exe_reg_is_csr      := cs_csr_cmd != CSR.N
-         exe_reg_pred_taken  := io.dat.dec_pred_taken
+         exe_reg_pred_taken  := dec_reg_pred_taken
       }
    }
    .elsewhen (stall && !full_stall)
