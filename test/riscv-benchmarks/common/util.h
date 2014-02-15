@@ -53,5 +53,20 @@ void finishTest(int test_result)
 #endif
 }
 
+void setStats(bool en) 
+{
+#if HOST_DEBUG
+#else
+  int statsVal = en ? 1 : 0;
+  {
+    asm volatile(
+        "csrw stats, %0"
+        : "=r"(statsVal)
+        : "0"(statsVal));
+  }
+#endif
+}
+
+
 #endif //__UTIL_H
 

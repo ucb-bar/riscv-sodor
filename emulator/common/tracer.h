@@ -27,8 +27,8 @@
 class Tracer_t {
 
    public:
-//      Tracer_t(dat_t<32>* _inst_ptr, dat_t<1>* _stats_reg, FILE* log);
-      Tracer_t(dat_t<32>* _inst_ptr, FILE* log);
+      Tracer_t(dat_t<32>* _inst_ptr, dat_t<1>* _stats_reg, FILE* log);
+//      Tracer_t(dat_t<32>* _inst_ptr, FILE* log);
       void start();
       void tick(bool inc_inst_count);
       void stop();
@@ -36,7 +36,7 @@ class Tracer_t {
 
    private:
       dat_t<32>* inst_ptr;  // pointer to the Instruction Register in the processor
-//      dat_t<1>*  stats_reg; // pointer to the StatsEnable co-processor register cr10.
+      dat_t<1>*  stats_reg; // pointer to the StatsEnable co-processor register cr10.
                             // Allows the software to set when to start tracking stats
                             // by calling "li x1, 1; mtpcr cr10, x1".
       FILE*      logfile;

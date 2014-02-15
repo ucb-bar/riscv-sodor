@@ -3,11 +3,11 @@
 
 // emulator.cpp passes in a pointer to the Instruction Register 
 // found in the simulated processor.
-//Tracer_t::Tracer_t(dat_t<32>* _inst_ptr, dat_t<1>* _stats_reg, FILE* log)
-Tracer_t::Tracer_t(dat_t<32>* _inst_ptr, FILE* log)
+Tracer_t::Tracer_t(dat_t<32>* _inst_ptr, dat_t<1>* _stats_reg, FILE* log)
+//Tracer_t::Tracer_t(dat_t<32>* _inst_ptr, FILE* log)
 {
    inst_ptr = _inst_ptr;
-//   stats_reg = _stats_reg;
+   stats_reg = _stats_reg;
    logfile  = log;
    paused   = 1;
 }
@@ -59,8 +59,7 @@ void Tracer_t::tick(bool increment_inst_count)
 {
    // only collect stats if the tracer is not paused AND co-processor 
    // register cr10 is enabled.
-//   if (!paused && stats_reg->lo_word() == 0x1)
-   if (!paused)
+   if (!paused && stats_reg->lo_word() == 0x1)
    {
       trace_data.cycles++;
 
@@ -73,12 +72,12 @@ void Tracer_t::tick(bool increment_inst_count)
       uint32_t opc_lo = getBits(inst,4,2); 
 
       // don't increment on machine-generated bubbles
-      if (increment_inst_count && inst != 0x233)
+      if (increment_inst_count && inst != 0x5033)
          trace_data.inst_count++;
       
       if (inst == 0x13) 
          trace_data.nop_count++;
-      else if (inst == 0x233) 
+      else if (inst == 0x5033) 
          trace_data.bubble_count++;
       else if (opcode == 0x37) //lui
          trace_data.misc_count++;
@@ -107,7 +106,7 @@ void Tracer_t::print()
    fprintf(logfile, "#----------- Tracer Data -----------\n");
    
    if (trace_data.cycles == 0)
-      fprintf(logfile, "\n#     No stats collected: co-processor register cr10 was never set by the software.\n\n");
+      fprintf(logfile, "\n#     No stats collected: Tracer_t::start() never called.\n\n");
    else
       fprintf(logfile, "#\n");
    

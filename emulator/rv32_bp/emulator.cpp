@@ -68,7 +68,9 @@ int main(int argc, char** argv)
    dut.init(random_seed != 0);
  
    // Tracer for gathering stats about CPI and instruction mix
-   Tracer_t tracer(&dut.Top_tile_core_d__exe_reg_inst, stderr);
+   Tracer_t tracer(&dut.Top_tile_core_d__exe_reg_inst, 
+                    &dut.Top_tile_core_d_csr__reg_stats,
+                    stderr);
 
    if (loadmem)
    {
@@ -173,12 +175,6 @@ int main(int argc, char** argv)
          
       tracer.tick(true);
 
-      if (dut.Top__io_debug_stats_pcr.lo_word())
-      {
-         failure = "entered error mode";
-         fprintf(stderr, "Error Mode\n");
-         break; 
-      }
 
       if (log || vcd)
       {

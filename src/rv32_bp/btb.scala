@@ -31,7 +31,7 @@ class BTBIo(implicit conf: SodorConfiguration) extends Bundle {
 class BTB(implicit conf: SodorConfiguration) extends Module {
   val io = new BTBIo()
 
-  val BTB_ENTRIES = 1024
+  val BTB_ENTRIES = 256
 
   // 1 valid bit and |addr| bits for target PC
   // (We should use a Bundle for this, but not sure if Chisel Mem()
@@ -86,7 +86,7 @@ class BTB(implicit conf: SodorConfiguration) extends Module {
     reset_addr     := UInt(0, BTB_ADDR_BITS)
     reset_started  := Bool(true)
   }.elsewhen(reset_mode && reset_started) {
-    when(reset_addr != UInt((1<<BTB_ADDR_BITS)-1, BTB_ADDR_BITS)) {
+    when(reset_addr != UInt(BTB_ENTRIES-1, BTB_ADDR_BITS)) {
       btb_write_data  := UInt(0, BTB_BITS)
       btb_write_addr  := reset_addr
       btb_write_en    := Bool(true)
