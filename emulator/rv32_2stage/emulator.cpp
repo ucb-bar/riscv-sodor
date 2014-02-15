@@ -171,13 +171,6 @@ int main(int argc, char** argv)
       dut.Top__io_htif_reset = htif->reset;
          
   
-      if (dut.Top__io_debug_stats_pcr.lo_word())
-      {
-         failure = "entered error mode";
-         fprintf(stderr, "Error Mode\n");
-         break; 
-      }
-
       if (log || vcd)
       {
          if (log)
