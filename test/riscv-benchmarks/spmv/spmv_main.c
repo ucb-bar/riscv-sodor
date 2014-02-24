@@ -64,13 +64,6 @@ void printArray( char name[], long n, const double arr[] )
 }
 #endif
 
-void setStats( int enable )
-{
-#if ( !HOST_DEBUG && SET_STATS )
-  asm( "mtpcr %0, cr10" : : "r" (enable) );
-#endif
-}
-
 void spmv(int r, const double* val, const int* idx, const double* x,
           const int* ptr, double* y)
 {

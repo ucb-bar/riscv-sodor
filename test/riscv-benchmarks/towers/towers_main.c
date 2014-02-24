@@ -50,15 +50,7 @@ int ncores = 1;
 
 #define NUM_DISCS  7
 
-//--------------------------------------------------------------------------
-// Helper functions
 
-void setStats( int enable )
-{
-#if ( !HOST_DEBUG && SET_STATS )
-  asm( "mtpcr %0, cr10" : : "r" (enable) );
-#endif
-}
 
 //--------------------------------------------------------------------------
 // List data structure and functions

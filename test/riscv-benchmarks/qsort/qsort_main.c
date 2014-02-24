@@ -86,12 +86,6 @@ void printArray( char name[], int n, int arr[] )
 }
 #endif
 
-void setStats( int enable )
-{
-#if ( !HOST_DEBUG && SET_STATS )
-  asm( "mtpcr %0, cr10" : : "r" (enable) );
-#endif
-}
 
 //--------------------------------------------------------------------------
 // Quicksort function
