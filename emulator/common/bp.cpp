@@ -1,10 +1,12 @@
 #include "bp.h"
+#include <map>
+
+#define BUBBLE 0x5033
 
 
 // Modify this line to substitute YOUR branch predictor for the
 // default BTB...
-#define BRANCH_PREDICTOR NoBTB
-
+#define BRANCH_PREDICTOR BTB
 
 
 //
@@ -25,7 +27,7 @@ class PredictorTemplate : public BranchPredictor
 
     ~PredictorTemplate ( ) 
     {
-      // Free any structures you heap-allocated here
+      // delete any structures you heap-allocated here
     }
 
     uint32_t predict_fetch ( uint32_t pc )
@@ -55,7 +57,7 @@ class PredictorTemplate : public BranchPredictor
 // Baseline Branch Predictor: simple BTB
 //
 
-#define BTB_ADDR_BITS 7
+#define BTB_ADDR_BITS 5
 #define BTB_ENTRIES (1 << (BTB_ADDR_BITS-1))
 
 // Sample branch predictor provided for you: a simple branch target buffer.
@@ -130,6 +132,7 @@ class BTB : public BranchPredictor
 class InfiniteBTB : public BranchPredictor
 {
   private:
+    // Map PC to Predicted Target or zero if none (PC+4)
     std::map<uint32_t, uint32_t> table;
   public:
     InfiniteBTB ( struct bp_io& _io ) : BranchPredictor ( _io ) { }
@@ -137,7 +140,7 @@ class InfiniteBTB : public BranchPredictor
 
     uint32_t predict_fetch ( uint32_t pc )
     {
-      if ( table.find( pc ) != table.end() )
+      if ( table.find( pc ) != table.end() ) // Does table contain pc?
         return table[pc];  
       return 0;
     }
@@ -196,18 +199,14 @@ void BranchPredictor::clock_lo ( dat_t<1> reset )
   if( reset.lo_word() )
     return;
 
-    // Examine instruction in execute stage and use it to call update_execute()
-  uint32_t exe_pc         = io.exe_reg_pc_ptr->lo_word();
-  uint32_t exe_pc_next    = io.exe_pc_next_ptr->lo_word();
-  uint32_t exe_br_type    = io.exe_br_type_ptr->lo_word();
-  uint32_t exe_inst       = io.exe_reg_inst_ptr->lo_word();
-  uint32_t exe_mispredict = io.exe_mispredict_ptr->lo_word();
+  // Examine instruction in execute stage and use it to call update_execute()
   update_execute_base (
-      exe_pc,
-      exe_pc_next,
-      exe_mispredict,
-      exe_br_type != 0, // BR_N (no branch/jump) = 0 (see consts.scala)
-      exe_inst);
+      io.exe_reg_pc_ptr->lo_word ( ),
+      io.exe_pc_next_ptr->lo_word ( ),
+      io.exe_mispredict_ptr->lo_word ( ),
+      // BR_N (no branch/jump) = 0 (see consts.scala)
+      io.exe_br_type_ptr->lo_word ( ) != 0, 
+      io.exe_reg_inst_ptr->lo_word ( ) );
 }
 
 
@@ -242,6 +241,23 @@ void BranchPredictor::update_execute_base (
   }
   update_execute ( pc, pc_next, mispredict, is_brjmp, inst );
 }
+
+
+BranchPredictor::BranchPredictor ( struct bp_io& _io )  : io(_io) 
+{
+  brjmp_count = 0;
+  mispred_count = 0;
+  inst_count = 0;
+}
+
+
+BranchPredictor::~BranchPredictor ( )
+{
+  fprintf ( stderr, "## BRJMPs %ld\n", brjmp_count );
+  fprintf ( stderr, "## INSTS %ld\n", inst_count );
+  fprintf ( stderr, "## MISREDICTS %ld\n", mispred_count );
+}
+
 
 BranchPredictor* BranchPredictor::make_branch_predictor ( struct bp_io& io )
 {

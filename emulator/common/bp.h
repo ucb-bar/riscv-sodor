@@ -1,9 +1,6 @@
 #include "common.h"
 #include "emulator.h"
 
-#define BUBBLE 0x5033
-
-
 // Signals in the emulator that the simulated branch predictor reads and
 // writes.  Create an instance of this structure and set all the pointers
 // to the relevant signals defined in generated-src/Top.h before passing it
@@ -29,22 +26,11 @@ class BranchPredictor
     long brjmp_count, inst_count, mispred_count;
 
   public:
-    BranchPredictor ( struct bp_io& _io )  : io(_io) 
-    {
-      brjmp_count = 0;
-      mispred_count = 0;
-      inst_count = 0;
-    }
-
+    BranchPredictor ( struct bp_io& _io );
     // Destructor must be virtual so that the delete at the end of main()
     // in emulator.cpp will call the child's destructor.
-    virtual ~BranchPredictor ( ) 
-    {
-      fprintf ( stderr, "## BRJMPs %ld\n", brjmp_count );
-      fprintf ( stderr, "## INSTS %ld\n", inst_count );
-      fprintf ( stderr, "## MISREDICTS %ld\n", mispred_count );
-    }
-    
+    ~BranchPredictor ( );
+
     // This static function is called by main() in emulator.cpp, which uses
     // whatever particular class of branch predictor you choose to return.
     // (Thus, to choose which implementation gets run, modify this function!)
