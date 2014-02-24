@@ -12,93 +12,93 @@ Disassembly of section .text:
 
 00002010 <test_2>:
     2010:	00000097 	auipc	ra,0x0
-    2014:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    2014:	2b008093 	addi	ra,ra,688 # 22c0 <begin_signature>
     2018:	0000a183 	lw	s1,0(ra)
     201c:	00ff0eb7 	lui	t3,0xff0
-    2020:	0ffe8e93 	add	t3,t3,255
+    2020:	0ffe8e93 	addi	t3,t3,255 # ff00ff <_end+0xfede2f>
     2024:	00200e13 	li	t2,2
     2028:	27d19a63 	bne	s1,t3,229c <fail>
 
 0000202c <test_3>:
     202c:	00000097 	auipc	ra,0x0
-    2030:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    2030:	29408093 	addi	ra,ra,660 # 22c0 <begin_signature>
     2034:	0040a183 	lw	s1,4(ra)
     2038:	ff010eb7 	lui	t3,0xff010
-    203c:	f00e8e93 	add	t3,t3,-256
+    203c:	f00e8e93 	addi	t3,t3,-256 # ff00ff00 <_end+0xff00dc30>
     2040:	00300e13 	li	t2,3
     2044:	25d19c63 	bne	s1,t3,229c <fail>
 
 00002048 <test_4>:
     2048:	00000097 	auipc	ra,0x0
-    204c:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    204c:	27808093 	addi	ra,ra,632 # 22c0 <begin_signature>
     2050:	0080a183 	lw	s1,8(ra)
     2054:	0ff01eb7 	lui	t3,0xff01
-    2058:	ff0e8e93 	add	t3,t3,-16
+    2058:	ff0e8e93 	addi	t3,t3,-16 # ff00ff0 <_end+0xfefed20>
     205c:	00400e13 	li	t2,4
     2060:	23d19e63 	bne	s1,t3,229c <fail>
 
 00002064 <test_5>:
     2064:	00000097 	auipc	ra,0x0
-    2068:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    2068:	25c08093 	addi	ra,ra,604 # 22c0 <begin_signature>
     206c:	00c0a183 	lw	s1,12(ra)
     2070:	f00ffeb7 	lui	t3,0xf00ff
-    2074:	00fe8e93 	add	t3,t3,15
+    2074:	00fe8e93 	addi	t3,t3,15 # f00ff00f <_end+0xf00fcd3f>
     2078:	00500e13 	li	t2,5
     207c:	23d19063 	bne	s1,t3,229c <fail>
 
 00002080 <test_6>:
     2080:	00000097 	auipc	ra,0x0
-    2084:	2cc08093 	add	ra,ra,716 # 22cc <tdat4>
+    2084:	24c08093 	addi	ra,ra,588 # 22cc <tdat4>
     2088:	ff40a183 	lw	s1,-12(ra)
     208c:	00ff0eb7 	lui	t3,0xff0
-    2090:	0ffe8e93 	add	t3,t3,255
+    2090:	0ffe8e93 	addi	t3,t3,255 # ff00ff <_end+0xfede2f>
     2094:	00600e13 	li	t2,6
     2098:	21d19263 	bne	s1,t3,229c <fail>
 
 0000209c <test_7>:
     209c:	00000097 	auipc	ra,0x0
-    20a0:	2cc08093 	add	ra,ra,716 # 22cc <tdat4>
+    20a0:	23008093 	addi	ra,ra,560 # 22cc <tdat4>
     20a4:	ff80a183 	lw	s1,-8(ra)
     20a8:	ff010eb7 	lui	t3,0xff010
-    20ac:	f00e8e93 	add	t3,t3,-256
+    20ac:	f00e8e93 	addi	t3,t3,-256 # ff00ff00 <_end+0xff00dc30>
     20b0:	00700e13 	li	t2,7
     20b4:	1fd19463 	bne	s1,t3,229c <fail>
 
 000020b8 <test_8>:
     20b8:	00000097 	auipc	ra,0x0
-    20bc:	2cc08093 	add	ra,ra,716 # 22cc <tdat4>
+    20bc:	21408093 	addi	ra,ra,532 # 22cc <tdat4>
     20c0:	ffc0a183 	lw	s1,-4(ra)
     20c4:	0ff01eb7 	lui	t3,0xff01
-    20c8:	ff0e8e93 	add	t3,t3,-16
+    20c8:	ff0e8e93 	addi	t3,t3,-16 # ff00ff0 <_end+0xfefed20>
     20cc:	00800e13 	li	t2,8
     20d0:	1dd19663 	bne	s1,t3,229c <fail>
 
 000020d4 <test_9>:
     20d4:	00000097 	auipc	ra,0x0
-    20d8:	2cc08093 	add	ra,ra,716 # 22cc <tdat4>
+    20d8:	1f808093 	addi	ra,ra,504 # 22cc <tdat4>
     20dc:	0000a183 	lw	s1,0(ra)
     20e0:	f00ffeb7 	lui	t3,0xf00ff
-    20e4:	00fe8e93 	add	t3,t3,15
+    20e4:	00fe8e93 	addi	t3,t3,15 # f00ff00f <_end+0xf00fcd3f>
     20e8:	00900e13 	li	t2,9
     20ec:	1bd19863 	bne	s1,t3,229c <fail>
 
 000020f0 <test_10>:
     20f0:	00000097 	auipc	ra,0x0
-    20f4:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
-    20f8:	fe008093 	add	ra,ra,-32
+    20f4:	1d008093 	addi	ra,ra,464 # 22c0 <begin_signature>
+    20f8:	fe008093 	addi	ra,ra,-32
     20fc:	0200a183 	lw	s1,32(ra)
     2100:	00ff0eb7 	lui	t3,0xff0
-    2104:	0ffe8e93 	add	t3,t3,255
+    2104:	0ffe8e93 	addi	t3,t3,255 # ff00ff <_end+0xfede2f>
     2108:	00a00e13 	li	t2,10
     210c:	19d19863 	bne	s1,t3,229c <fail>
 
 00002110 <test_11>:
     2110:	00000097 	auipc	ra,0x0
-    2114:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
-    2118:	ffd08093 	add	ra,ra,-3
+    2114:	1b008093 	addi	ra,ra,432 # 22c0 <begin_signature>
+    2118:	ffd08093 	addi	ra,ra,-3
     211c:	0070a183 	lw	s1,7(ra)
     2120:	ff010eb7 	lui	t3,0xff010
-    2124:	f00e8e93 	add	t3,t3,-256
+    2124:	f00e8e93 	addi	t3,t3,-256 # ff00ff00 <_end+0xff00dc30>
     2128:	00b00e13 	li	t2,11
     212c:	17d19863 	bne	s1,t3,229c <fail>
 
@@ -106,13 +106,13 @@ Disassembly of section .text:
     2130:	00c00e13 	li	t2,12
     2134:	00000213 	li	s2,0
     2138:	00000097 	auipc	ra,0x0
-    213c:	2c408093 	add	ra,ra,708 # 22c4 <tdat2>
+    213c:	18c08093 	addi	ra,ra,396 # 22c4 <tdat2>
     2140:	0040a183 	lw	s1,4(ra)
     2144:	00018313 	mv	s4,s1
     2148:	0ff01eb7 	lui	t3,0xff01
-    214c:	ff0e8e93 	add	t3,t3,-16
+    214c:	ff0e8e93 	addi	t3,t3,-16 # ff00ff0 <_end+0xfefed20>
     2150:	15d31663 	bne	s4,t3,229c <fail>
-    2154:	00120213 	add	s2,s2,1
+    2154:	00120213 	addi	s2,s2,1
     2158:	00200293 	li	s3,2
     215c:	fc521ee3 	bne	s2,s3,2138 <test_12+0x8>
 
@@ -120,14 +120,14 @@ Disassembly of section .text:
     2160:	00d00e13 	li	t2,13
     2164:	00000213 	li	s2,0
     2168:	00000097 	auipc	ra,0x0
-    216c:	2c808093 	add	ra,ra,712 # 22c8 <tdat3>
+    216c:	16008093 	addi	ra,ra,352 # 22c8 <tdat3>
     2170:	0040a183 	lw	s1,4(ra)
     2174:	00000013 	nop
     2178:	00018313 	mv	s4,s1
     217c:	f00ffeb7 	lui	t3,0xf00ff
-    2180:	00fe8e93 	add	t3,t3,15
+    2180:	00fe8e93 	addi	t3,t3,15 # f00ff00f <_end+0xf00fcd3f>
     2184:	11d31c63 	bne	s4,t3,229c <fail>
-    2188:	00120213 	add	s2,s2,1
+    2188:	00120213 	addi	s2,s2,1
     218c:	00200293 	li	s3,2
     2190:	fc521ce3 	bne	s2,s3,2168 <test_13+0x8>
 
@@ -135,15 +135,15 @@ Disassembly of section .text:
     2194:	00e00e13 	li	t2,14
     2198:	00000213 	li	s2,0
     219c:	00000097 	auipc	ra,0x0
-    21a0:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    21a0:	12408093 	addi	ra,ra,292 # 22c0 <begin_signature>
     21a4:	0040a183 	lw	s1,4(ra)
     21a8:	00000013 	nop
     21ac:	00000013 	nop
     21b0:	00018313 	mv	s4,s1
     21b4:	ff010eb7 	lui	t3,0xff010
-    21b8:	f00e8e93 	add	t3,t3,-256
+    21b8:	f00e8e93 	addi	t3,t3,-256 # ff00ff00 <_end+0xff00dc30>
     21bc:	0fd31063 	bne	s4,t3,229c <fail>
-    21c0:	00120213 	add	s2,s2,1
+    21c0:	00120213 	addi	s2,s2,1
     21c4:	00200293 	li	s3,2
     21c8:	fc521ae3 	bne	s2,s3,219c <test_14+0x8>
 
@@ -151,12 +151,12 @@ Disassembly of section .text:
     21cc:	00f00e13 	li	t2,15
     21d0:	00000213 	li	s2,0
     21d4:	00000097 	auipc	ra,0x0
-    21d8:	2c408093 	add	ra,ra,708 # 22c4 <tdat2>
+    21d8:	0f008093 	addi	ra,ra,240 # 22c4 <tdat2>
     21dc:	0040a183 	lw	s1,4(ra)
     21e0:	0ff01eb7 	lui	t3,0xff01
-    21e4:	ff0e8e93 	add	t3,t3,-16
+    21e4:	ff0e8e93 	addi	t3,t3,-16 # ff00ff0 <_end+0xfefed20>
     21e8:	0bd19a63 	bne	s1,t3,229c <fail>
-    21ec:	00120213 	add	s2,s2,1
+    21ec:	00120213 	addi	s2,s2,1
     21f0:	00200293 	li	s3,2
     21f4:	fe5210e3 	bne	s2,s3,21d4 <test_15+0x8>
 
@@ -164,13 +164,13 @@ Disassembly of section .text:
     21f8:	01000e13 	li	t2,16
     21fc:	00000213 	li	s2,0
     2200:	00000097 	auipc	ra,0x0
-    2204:	2c808093 	add	ra,ra,712 # 22c8 <tdat3>
+    2204:	0c808093 	addi	ra,ra,200 # 22c8 <tdat3>
     2208:	00000013 	nop
     220c:	0040a183 	lw	s1,4(ra)
     2210:	f00ffeb7 	lui	t3,0xf00ff
-    2214:	00fe8e93 	add	t3,t3,15
+    2214:	00fe8e93 	addi	t3,t3,15 # f00ff00f <_end+0xf00fcd3f>
     2218:	09d19263 	bne	s1,t3,229c <fail>
-    221c:	00120213 	add	s2,s2,1
+    221c:	00120213 	addi	s2,s2,1
     2220:	00200293 	li	s3,2
     2224:	fc521ee3 	bne	s2,s3,2200 <test_16+0x8>
 
@@ -178,20 +178,20 @@ Disassembly of section .text:
     2228:	01100e13 	li	t2,17
     222c:	00000213 	li	s2,0
     2230:	00000097 	auipc	ra,0x0
-    2234:	2c008093 	add	ra,ra,704 # 22c0 <begin_signature>
+    2234:	09008093 	addi	ra,ra,144 # 22c0 <begin_signature>
     2238:	00000013 	nop
     223c:	00000013 	nop
     2240:	0040a183 	lw	s1,4(ra)
     2244:	ff010eb7 	lui	t3,0xff010
-    2248:	f00e8e93 	add	t3,t3,-256
+    2248:	f00e8e93 	addi	t3,t3,-256 # ff00ff00 <_end+0xff00dc30>
     224c:	05d19863 	bne	s1,t3,229c <fail>
-    2250:	00120213 	add	s2,s2,1
+    2250:	00120213 	addi	s2,s2,1
     2254:	00200293 	li	s3,2
     2258:	fc521ce3 	bne	s2,s3,2230 <test_17+0x8>
 
 0000225c <test_18>:
     225c:	00000197 	auipc	s1,0x0
-    2260:	2c018193 	add	s1,s1,704 # 22c0 <begin_signature>
+    2260:	06418193 	addi	s1,s1,100 # 22c0 <begin_signature>
     2264:	0001a103 	lw	s0,0(s1)
     2268:	00200113 	li	s0,2
     226c:	00200e93 	li	t3,2
@@ -200,7 +200,7 @@ Disassembly of section .text:
 
 00002278 <test_19>:
     2278:	00000197 	auipc	s1,0x0
-    227c:	2c018193 	add	s1,s1,704 # 22c0 <begin_signature>
+    227c:	04818193 	addi	s1,s1,72 # 22c0 <begin_signature>
     2280:	0001a103 	lw	s0,0(s1)
     2284:	00000013 	nop
     2288:	00200113 	li	s0,2
@@ -212,14 +212,14 @@ Disassembly of section .text:
 0000229c <fail>:
     229c:	0ff0000f 	fence
     22a0:	000e0863 	beqz	t2,22b0 <fail+0x14>
-    22a4:	001e1e13 	sll	t2,t2,0x1
-    22a8:	001e6e13 	or	t2,t2,1
+    22a4:	001e1e13 	slli	t2,t2,0x1
+    22a8:	001e6e13 	ori	t2,t2,1
     22ac:	51ee1073 	csrw	tohost,t2
     22b0:	00000063 	b	22b0 <fail+0x14>
 
 000022b4 <pass>:
     22b4:	0ff0000f 	fence
-    22b8:	51e0d073 	csrw	tohost,1
+    22b8:	51e0d073 	csrwi	tohost,1
     22bc:	00000063 	b	22bc <pass+0x8>
 
 Disassembly of section .data:

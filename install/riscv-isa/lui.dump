@@ -18,28 +18,28 @@ Disassembly of section .text:
 
 00002020 <test_3>:
     2020:	fffff0b7 	lui	ra,0xfffff
-    2024:	4010d093 	sra	ra,ra,0x1
+    2024:	4010d093 	srai	ra,ra,0x1
     2028:	80000e93 	li	t3,-2048
     202c:	00300e13 	li	t2,3
     2030:	05d09063 	bne	ra,t3,2070 <fail>
 
 00002034 <test_4>:
     2034:	7ffff0b7 	lui	ra,0x7ffff
-    2038:	4140d093 	sra	ra,ra,0x14
+    2038:	4140d093 	srai	ra,ra,0x14
     203c:	7ff00e93 	li	t3,2047
     2040:	00400e13 	li	t2,4
     2044:	03d09663 	bne	ra,t3,2070 <fail>
 
 00002048 <test_5>:
     2048:	800000b7 	lui	ra,0x80000
-    204c:	4140d093 	sra	ra,ra,0x14
+    204c:	4140d093 	srai	ra,ra,0x14
     2050:	80000e93 	li	t3,-2048
     2054:	00500e13 	li	t2,5
     2058:	01d09c63 	bne	ra,t3,2070 <fail>
 
 0000205c <test_6>:
     205c:	80000037 	lui	zero,0x80000
-    2060:	00000e93 	li	t3,0
+    2060:	00000e93 	li	t3,0 # 80000000 <begin_signature+0x7fffdf60>
     2064:	00600e13 	li	t2,6
     2068:	01d01463 	bne	zero,t3,2070 <fail>
     206c:	01c01e63 	bne	zero,t2,2088 <pass>
@@ -47,14 +47,14 @@ Disassembly of section .text:
 00002070 <fail>:
     2070:	0ff0000f 	fence
     2074:	000e0863 	beqz	t2,2084 <fail+0x14>
-    2078:	001e1e13 	sll	t2,t2,0x1
-    207c:	001e6e13 	or	t2,t2,1
+    2078:	001e1e13 	slli	t2,t2,0x1
+    207c:	001e6e13 	ori	t2,t2,1
     2080:	51ee1073 	csrw	tohost,t2
     2084:	00000063 	b	2084 <fail+0x14>
 
 00002088 <pass>:
     2088:	0ff0000f 	fence
-    208c:	51e0d073 	csrw	tohost,1
+    208c:	51e0d073 	csrwi	tohost,1
     2090:	00000063 	b	2090 <pass+0x8>
     2094:	00000013 	nop
     2098:	00000013 	nop

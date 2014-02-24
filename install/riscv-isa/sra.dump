@@ -44,7 +44,7 @@ Disassembly of section .text:
 
 00002070 <test_6>:
     2070:	800000b7 	lui	ra,0x80000
-    2074:	00108093 	add	ra,ra,1
+    2074:	00108093 	addi	ra,ra,1 # 80000001 <begin_signature+0x7fffda31>
     2078:	01f00113 	li	s0,31
     207c:	4020d1b3 	sra	s1,ra,s0
     2080:	fff00e93 	li	t3,-1
@@ -53,47 +53,47 @@ Disassembly of section .text:
 
 0000208c <test_7>:
     208c:	800000b7 	lui	ra,0x80000
-    2090:	fff08093 	add	ra,ra,-1
+    2090:	fff08093 	addi	ra,ra,-1 # 7fffffff <begin_signature+0x7fffda2f>
     2094:	00000113 	li	s0,0
     2098:	4020d1b3 	sra	s1,ra,s0
     209c:	80000eb7 	lui	t3,0x80000
-    20a0:	fffe8e93 	add	t3,t3,-1
+    20a0:	fffe8e93 	addi	t3,t3,-1 # 7fffffff <begin_signature+0x7fffda2f>
     20a4:	00700e13 	li	t2,7
     20a8:	51d19263 	bne	s1,t3,25ac <fail>
 
 000020ac <test_8>:
     20ac:	800000b7 	lui	ra,0x80000
-    20b0:	fff08093 	add	ra,ra,-1
+    20b0:	fff08093 	addi	ra,ra,-1 # 7fffffff <begin_signature+0x7fffda2f>
     20b4:	00100113 	li	s0,1
     20b8:	4020d1b3 	sra	s1,ra,s0
     20bc:	40000eb7 	lui	t3,0x40000
-    20c0:	fffe8e93 	add	t3,t3,-1
+    20c0:	fffe8e93 	addi	t3,t3,-1 # 3fffffff <begin_signature+0x3fffda2f>
     20c4:	00800e13 	li	t2,8
     20c8:	4fd19263 	bne	s1,t3,25ac <fail>
 
 000020cc <test_9>:
     20cc:	800000b7 	lui	ra,0x80000
-    20d0:	fff08093 	add	ra,ra,-1
+    20d0:	fff08093 	addi	ra,ra,-1 # 7fffffff <begin_signature+0x7fffda2f>
     20d4:	00700113 	li	s0,7
     20d8:	4020d1b3 	sra	s1,ra,s0
     20dc:	01000eb7 	lui	t3,0x1000
-    20e0:	fffe8e93 	add	t3,t3,-1
+    20e0:	fffe8e93 	addi	t3,t3,-1 # ffffff <begin_signature+0xffda2f>
     20e4:	00900e13 	li	t2,9
     20e8:	4dd19263 	bne	s1,t3,25ac <fail>
 
 000020ec <test_10>:
     20ec:	800000b7 	lui	ra,0x80000
-    20f0:	fff08093 	add	ra,ra,-1
+    20f0:	fff08093 	addi	ra,ra,-1 # 7fffffff <begin_signature+0x7fffda2f>
     20f4:	00e00113 	li	s0,14
     20f8:	4020d1b3 	sra	s1,ra,s0
     20fc:	00020eb7 	lui	t3,0x20
-    2100:	fffe8e93 	add	t3,t3,-1
+    2100:	fffe8e93 	addi	t3,t3,-1 # 1ffff <begin_signature+0x1da2f>
     2104:	00a00e13 	li	t2,10
     2108:	4bd19263 	bne	s1,t3,25ac <fail>
 
 0000210c <test_11>:
     210c:	800000b7 	lui	ra,0x80000
-    2110:	fff08093 	add	ra,ra,-1
+    2110:	fff08093 	addi	ra,ra,-1 # 7fffffff <begin_signature+0x7fffda2f>
     2114:	01f00113 	li	s0,31
     2118:	4020d1b3 	sra	s1,ra,s0
     211c:	00000e93 	li	t3,0
@@ -102,47 +102,47 @@ Disassembly of section .text:
 
 00002128 <test_12>:
     2128:	818180b7 	lui	ra,0x81818
-    212c:	18108093 	add	ra,ra,385
+    212c:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     2130:	00000113 	li	s0,0
     2134:	4020d1b3 	sra	s1,ra,s0
     2138:	81818eb7 	lui	t3,0x81818
-    213c:	181e8e93 	add	t3,t3,385
+    213c:	181e8e93 	addi	t3,t3,385 # 81818181 <begin_signature+0x81815bb1>
     2140:	00c00e13 	li	t2,12
     2144:	47d19463 	bne	s1,t3,25ac <fail>
 
 00002148 <test_13>:
     2148:	818180b7 	lui	ra,0x81818
-    214c:	18108093 	add	ra,ra,385
+    214c:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     2150:	00100113 	li	s0,1
     2154:	4020d1b3 	sra	s1,ra,s0
     2158:	c0c0ceb7 	lui	t3,0xc0c0c
-    215c:	0c0e8e93 	add	t3,t3,192
+    215c:	0c0e8e93 	addi	t3,t3,192 # c0c0c0c0 <begin_signature+0xc0c09af0>
     2160:	00d00e13 	li	t2,13
     2164:	45d19463 	bne	s1,t3,25ac <fail>
 
 00002168 <test_14>:
     2168:	818180b7 	lui	ra,0x81818
-    216c:	18108093 	add	ra,ra,385
+    216c:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     2170:	00700113 	li	s0,7
     2174:	4020d1b3 	sra	s1,ra,s0
     2178:	ff030eb7 	lui	t3,0xff030
-    217c:	303e8e93 	add	t3,t3,771
+    217c:	303e8e93 	addi	t3,t3,771 # ff030303 <begin_signature+0xff02dd33>
     2180:	00e00e13 	li	t2,14
     2184:	43d19463 	bne	s1,t3,25ac <fail>
 
 00002188 <test_15>:
     2188:	818180b7 	lui	ra,0x81818
-    218c:	18108093 	add	ra,ra,385
+    218c:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     2190:	00e00113 	li	s0,14
     2194:	4020d1b3 	sra	s1,ra,s0
     2198:	fffe0eb7 	lui	t3,0xfffe0
-    219c:	606e8e93 	add	t3,t3,1542
+    219c:	606e8e93 	addi	t3,t3,1542 # fffe0606 <begin_signature+0xfffde036>
     21a0:	00f00e13 	li	t2,15
     21a4:	41d19463 	bne	s1,t3,25ac <fail>
 
 000021a8 <test_16>:
     21a8:	818180b7 	lui	ra,0x81818
-    21ac:	18108093 	add	ra,ra,385
+    21ac:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     21b0:	01f00113 	li	s0,31
     21b4:	4020d1b3 	sra	s1,ra,s0
     21b8:	fff00e93 	li	t3,-1
@@ -151,47 +151,47 @@ Disassembly of section .text:
 
 000021c4 <test_17>:
     21c4:	818180b7 	lui	ra,0x81818
-    21c8:	18108093 	add	ra,ra,385
+    21c8:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     21cc:	fc000113 	li	s0,-64
     21d0:	4020d1b3 	sra	s1,ra,s0
     21d4:	81818eb7 	lui	t3,0x81818
-    21d8:	181e8e93 	add	t3,t3,385
+    21d8:	181e8e93 	addi	t3,t3,385 # 81818181 <begin_signature+0x81815bb1>
     21dc:	01100e13 	li	t2,17
     21e0:	3dd19663 	bne	s1,t3,25ac <fail>
 
 000021e4 <test_18>:
     21e4:	818180b7 	lui	ra,0x81818
-    21e8:	18108093 	add	ra,ra,385
+    21e8:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     21ec:	fc100113 	li	s0,-63
     21f0:	4020d1b3 	sra	s1,ra,s0
     21f4:	c0c0ceb7 	lui	t3,0xc0c0c
-    21f8:	0c0e8e93 	add	t3,t3,192
+    21f8:	0c0e8e93 	addi	t3,t3,192 # c0c0c0c0 <begin_signature+0xc0c09af0>
     21fc:	01200e13 	li	t2,18
     2200:	3bd19663 	bne	s1,t3,25ac <fail>
 
 00002204 <test_19>:
     2204:	818180b7 	lui	ra,0x81818
-    2208:	18108093 	add	ra,ra,385
+    2208:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     220c:	fc700113 	li	s0,-57
     2210:	4020d1b3 	sra	s1,ra,s0
     2214:	ff030eb7 	lui	t3,0xff030
-    2218:	303e8e93 	add	t3,t3,771
+    2218:	303e8e93 	addi	t3,t3,771 # ff030303 <begin_signature+0xff02dd33>
     221c:	01300e13 	li	t2,19
     2220:	39d19663 	bne	s1,t3,25ac <fail>
 
 00002224 <test_20>:
     2224:	818180b7 	lui	ra,0x81818
-    2228:	18108093 	add	ra,ra,385
+    2228:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     222c:	fce00113 	li	s0,-50
     2230:	4020d1b3 	sra	s1,ra,s0
     2234:	fffe0eb7 	lui	t3,0xfffe0
-    2238:	606e8e93 	add	t3,t3,1542
+    2238:	606e8e93 	addi	t3,t3,1542 # fffe0606 <begin_signature+0xfffde036>
     223c:	01400e13 	li	t2,20
     2240:	37d19663 	bne	s1,t3,25ac <fail>
 
 00002244 <test_21>:
     2244:	818180b7 	lui	ra,0x81818
-    2248:	18108093 	add	ra,ra,385
+    2248:	18108093 	addi	ra,ra,385 # 81818181 <begin_signature+0x81815bb1>
     224c:	fff00113 	li	s0,-1
     2250:	4020d1b3 	sra	s1,ra,s0
     2254:	fff00e93 	li	t3,-1
@@ -227,7 +227,7 @@ Disassembly of section .text:
     22ac:	00700113 	li	s0,7
     22b0:	4020d1b3 	sra	s1,ra,s0
     22b4:	00018313 	mv	s4,s1
-    22b8:	00120213 	add	s2,s2,1
+    22b8:	00120213 	addi	s2,s2,1
     22bc:	00200293 	li	s3,2
     22c0:	fe5214e3 	bne	s2,s3,22a8 <test_25+0x4>
     22c4:	ff000eb7 	lui	t3,0xff000
@@ -241,7 +241,7 @@ Disassembly of section .text:
     22dc:	4020d1b3 	sra	s1,ra,s0
     22e0:	00000013 	nop
     22e4:	00018313 	mv	s4,s1
-    22e8:	00120213 	add	s2,s2,1
+    22e8:	00120213 	addi	s2,s2,1
     22ec:	00200293 	li	s3,2
     22f0:	fe5212e3 	bne	s2,s3,22d4 <test_26+0x4>
     22f4:	fffe0eb7 	lui	t3,0xfffe0
@@ -256,7 +256,7 @@ Disassembly of section .text:
     2310:	00000013 	nop
     2314:	00000013 	nop
     2318:	00018313 	mv	s4,s1
-    231c:	00120213 	add	s2,s2,1
+    231c:	00120213 	addi	s2,s2,1
     2320:	00200293 	li	s3,2
     2324:	fe5210e3 	bne	s2,s3,2304 <test_27+0x4>
     2328:	fff00e93 	li	t3,-1
@@ -268,7 +268,7 @@ Disassembly of section .text:
     2338:	800000b7 	lui	ra,0x80000
     233c:	00700113 	li	s0,7
     2340:	4020d1b3 	sra	s1,ra,s0
-    2344:	00120213 	add	s2,s2,1
+    2344:	00120213 	addi	s2,s2,1
     2348:	00200293 	li	s3,2
     234c:	fe5216e3 	bne	s2,s3,2338 <test_28+0x4>
     2350:	ff000eb7 	lui	t3,0xff000
@@ -281,7 +281,7 @@ Disassembly of section .text:
     2364:	00e00113 	li	s0,14
     2368:	00000013 	nop
     236c:	4020d1b3 	sra	s1,ra,s0
-    2370:	00120213 	add	s2,s2,1
+    2370:	00120213 	addi	s2,s2,1
     2374:	00200293 	li	s3,2
     2378:	fe5214e3 	bne	s2,s3,2360 <test_29+0x4>
     237c:	fffe0eb7 	lui	t3,0xfffe0
@@ -295,7 +295,7 @@ Disassembly of section .text:
     2394:	00000013 	nop
     2398:	00000013 	nop
     239c:	4020d1b3 	sra	s1,ra,s0
-    23a0:	00120213 	add	s2,s2,1
+    23a0:	00120213 	addi	s2,s2,1
     23a4:	00200293 	li	s3,2
     23a8:	fe5212e3 	bne	s2,s3,238c <test_30+0x4>
     23ac:	fff00e93 	li	t3,-1
@@ -308,7 +308,7 @@ Disassembly of section .text:
     23c0:	00000013 	nop
     23c4:	00700113 	li	s0,7
     23c8:	4020d1b3 	sra	s1,ra,s0
-    23cc:	00120213 	add	s2,s2,1
+    23cc:	00120213 	addi	s2,s2,1
     23d0:	00200293 	li	s3,2
     23d4:	fe5214e3 	bne	s2,s3,23bc <test_31+0x4>
     23d8:	ff000eb7 	lui	t3,0xff000
@@ -322,7 +322,7 @@ Disassembly of section .text:
     23f0:	00e00113 	li	s0,14
     23f4:	00000013 	nop
     23f8:	4020d1b3 	sra	s1,ra,s0
-    23fc:	00120213 	add	s2,s2,1
+    23fc:	00120213 	addi	s2,s2,1
     2400:	00200293 	li	s3,2
     2404:	fe5212e3 	bne	s2,s3,23e8 <test_32+0x4>
     2408:	fffe0eb7 	lui	t3,0xfffe0
@@ -336,7 +336,7 @@ Disassembly of section .text:
     2420:	00000013 	nop
     2424:	01f00113 	li	s0,31
     2428:	4020d1b3 	sra	s1,ra,s0
-    242c:	00120213 	add	s2,s2,1
+    242c:	00120213 	addi	s2,s2,1
     2430:	00200293 	li	s3,2
     2434:	fe5212e3 	bne	s2,s3,2418 <test_33+0x4>
     2438:	fff00e93 	li	t3,-1
@@ -348,7 +348,7 @@ Disassembly of section .text:
     2448:	00700113 	li	s0,7
     244c:	800000b7 	lui	ra,0x80000
     2450:	4020d1b3 	sra	s1,ra,s0
-    2454:	00120213 	add	s2,s2,1
+    2454:	00120213 	addi	s2,s2,1
     2458:	00200293 	li	s3,2
     245c:	fe5216e3 	bne	s2,s3,2448 <test_34+0x4>
     2460:	ff000eb7 	lui	t3,0xff000
@@ -361,7 +361,7 @@ Disassembly of section .text:
     2474:	800000b7 	lui	ra,0x80000
     2478:	00000013 	nop
     247c:	4020d1b3 	sra	s1,ra,s0
-    2480:	00120213 	add	s2,s2,1
+    2480:	00120213 	addi	s2,s2,1
     2484:	00200293 	li	s3,2
     2488:	fe5214e3 	bne	s2,s3,2470 <test_35+0x4>
     248c:	fffe0eb7 	lui	t3,0xfffe0
@@ -375,7 +375,7 @@ Disassembly of section .text:
     24a4:	00000013 	nop
     24a8:	00000013 	nop
     24ac:	4020d1b3 	sra	s1,ra,s0
-    24b0:	00120213 	add	s2,s2,1
+    24b0:	00120213 	addi	s2,s2,1
     24b4:	00200293 	li	s3,2
     24b8:	fe5212e3 	bne	s2,s3,249c <test_36+0x4>
     24bc:	fff00e93 	li	t3,-1
@@ -388,7 +388,7 @@ Disassembly of section .text:
     24d0:	00000013 	nop
     24d4:	800000b7 	lui	ra,0x80000
     24d8:	4020d1b3 	sra	s1,ra,s0
-    24dc:	00120213 	add	s2,s2,1
+    24dc:	00120213 	addi	s2,s2,1
     24e0:	00200293 	li	s3,2
     24e4:	fe5214e3 	bne	s2,s3,24cc <test_37+0x4>
     24e8:	ff000eb7 	lui	t3,0xff000
@@ -402,7 +402,7 @@ Disassembly of section .text:
     2500:	800000b7 	lui	ra,0x80000
     2504:	00000013 	nop
     2508:	4020d1b3 	sra	s1,ra,s0
-    250c:	00120213 	add	s2,s2,1
+    250c:	00120213 	addi	s2,s2,1
     2510:	00200293 	li	s3,2
     2514:	fe5212e3 	bne	s2,s3,24f8 <test_38+0x4>
     2518:	fffe0eb7 	lui	t3,0xfffe0
@@ -416,7 +416,7 @@ Disassembly of section .text:
     2530:	00000013 	nop
     2534:	800000b7 	lui	ra,0x80000
     2538:	4020d1b3 	sra	s1,ra,s0
-    253c:	00120213 	add	s2,s2,1
+    253c:	00120213 	addi	s2,s2,1
     2540:	00200293 	li	s3,2
     2544:	fe5212e3 	bne	s2,s3,2528 <test_39+0x4>
     2548:	fff00e93 	li	t3,-1
@@ -446,7 +446,7 @@ Disassembly of section .text:
 0000258c <test_43>:
     258c:	40000093 	li	ra,1024
     2590:	00001137 	lui	s0,0x1
-    2594:	80010113 	add	s0,s0,-2048
+    2594:	80010113 	addi	s0,s0,-2048 # 800 <_start-0x1800>
     2598:	4020d033 	sra	zero,ra,s0
     259c:	00000e93 	li	t3,0
     25a0:	02b00e13 	li	t2,43
@@ -456,12 +456,12 @@ Disassembly of section .text:
 000025ac <fail>:
     25ac:	0ff0000f 	fence
     25b0:	000e0863 	beqz	t2,25c0 <fail+0x14>
-    25b4:	001e1e13 	sll	t2,t2,0x1
-    25b8:	001e6e13 	or	t2,t2,1
+    25b4:	001e1e13 	slli	t2,t2,0x1
+    25b8:	001e6e13 	ori	t2,t2,1
     25bc:	51ee1073 	csrw	tohost,t2
     25c0:	00000063 	b	25c0 <fail+0x14>
 
 000025c4 <pass>:
     25c4:	0ff0000f 	fence
-    25c8:	51e0d073 	csrw	tohost,1
+    25c8:	51e0d073 	csrwi	tohost,1
     25cc:	00000063 	b	25cc <pass+0x8>
