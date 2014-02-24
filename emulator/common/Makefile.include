@@ -25,8 +25,10 @@ PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
 # Allow us to use different Tracer modules for each processor
 TRACERPATH?=$(common)
 TRACER?=tracer
+BP?=bp
+BPPATH?=$(common)
 
-CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11 
+CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11  -g
 
 CXXSRCS := disasm htif_emulator
 CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
@@ -34,8 +36,8 @@ CXXDEBUGFLAGS := -DDEBUG
 
 LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lpthread
 
-OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER))
-DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER))
+OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
+DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
 
 CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src
 CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
@@ -67,6 +69,13 @@ $(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src
  
 $(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
 	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
+
+$(BP).o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src/Top.h
+	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src -o $(BP).o
+ 
+$(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
+	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
+
 
 emulator.o: emulator.cpp generated-src/Top.h
 	$(CXX) -c $(CXXFLAGS) $< -I$(common) -I./generated-src -o $@
@@ -130,8 +139,8 @@ local_asm_tests := \
 # Globally installed benchmarks
 global_bmarkdir = $(install)/riscv-bmarks
 global_bmarks = \
-	qsort \
 	median \
+	qsort \
 	towers \
 	vvadd \
 	dhrystone

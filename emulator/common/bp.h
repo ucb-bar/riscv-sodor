@@ -3,6 +3,7 @@
 
 #define BUBBLE 0x5033
 
+
 // Signals in the emulator that the simulated branch predictor reads and
 // writes.  Create an instance of this structure and set all the pointers
 // to the relevant signals defined in generated-src/Top.h before passing it
@@ -15,6 +16,7 @@ struct bp_io
   dat_t<32>* exe_pc_next_ptr;
   dat_t<4>*  exe_br_type_ptr;
   dat_t<32>* exe_reg_inst_ptr;
+  dat_t<1>*  exe_mispredict_ptr;
 
   // Outputs
   dat_t<1>*  if_pred_taken_ptr;
@@ -23,8 +25,30 @@ struct bp_io
 
 class BranchPredictor 
 {
+  private:
+    long brjmp_count, inst_count, mispred_count;
+
   public:
-    BranchPredictor ( struct bp_io& _io )  : io(_io) {}
+    BranchPredictor ( struct bp_io& _io )  : io(_io) 
+    {
+      brjmp_count = 0;
+      mispred_count = 0;
+      inst_count = 0;
+    }
+
+    // Destructor must be virtual so that the delete at the end of main()
+    // in emulator.cpp will call the child's destructor.
+    virtual ~BranchPredictor ( ) 
+    {
+      fprintf ( stderr, "## BRJMPs %ld\n", brjmp_count );
+      fprintf ( stderr, "## INSTS %ld\n", inst_count );
+      fprintf ( stderr, "## MISREDICTS %ld\n", mispred_count );
+    }
+    
+    // This static function is called by main() in emulator.cpp, which uses
+    // whatever particular class of branch predictor you choose to return.
+    // (Thus, to choose which implementation gets run, modify this function!)
+    static BranchPredictor* make_branch_predictor ( struct bp_io& io );
 
     // 
     // Functions to be implemented by each branch predictor:
@@ -46,9 +70,10 @@ class BranchPredictor
     virtual void update_execute ( 
                           uint32_t pc,        // PC of this inst (in execute)
                           uint32_t pc_next,   // actual next PC of this inst
+                          bool mispredict, // predict_fetch for this inst
                           bool     is_brjmp,  // is actually a branch or jump
-                          uint32_t inst ) {}  // The inst itself, in case you 
-                                              // want to extract arbitrary info
+                          uint32_t inst )     // The inst itself, in case you
+    { }                                       // want to extract arbitrary info 
 
     // 
     // Functions written for you: these just get called by the emulator 
@@ -59,32 +84,22 @@ class BranchPredictor
     // the analogous functions in the DUT.
     void clock_lo ( dat_t<1> reset );
     void clock_hi ( dat_t<1> reset );
-   private:
-    struct bp_io io;
-};
-
-
-
-// Sample branch predictor provided for you: a simple branch target buffer.
-#define BTB_ADDR_BITS 10
-#define BTB_ENTRIES (1 << (BTB_ADDR_BITS-1))
-class BTB : public BranchPredictor 
-{
-  public:
-    BTB ( struct bp_io& _io );
-    ~BTB ( );
-
-    uint32_t predict_fetch ( uint32_t pc );
-    uint32_t predict_decode ( uint32_t pc, uint32_t inst );
-
-    void update_execute ( uint32_t pc, uint32_t pc_next, bool is_brjmp, uint32_t inst );
 
   private:
-    struct btb_entry {
-      uint32_t target_pc;
-      uint32_t tag_pc;
-    };
+    struct bp_io io;
 
-    struct btb_entry* table;
+    //
+    // clock_lo and clock_hi call these functions before they then
+    // call the corresponding virtual functions in the child.
+    //
+
+    void update_execute_base ( 
+        uint32_t pc, 
+        uint32_t pc_next, 
+        bool mispredict,
+        bool is_brjmp, 
+        uint32_t inst );
 };
+
+
 

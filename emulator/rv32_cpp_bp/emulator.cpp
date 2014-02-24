@@ -83,9 +83,10 @@ int main(int argc, char** argv)
    bpio.exe_pc_next_ptr        = &dut->Top_tile_core_d__exe_pc_next;
    bpio.exe_br_type_ptr        = &dut->Top_tile_core_d__exe_reg_ctrl_br_type;
    bpio.exe_reg_inst_ptr       = &dut->Top_tile_core_d__exe_reg_inst;
+   bpio.exe_mispredict_ptr     = &dut->Top_tile_core_d__io_ctl_mispredict;
    bpio.if_pred_taken_ptr      = &dut->Top_tile_core_d_btb__io_if_pred_taken;
    bpio.if_pred_target_ptr     = &dut->Top_tile_core_d_btb__io_if_pred_target;
-   BTB* btb = new BTB( bpio );
+   BranchPredictor* bp = BranchPredictor::make_branch_predictor( bpio );
 
    if (loadmem)
    {
@@ -159,7 +160,7 @@ int main(int argc, char** argv)
    while (!htif->done())
    {
       dut->clock_lo(LIT<1>(0));
-      btb->clock_lo(LIT<1>(0));
+      bp->clock_lo(LIT<1>(0));
 
       // perform all fesvr HostIO to HTIFIO transformations in software
       htif->tick(
@@ -215,7 +216,7 @@ int main(int argc, char** argv)
          }
       }
 
-      btb->clock_hi(LIT<1>(0));
+      bp->clock_hi(LIT<1>(0));
       dut->clock_hi(LIT<1>(0));
 
       trace_count++;
@@ -256,7 +257,7 @@ int main(int argc, char** argv)
 
    delete htif;
    delete dut;
-   delete btb;
+   delete bp;
 
    return 0;
 }
