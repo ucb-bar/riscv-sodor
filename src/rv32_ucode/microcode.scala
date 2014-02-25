@@ -275,7 +275,6 @@ object Microcode
    /* AUIPC            */
    /* A  <- PC         */,Label("AUIPC"),   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* A  <- A - 4      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_0, REN_0, LDA_1, LDB_X,ALU_DEC_A_4,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* A  <- A&~(1<<12)-1*/,                 Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_0, REN_0, LDA_1, LDB_X,ALU_MASK_12,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* B  <- Imm-UType  */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_0, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_U  , IEN_1, UBR_N),  "X")
    /* Reg[rd] <- A + B */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_X, LDB_X, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
 

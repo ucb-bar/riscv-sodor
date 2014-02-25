@@ -55,7 +55,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   SB     -> List(Y, BR_N  , OP1_RS1 , OP2_IMS , ALU_ADD ,  WB_X  , WA_X , REN_0, MEN_1, M_XWR, MT_B,  CSR.N),
                   SH     -> List(Y, BR_N  , OP1_RS1 , OP2_IMS , ALU_ADD ,  WB_X  , WA_X , REN_0, MEN_1, M_XWR, MT_H,  CSR.N),
                   
-                  AUIPC  -> List(Y, BR_N  , OP1_PCU , OP2_IMU , ALU_ADD   ,WB_ALU, WA_RD, REN_1, MEN_0, M_X ,  MT_X,  CSR.N),
+                  AUIPC  -> List(Y, BR_N  , OP1_PC  , OP2_IMU , ALU_ADD   ,WB_ALU, WA_RD, REN_1, MEN_0, M_X ,  MT_X,  CSR.N),
                   LUI    -> List(Y, BR_N  , OP1_X   , OP2_IMU , ALU_COPY2,WB_ALU, WA_RD, REN_1, MEN_0, M_X ,  MT_X,  CSR.N),
                  
                   ADDI   -> List(Y, BR_N  , OP1_RS1 , OP2_IMI , ALU_ADD ,  WB_ALU, WA_RD, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
