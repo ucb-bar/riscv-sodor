@@ -86,6 +86,7 @@ int main(int argc, char** argv)
    bpio.exe_mispredict_ptr     = &dut->Top_tile_core_d__io_ctl_mispredict;
    bpio.if_pred_taken_ptr      = &dut->Top_tile_core_d_btb__io_if_pred_taken;
    bpio.if_pred_target_ptr     = &dut->Top_tile_core_d_btb__io_if_pred_target;
+   bpio.stats_reg_ptr          = &dut->Top_tile_core_d_csr__reg_stats;
    BranchPredictor* bp = BranchPredictor::make_branch_predictor( bpio );
 
    if (loadmem)

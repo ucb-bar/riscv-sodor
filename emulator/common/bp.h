@@ -14,6 +14,7 @@ struct bp_io
   dat_t<4>*  exe_br_type_ptr;
   dat_t<32>* exe_reg_inst_ptr;
   dat_t<1>*  exe_mispredict_ptr;
+  dat_t<1>* stats_reg_ptr;
 
   // Outputs
   dat_t<1>*  if_pred_taken_ptr;
@@ -23,7 +24,7 @@ struct bp_io
 class BranchPredictor 
 {
   private:
-    long brjmp_count, inst_count, mispred_count;
+    long brjmp_count, inst_count, mispred_count, cycle_count;
 
   public:
     BranchPredictor ( struct bp_io& _io );

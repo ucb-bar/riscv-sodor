@@ -196,7 +196,7 @@ class NoBP: public BranchPredictor
 
 void BranchPredictor::clock_lo ( dat_t<1> reset )
 {
-  if( reset.lo_word() )
+  if( reset.lo_word ( ) || !io.stats_reg_ptr->lo_word ( ) )
     return;
 
   // Examine instruction in execute stage and use it to call update_execute()
@@ -213,7 +213,7 @@ void BranchPredictor::clock_lo ( dat_t<1> reset )
 
 void BranchPredictor::clock_hi ( dat_t<1> reset ) 
 {
-  if ( reset.lo_word() )
+  if ( reset.lo_word ( ) ) 
     return;
 
   // Extract PC of instruction being fetched, and call predict_fetch with it,
@@ -239,15 +239,17 @@ void BranchPredictor::update_execute_base (
     inst_count++;
     mispred_count += 1 & (long) ( mispredict );
   }
+  cycle_count++;
   update_execute ( pc, pc_next, mispredict, is_brjmp, inst );
 }
 
 
 BranchPredictor::BranchPredictor ( struct bp_io& _io )  : io(_io) 
 {
-  brjmp_count = 0;
+  brjmp_count   = 0;
   mispred_count = 0;
-  inst_count = 0;
+  inst_count    = 0;
+  cycle_count   = 0;
 }
 
 
@@ -256,6 +258,7 @@ BranchPredictor::~BranchPredictor ( )
   fprintf ( stderr, "## BRJMPs %ld\n", brjmp_count );
   fprintf ( stderr, "## INSTS %ld\n", inst_count );
   fprintf ( stderr, "## MISREDICTS %ld\n", mispred_count );
+  fprintf ( stderr, "## CYCLES %ld\n", cycle_count );
 }
 
 
