@@ -16,7 +16,7 @@ object BuildSettings extends Build {
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "scct-github-repository" at "http://mtkopone.github.com/scct/maven-repo"
     ),
-    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.0"
+    libraryDependencies += "edu.berkeley.cs" %% "chisel" % "2.3-SNAPSHOT"
   )
 
   lazy val common = Project("common", file("common"), settings = buildSettings

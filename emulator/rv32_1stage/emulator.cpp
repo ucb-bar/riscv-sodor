@@ -102,10 +102,10 @@ int main(int argc, char** argv)
          {
 //            fprintf(stderr, "   bidx: %4d , 0x%x -- b1: 0x%08x_%08x_%08x_%08x\n"
 //               , mem_idx, mem_idx << 3, m[3], m[2], m[1], m[0]);
-            dut.Top_tile_memory__data_bank0.put(mem_idx, LIT<32>(m[0]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx, LIT<32>(m[1]));
-            dut.Top_tile_memory__data_bank0.put(mem_idx+1, LIT<32>(m[2]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx+1, LIT<32>(m[3]));
+            //dut.Top_tile_memory__data_bank0.put(mem_idx, LIT<32>(m[0]));
+            //dut.Top_tile_memory__data_bank1.put(mem_idx, LIT<32>(m[1]));
+            //dut.Top_tile_memory__data_bank0.put(mem_idx+1, LIT<32>(m[2]));
+            //dut.Top_tile_memory__data_bank1.put(mem_idx+1, LIT<32>(m[3]));
          }
          mem_idx += 2;
       }
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
    signal(SIGTERM, handle_sigterm);
 
   // reset for a few cycles to support pipelined reset
-   dut.Top__io_htif_reset= LIT<1>(1);
+   //dut.Top__io_htif_reset= LIT<1>(1);
 
    for (int i = 0; i < 10; i++)
    {
@@ -149,9 +149,25 @@ int main(int argc, char** argv)
          , dut.Top__io_htif_mem_rep_valid.lo_word()
          , dut.Top__io_htif_mem_rep_bits.lo_word()
       );
+      
+      fprintf(logfile, "receiver shift reg 0: %d |", dut.Top_queueReceiver_originalModule__shift_reg0.lo_word());
+      fprintf(logfile, "receiver shift reg 1: %d |", dut.Top_queueReceiver_originalModule__shift_reg1.lo_word());
+      fprintf(logfile, "receiver shift reg 2: %d |", dut.Top_queueReceiver_originalModule__shift_reg2.lo_word());
+      fprintf(logfile, "receiver shift reg 3: %d |", dut.Top_queueReceiver_originalModule__shift_reg3.lo_word());
+      fprintf(logfile, "receiver mem out : %d |", dut.Top__io_mem_out.lo_word());
+      fprintf(logfile, "receiver fire: %d |", dut.Top_queueReceiver__fire_tgt_clk.lo_word());
+      fprintf(logfile, "tester fire: %d \n", dut.Top_queueTester__fire_tgt_clk.lo_word());
 
+      /*fprintf(logfile, "tester1 current state: %d |", dut.Top_regtester1__current_state.lo_word());
+      fprintf(logfile, "tester2 current state: %d |", dut.Top_regtester2_originalModule__current_state.lo_word());
+      fprintf(logfile, "tester1 fire: %d |", dut.Top_regtester1__fireClk.lo_word());
+      fprintf(logfile, "tester2 fire: %d |", dut.Top_regtester2__fire_tgt_clk.lo_word());
+      fprintf(logfile, "testreg1: %d |", dut.Top__io_testreg1.lo_word());
+      fprintf(logfile, "testreg2: %d \n", dut.Top__io_testreg2.lo_word());*/
+      
+      
       // send HTIF signals to the chip
-      dut.Top__io_htif_pcr_rep_ready = htif->pcr_rep_ready;
+      /*dut.Top__io_htif_pcr_rep_ready = htif->pcr_rep_ready;
 
       dut.Top__io_htif_pcr_req_valid = htif->pcr_req_valid;
       dut.Top__io_htif_pcr_req_bits_data = htif->pcr_req_bits_data;
@@ -163,26 +179,26 @@ int main(int argc, char** argv)
       dut.Top__io_htif_mem_req_bits_data = htif->mem_req_bits_data;
       dut.Top__io_htif_mem_req_bits_rw = htif->mem_req_bits_rw;
 
-      dut.Top__io_htif_reset = htif->reset;
+      dut.Top__io_htif_reset = htif->reset;*/
          
   
-      if (dut.Top__io_debug_error_mode.lo_word())
+      /*if (dut.Top__io_debug_error_mode.lo_word())
       {
          failure = "entered error mode";
          fprintf(stderr, "Error Mode\n");
          break; 
-      }
+      }*/
 
       if (log || vcd)
       {
          if (log)
          {
-            dut.print(logfile);
+            //dut.print(logfile);
          }
 
          if (vcd)
          {
-            insn_t insn;
+            /*insn_t insn;
             insn.bits = dut.Top_tile_core_d__inst.lo_word();
             std::string inst_disasm = disasm.disassemble(insn); 
             inst_disasm.resize(disasm_len, ' ');
@@ -192,7 +208,7 @@ int main(int argc, char** argv)
 
             dut.dump(vcdfile, trace_count);
             dat_dump(vcdfile, disasm_dat, "NDISASM");
-            dat_dump(vcdfile, dat_t<64>(trace_count), "NCYCLE\n");
+            dat_dump(vcdfile, dat_t<64>(trace_count), "NCYCLE\n");*/
          }
       }
 
@@ -219,9 +235,9 @@ int main(int argc, char** argv)
       fprintf(logfile, "*** PASSED ***\n");
    }
 
-   int retired_insts = dut.Top_tile_core_d__irt_reg.lo_word();
+   /*int retired_insts = dut.Top_tile_core_d__irt_reg.lo_word();
    int time_stamp_counter = dut.Top_tile_core_d__tsc_reg.lo_word();
-   fprintf(logfile, "# IPC: %f\n", (float) retired_insts / time_stamp_counter);
+   fprintf(logfile, "# IPC: %f\n", (float) retired_insts / time_stamp_counter);*/
 
    delete htif;
 
