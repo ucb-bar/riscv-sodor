@@ -13,9 +13,6 @@ AC_OUTPUT(
     project/plugins.sbt
     project/build.properties
     project/build.scala
-    emulator/rv32_1stage/Makefile
-    emulator/rv32_2stage/Makefile
     emulator/rv32_3stage/Makefile
-    emulator/rv32_5stage/Makefile
     emulator/rv32_ucode/Makefile
 )
