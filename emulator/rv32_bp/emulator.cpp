@@ -180,7 +180,7 @@ int main(int argc, char** argv)
       {
          if (log)
          {
-            dut.print(logfile, logfile);
+            dut.print(logfile);
          }
 
          if (vcd)
@@ -194,8 +194,6 @@ int main(int argc, char** argv)
                disasm_dat = disasm_dat << 8 | LIT<8>(inst_disasm[i]);
 
             dut.dump(vcdfile, trace_count);
-            dat_dump(vcdfile, disasm_dat, "NDISASM");
-            dat_dump(vcdfile, dat_t<64>(trace_count), "NCYCLE\n");
          }
       }
 
