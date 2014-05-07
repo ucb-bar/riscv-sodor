@@ -3,7 +3,7 @@ About The Sodor Processor Collection
 
 Author : Christopher Celio (celio@eecs.berkeley.edu)
 
-Date   : 2013 July 16
+Date   : 2014 May 6
 
 This repo has been put together to demonstrate a number of simple [RISC-V](http://riscv.org)
 integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
@@ -55,7 +55,6 @@ Install the RISC-V front-end server to talk between the host and RISC-V target p
 
     $ git clone https://github.com/ucb-bar/riscv-fesvr.git
     $ cd riscv-fesvr
-    $ git checkout cf8867448d02ba99ee5a2163dbee0e3dada348dd 
     $ ./configure --prefix=/usr/local
     $ make install
  
@@ -75,9 +74,8 @@ Clean all generated files
     $ make clean
 
 
-(The riscv-fesvr is still undergoing rapid development, thus you need to
-checkout a specific version that is known to work with the current version of
-riscv-sodor).
+(Although you can set the prefix to any directory of your choice, they must be
+the same directory for both riscv-fesvr and riscv-sodor).
 
 (Alternative) Build together with Chisel sources
 ------------------------------------------------
