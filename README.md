@@ -6,9 +6,6 @@ Author : Eric Love
 
 Date   : 2014 May 6
  
-This particular branch was used for the UC Berkeley CS152 class (Spring 2014)
-and includes a 6-stage pipeline with a BTB. 
-
 
 This repo has been put together to demonstrate a number of simple [RISC-V](http://riscv.org)
 integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
