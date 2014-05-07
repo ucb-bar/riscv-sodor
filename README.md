@@ -154,4 +154,19 @@ tests/riscv-bmarks/Makefile SUPERVISOR\_MODE variable).
 
 Have fun!
 
+TODO
+----
+
+Here is an informal list of things that would be nice to get done.
+
+* Parallelize the compilation of the C++ files (Top-1.cpp, Top-2.cpp, etc.)
+* Add stat information back in (e.g., print out the CPI).
+* Leverage the uarch-counters (need to update CSRFile).
+* Use the newest riscv-test benchmarks, which provide printf (but require
+  syscall support) and dump out the uarch counter state.
+* Update the 3-stage to RISC-V 2.0.
+* Get the 3-stage working in Princeton mode (previously only worked in 
+  Harvard mode).
+* Use the riscv-dis binary for providing diassembly support (instead of using
+  Chisel, which is expensive), which is provided by the riscv-fesvr repository.
 
