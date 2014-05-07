@@ -135,7 +135,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    io.dmem.req.valid    := cs_mem_en.toBool
    io.dmem.req.bits.fcn := cs_mem_fcn
-   io.dmem.req.bits.typ := cs_msk_sel // XXX for now, later add support for sub mem ops
+   io.dmem.req.bits.typ := cs_msk_sel 
    
 }
 

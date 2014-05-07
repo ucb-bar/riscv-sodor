@@ -152,8 +152,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Memory Flushes & Syncs (which are only handled via flushes in this pipeline)
    // scratchpad has no flushes
-//   io.imem.flush   := (cs_sync_fcn === M_SI) || (cs_sync_fcn === M_FA)
-//   io.dmem.flush   := (cs_sync_fcn === M_SI) || (cs_sync_fcn === M_FA) || (cs_sync_fcn === M_FD)
+   //io.imem.flush   := (cs_sync_fcn === M_SI) || (cs_sync_fcn === M_FA)
+   //io.dmem.flush   := (cs_sync_fcn === M_SI) || (cs_sync_fcn === M_FA) || (cs_sync_fcn === M_FD)
    
    // Exception Handling
    io.ctl.sret      := cs_sret.toBool

@@ -289,7 +289,7 @@ object Disassemble
 
 
   private def operands(insn: Bits, fmt: Bits): Bits = {
-    val x = AVec(Str(" x0"), Str(" ra"), Str(" s0"), Str(" s1"),
+    val x = Vec(Str(" x0"), Str(" ra"), Str(" s0"), Str(" s1"),
                  Str(" s2"), Str(" s3"), Str(" s4"), Str(" s5"),
                  Str(" s6"), Str(" s7"), Str(" s8"), Str(" s9"),
                  Str("s10"), Str("s11"), Str(" sp"), Str(" tp"),
@@ -297,7 +297,7 @@ object Disassemble
                  Str(" a2"), Str(" a3"), Str(" a4"), Str(" a5"),
                  Str(" a6"), Str(" a7"), Str(" a8"), Str(" a9"),
                  Str("a10"), Str("a11"), Str("a12"), Str("a13"))
-    val f = AVec(Str(" fs0"), Str(" fs1"), Str(" fs2"), Str(" fs3"),
+    val f = Vec(Str(" fs0"), Str(" fs1"), Str(" fs2"), Str(" fs3"),
                  Str(" fs4"), Str(" fs5"), Str(" fs6"), Str(" fs7"),
                  Str(" fs8"), Str(" fs9"), Str("fs10"), Str("fs11"),
                  Str("fs12"), Str("fs13"), Str("fs14"), Str("fs15"),
@@ -305,7 +305,7 @@ object Disassemble
                  Str(" fa2"), Str(" fa3"), Str(" fa4"), Str(" fa5"),
                  Str(" fa6"), Str(" fa7"), Str(" fa8"), Str(" fa9"),
                  Str("fa10"), Str("fa11"), Str("fa12"), Str("fa13"))
-    val p = AVec(Str(" cr0"), Str(" cr1"), Str(" cr2"), Str(" cr3"),
+    val p = Vec(Str(" cr0"), Str(" cr1"), Str(" cr2"), Str(" cr3"),
                  Str(" cr4"), Str(" cr5"), Str(" cr6"), Str(" cr7"),
                  Str(" cr8"), Str(" cr9"), Str("cr10"), Str("cr11"),
                  Str("cr12"), Str("cr13"), Str("cr14"), Str("cr15"),
@@ -363,7 +363,7 @@ object Disassemble
                    fld, fst, amo, r2_p)
     val maxLen = opts.map(_.getWidth).reduce(_ max _)
     val padded = opts.map(x => x.toUInt << UInt(maxLen - x.getWidth))
-    AVec(padded)(fmt.toUInt)
+    Vec(padded)(fmt.toUInt)
   }
 
   private def FMT_R0  = Bits(0, 5)

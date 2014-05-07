@@ -20,19 +20,6 @@ object Util
    implicit def wcToUInt(c: WideCounter): UInt = c.value
 }
  
-object AVec
-{
-   def apply[T <: Data](elts: Seq[T]): Vec[T] = Vec(elts)
-   def apply[T <: Data](elts: Vec[T]): Vec[T] = apply(elts.toSeq)
-   def apply[T <: Data](elt0: T, elts: T*): Vec[T] = apply(elt0 :: elts.toList)
-
-   def tabulate[T <: Data](n: Int)(f: Int => T): Vec[T] =
-      apply((0 until n).map(i => f(i)))
-   def tabulate[T <: Data](n1: Int, n2: Int)(f: (Int, Int) => T): Vec[Vec[T]] =
-      tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
-}
-
-
 //do two masks have at least 1 bit match?
 object maskMatch
 {
@@ -198,7 +185,7 @@ object Str
 
   private def digit(d: Int): Char = (if (d < 10) '0'+d else 'a'-10+d).toChar
   private def digits(radix: Int): Vec[Bits] =
-    AVec((0 until radix).map(i => Str(digit(i))))
+    Vec((0 until radix).map(i => Str(digit(i))))
 
   private def validChar(x: Char) = x == (x & 0xFF)
 }

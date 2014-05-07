@@ -2,8 +2,8 @@
 // RISCV Processor 6-Stage Datapath
 //--------------------------------------------------------------------------
 //
-// Christopher Celio
-// 2012 Jan 13
+// Eric Love
+// 2014 Jan 
 
 package Sodor
 {

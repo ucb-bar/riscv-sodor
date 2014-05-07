@@ -16,9 +16,6 @@ trait SodorProcConstants
 {
    //************************************
    // Machine Parameters
-//   val XPRLEN = 32           // native width of machine
-                             // (i.e., the width of a register in 
-                             // the general-purpose register file)
 }
    
 trait ScalarOpConstants

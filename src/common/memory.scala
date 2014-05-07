@@ -61,6 +61,9 @@ class MemResp(data_width: Int) extends Bundle
   override def clone = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
+// NOTE: the default is enormous (and may crash your computer), but is bound by
+// what the fesvr expects the smallest memory size to be.  A proper fix would
+// be to modify the fesvr to expect smaller sizes.
 class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
 {
    val io = new Bundle

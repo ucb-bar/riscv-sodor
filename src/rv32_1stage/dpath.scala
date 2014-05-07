@@ -143,7 +143,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   ))
 
    // Branch/Jump Target Calculation
-   val brjmp_offset    = alu_op2.toUInt
+   val brjmp_offset = alu_op2.toUInt
    brjmp_target    := pc_reg + brjmp_offset
    jump_reg_target := (rs1_data.toUInt + imm_i_sext.toUInt)
                                   
