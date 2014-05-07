@@ -2233,7 +2233,7 @@ fi
 chiseldir=$with_chisel
 
 
-ac_config_files="$ac_config_files prefix.mk Makefile project/plugins.sbt project/build.properties project/build.scala emulator/rv32_3stage/Makefile emulator/rv32_ucode/Makefile"
+ac_config_files="$ac_config_files prefix.mk Makefile project/plugins.sbt project/build.properties project/build.scala"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -2957,8 +2957,6 @@ do
     "project/plugins.sbt") CONFIG_FILES="$CONFIG_FILES project/plugins.sbt" ;;
     "project/build.properties") CONFIG_FILES="$CONFIG_FILES project/build.properties" ;;
     "project/build.scala") CONFIG_FILES="$CONFIG_FILES project/build.scala" ;;
-    "emulator/rv32_3stage/Makefile") CONFIG_FILES="$CONFIG_FILES emulator/rv32_3stage/Makefile" ;;
-    "emulator/rv32_ucode/Makefile") CONFIG_FILES="$CONFIG_FILES emulator/rv32_ucode/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
