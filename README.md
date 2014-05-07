@@ -2,8 +2,13 @@ About The Sodor Processor Collection
 ====================================
 
 Author : Christopher Celio (celio@eecs.berkeley.edu)
+Author : Eric Love
 
 Date   : 2014 May 6
+ 
+This particular branch was used for the UC Berkeley CS152 class (Spring 2014)
+and includes a 6-stage pipeline with a BTB. 
+
 
 This repo has been put together to demonstrate a number of simple [RISC-V](http://riscv.org)
 integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
@@ -13,6 +18,7 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 * 3-stage ("Princeton-style", uses sequential memory)
 * 5-stage (can toggle between fully bypassed or fully interlocked)
 * "bus"-based micro-coded implementation
+
 
 All of the cores implement a simple subset of the RISC-V 32b integer base
 user-level ISA (RV32I).  The cores do not implement floating point, and most do
