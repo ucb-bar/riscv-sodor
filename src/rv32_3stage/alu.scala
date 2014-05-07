@@ -12,29 +12,15 @@ import Constants._
 object ALU
 {
   val SZ_ALU_FN = 4
-//  val FN_X    = Bits("b????")
-  val FN_X    = Bits(0, SZ_ALU_FN)
-  val FN_ADD  = Bits(0, SZ_ALU_FN)
-  val FN_SL   = Bits(1, SZ_ALU_FN)
-  val FN_XOR  = Bits(4, SZ_ALU_FN)
-  val FN_OR   = Bits(6, SZ_ALU_FN)
-  val FN_AND  = Bits(7, SZ_ALU_FN)
-  val FN_SR   = Bits(5, SZ_ALU_FN)
-  val FN_SUB  = Bits(8, SZ_ALU_FN)
-  val FN_SLT  = Bits(10, SZ_ALU_FN)
-  val FN_SLTU = Bits(11, SZ_ALU_FN)
-  val FN_SRA  = Bits(13, SZ_ALU_FN)
-  val FN_OP2  = Bits(15, SZ_ALU_FN)
+  val ALU_DIV  = ALU_XOR
+  val ALU_DIVU = ALU_SRL
+  val ALU_REM  = ALU_OR
+  val ALU_REMU = ALU_AND
 
-  val FN_DIV  = FN_XOR
-  val FN_DIVU = FN_SR
-  val FN_REM  = FN_OR
-  val FN_REMU = FN_AND
-
-  val FN_MUL    = FN_ADD
-  val FN_MULH   = FN_SL
-  val FN_MULHSU = FN_SLT
-  val FN_MULHU  = FN_SLTU
+  val ALU_MUL    = ALU_ADD
+  val ALU_MULH   = ALU_SLL
+  val ALU_MULHSU = ALU_SLT
+  val ALU_MULHU  = ALU_SLTU
 
   def isMulFN(fn: Bits, cmp: Bits) = fn(1,0) === cmp(1,0)
   def isSub(cmd: Bits) = cmd(3)
@@ -73,22 +59,22 @@ class ALU(implicit conf: SodorConfiguration) extends Module
 //  val shin_r = Cat(shin_hi, io.in1(31,0))
   val shamt = io.in2(4,0).toUInt
   val shin_r = io.in1(31,0)
-  val shin = Mux(io.fn === FN_SR  || io.fn === FN_SRA, shin_r, Reverse(shin_r))
+  val shin = Mux(io.fn === ALU_SRL  || io.fn === ALU_SRA, shin_r, Reverse(shin_r))
   val shout_r = (Cat(isSub(io.fn) & shin(msb), shin).toSInt >> shamt)(msb,0)
   val shout_l = Reverse(shout_r)
 
   val bitwise_logic =
-    Mux(io.fn === FN_AND, io.in1 & io.in2,
-    Mux(io.fn === FN_OR,  io.in1 | io.in2,
-    Mux(io.fn === FN_XOR, io.in1 ^ io.in2,
-        io.in2))) // FN_OP2
+    Mux(io.fn === ALU_AND, io.in1 & io.in2,
+    Mux(io.fn === ALU_OR,  io.in1 | io.in2,
+    Mux(io.fn === ALU_XOR, io.in1 ^ io.in2,
+        io.in2))) // ALU_OP2
 
 //  val out64 =
   val out_xpr_length =
-    Mux(io.fn === FN_ADD || io.fn === FN_SUB,  sum,
-    Mux(io.fn === FN_SLT || io.fn === FN_SLTU, less,
-    Mux(io.fn === FN_SR  || io.fn === FN_SRA,  shout_r,
-    Mux(io.fn === FN_SL,                       shout_l,
+    Mux(io.fn === ALU_ADD || io.fn === ALU_SUB,  sum,
+    Mux(io.fn === ALU_SLT || io.fn === ALU_SLTU, less,
+    Mux(io.fn === ALU_SRL || io.fn === ALU_SRA,  shout_r,
+    Mux(io.fn === ALU_SLL,                       shout_l,
         bitwise_logic))))
 
 //  val out_hi = Mux(io.dw === DW_64, out64(63,32), Fill(32, out64(31)))

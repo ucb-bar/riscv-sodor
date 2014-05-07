@@ -171,13 +171,13 @@ int main(int argc, char** argv)
       {
          if (log)
          {
-            dut.print(logfile, logfile);
+            dut.print(logfile);
          }
 
          if (vcd)
          {
             insn_t insn;
-            insn.bits = dut.Top_tile_core_d__exe_inst.lo_word();
+            insn.bits = dut.Top_tile_core_d__io_imem_resp_bits_inst.lo_word();
             std::string inst_disasm = disasm.disassemble(insn); 
             inst_disasm.resize(disasm_len, ' ');
             dat_t<disasm_len*8> disasm_dat;
@@ -185,8 +185,6 @@ int main(int argc, char** argv)
                disasm_dat = disasm_dat << 8 | LIT<8>(inst_disasm[i]);
 
             dut.dump(vcdfile, trace_count);
-            dat_dump(vcdfile, disasm_dat, "NDISASM");
-            dat_dump(vcdfile, dat_t<64>(trace_count), "NCYCLE\n");
          }
       }
 
@@ -223,9 +221,6 @@ int main(int argc, char** argv)
       fprintf(logfile, "*** PASSED ***\n");
    }
 
-   int retired_insts = dut.Top_tile_core_d__irt_reg.lo_word();
-   int time_stamp_counter = dut.Top_tile_core_d__tsc_reg.lo_word();
-   fprintf(logfile, "# IPC: %f\n", (float) retired_insts / time_stamp_counter);
 
    delete htif;
 

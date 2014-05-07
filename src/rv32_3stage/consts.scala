@@ -1,7 +1,9 @@
 //**************************************************************************
 // RISCV Processor Constants
 //--------------------------------------------------------------------------
-
+//
+// Christopher Celio
+// 2011 May 28
 
 package Sodor
 package constants
@@ -14,9 +16,9 @@ trait SodorProcConstants
 {
    //************************************
    // Machine Parameters
-   
-   val NUM_MEMORY_PORTS = 2 // number of ports to memory (1 or 2)
-
+//   val XPRLEN = 32           // native width of machine
+                             // (i.e., the width of a register in 
+                             // the general-purpose register file)
 }
    
 trait ScalarOpConstants
@@ -28,10 +30,11 @@ trait ScalarOpConstants
    val N      = Bool(false)
     
    // PC Select Signal
-   val PC_4   = UInt(0, 2)  // PC + 4
-   val PC_BRJMP=UInt(1, 2)  // br or jmp target
-   val PC_JR  = UInt(2, 2)  // jumpreg target
-   val PC_EXC = UInt(3, 2)  // exception 
+   val PC_4   = UInt(0, 3)  // PC + 4
+   val PC_BR  = UInt(1, 3)  // branch_target
+   val PC_J   = UInt(2, 3)  // jump_target
+   val PC_JR  = UInt(3, 3)  // jump_reg_target
+   val PC_EXC = UInt(4, 3)  // exception 
                                   
    // Branch Type
    val BR_N   = UInt(0, 4)  // Next
@@ -45,30 +48,39 @@ trait ScalarOpConstants
    val BR_JR  = UInt(8, 4)  // Jump Register
  
    // RS1 Operand Select Signal
-   val OP1_RS1 = UInt(0, 1) // Register Source #1
-   val OP1_PC  = UInt(1, 1) // PC
-   val OP1_X   = UInt(0, 1)
+   val OP1_RS1  = UInt(0, 2) // Register Source #1
+   val OP1_PC   = UInt(1, 2) // PC 
+   val OP1_PCU  = UInt(2, 2) // PC w/ lower 12bits zeroed
+   val OP1_ZIMM = UInt(3, 2) // Zero-extended rs1 field of inst
+   val OP1_X    = UInt(0, 2)
    
    // RS2 Operand Select Signal
    val OP2_RS2 = UInt(0, 3) // Register Source #2
    val OP2_IMI = UInt(1, 3) // immediate, I-type
    val OP2_IMB = UInt(2, 3) // immediate, B-type
-   val OP2_UI  = UInt(3, 3) // immediate, U-type
-   val OP2_4   = UInt(4, 3) // literal 4 (for PC+4 shift)
+   val OP2_IMS = UInt(3, 3) // immediate, S-type
+   val OP2_IMU = UInt(4, 3) // immediate, U-type
+   val OP2_IMJ = UInt(5, 3) // immediate, J-type
    val OP2_X   = UInt(0, 3)
-                      
+    
    // Register File Write Enable Signal
    val REN_0   = Bool(false)
    val REN_1   = Bool(true)
    val REN_X   = Bool(false)
            
-   // Is 32b Word or 64b Doubldword?
-   val SZ_DW = 1
-   val DW_X   = Bool(false) //Bool(XPRLEN==64)
-   val DW_32  = Bool(false)
-   val DW_64  = Bool(true)
-   val DW_XPR = Bool(false) //Bool(XPRLEN==64)
-
+   // ALU Operation Signal
+   val ALU_ADD = UInt ( 1, 4)
+   val ALU_SUB = UInt ( 2, 4)
+   val ALU_SLL = UInt ( 3, 4)
+   val ALU_SRL = UInt ( 4, 4)
+   val ALU_SRA = UInt ( 5, 4)
+   val ALU_AND = UInt ( 6, 4)
+   val ALU_OR  = UInt ( 7, 4)
+   val ALU_XOR = UInt ( 8, 4)
+   val ALU_SLT = UInt ( 9, 4)
+   val ALU_SLTU= UInt (10, 4)
+   val ALU_COPY2=UInt (11, 4) 
+   val ALU_X   = UInt ( 0, 4)
     
    // Writeback Address Select Signal
    val WA_RD   = Bool(true)   // write to register rd
@@ -76,13 +88,11 @@ trait ScalarOpConstants
    val WA_X    = Bool(true)
     
    // Writeback Select Signal
-   val WB_ALU  = UInt(0, 3)
-   val WB_MEM  = UInt(1, 3)
-   val WB_PC4  = UInt(2, 3)
-   val WB_PCR  = UInt(3, 3)
-   val WB_TSC  = UInt(4, 3)
-   val WB_IRT  = UInt(5, 3)
-   val WB_X    = UInt(0, 3)
+   val WB_ALU  = UInt(0, 2)
+   val WB_MEM  = UInt(1, 2)
+   val WB_PC4  = UInt(2, 2)
+   val WB_CSR  = UInt(3, 2)
+   val WB_X    = UInt(0, 2)
    
    // Memory Function Type (Read,Write,Fence) Signal
    val MWR_R   = UInt(0, 2)
@@ -103,12 +113,6 @@ trait ScalarOpConstants
    val MSK_W   = UInt(4, 3)
    val MSK_X   = UInt(4, 3)
                      
-   // Enable Co-processor Register Signal (ToHost Register, etc.)
-   val PCR_N   = UInt(0,3)    // do nothing
-   val PCR_F   = UInt(1,3)    // mtpcr
-   val PCR_T   = UInt(2,3)    // mfpcr
-   val PCR_C   = UInt(3,3)    // clear pcr
-   val PCR_S   = UInt(4,3)    // set pcr
  
    // Cache Flushes & Sync Primitives 
    val M_N      = Bits(0,3)
@@ -128,9 +132,7 @@ trait ScalarOpConstants
    // generated NOPs which are (ADDI x0, x0, 0).
    // Reasoning for this is to let visualizers and stat-trackers differentiate
    // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x233, 32)
-
-   val RA = UInt(1) // return address register for JAL
+   val BUBBLE  = Bits(0x5033, 32)
  
 }
  
