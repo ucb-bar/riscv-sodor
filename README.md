@@ -2,6 +2,7 @@ About The Sodor Processor Collection
 ====================================
 
 Author : Christopher Celio (celio@eecs.berkeley.edu)
+
 Author : Eric Love
 
 Date   : 2014 May 6
@@ -17,13 +18,11 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 * "bus"-based micro-coded implementation
 
 
-All of the cores implement a simple subset of the RISC-V 32b integer base
-user-level ISA (RV32I).  The cores do not implement floating point, and most do
-not implement sub-word memory accesses nor supervisor mode (the 1-stage and
-3-stage being the exceptions).
+All of the cores implement the RISC-V 32b integer base user-level ISA (RV32I)
+version 2.0.  Only the 1-stage and 3-stage implement supervisor mode.
 
 All processors talk to a simple scratchpad memory (asynchronous,
-single-cycle), with no backing outer memory (the 3-stage is again the exception
+single-cycle), with no backing outer memory (the 3-stage is the exception
 \- its scratchpad is synchronous). Programs are loaded in via a Host-target
 Interface (HTIF) port (while the core is kept in reset), effectively making the
 scratchpads 3-port memories (instruction, data, HTIF).
@@ -33,7 +32,8 @@ the Sodor emulators.  Users wishing to use the Verilog-backend will need to
 write their own testharness and glue code to interface with their own tool
 flows.
 
-This repo works great as an undergraduate lab.
+This repo works great as an undergraduate lab (and has been used by Berkeley's
+CS152 class for 3 semesters and counting). See doc/ for an example. 
 
 
 
@@ -157,7 +157,8 @@ Have fun!
 TODO
 ----
 
-Here is an informal list of things that would be nice to get done.
+Here is an informal list of things that would be nice to get done. Feel free to
+contribute!
 
 * Parallelize the compilation of the C++ files (Top-1.cpp, Top-2.cpp, etc.)
 * Add stat information back in (e.g., print out the CPI).
@@ -165,8 +166,8 @@ Here is an informal list of things that would be nice to get done.
 * Use the newest riscv-test benchmarks, which provide printf (but require
   syscall support) and dump out the uarch counter state.
 * Update the 3-stage to RISC-V 2.0.
-* Get the 3-stage working in Princeton mode (previously only worked in 
-  Harvard mode).
-* Use the riscv-dis binary for providing diassembly support (instead of using
-  Chisel, which is expensive), which is provided by the riscv-fesvr repository.
+* Update the 3-stage to work in Princeton mode (previously only worked in 
+  Harvard mode with synchronous memory).
+* Use the riscv-dis binary to provide diassembly support (instead of using
+  Chisel RTL, which is expensive), which is provided by the riscv-fesvr repository.
 
