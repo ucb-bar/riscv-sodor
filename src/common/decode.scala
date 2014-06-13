@@ -9,7 +9,7 @@ object DecodeLogic
     val lit = b.litOf
     if (lit.isZ) {
       var (bits, mask, swidth) = Literal.parseLit(lit.toString)
-      new Term(BigInt(bits, 2), BigInt(2).pow(lit.width)-(BigInt(mask, 2)+1))
+      new Term(BigInt(bits, 2), BigInt(2).pow(lit.getWidth)-(BigInt(mask, 2)+1))
     } else {
       new Term(lit.value)
     }
@@ -35,7 +35,7 @@ object DecodeLogic
         for (u <- t.tail)
           assert(!t.head._2.intersects(u._2), "DecodeLogic: keys " + t.head + " and " + u + " overlap")
 
-      val result = (0 until math.max(d.litOf.width, values.map(_.head.litOf.width).max)).map({ case (i: Int) =>
+      val result = (0 until math.max(d.litOf.getWidth, values.map(_.head.litOf.getWidth).max)).map({ case (i: Int) =>
         val mint = termvalues.filter { case (k,t) => ((t.mask >> i) & 1) == 0 && ((t.value >> i) & 1) == 1 }.map(_._1)
         val maxt = termvalues.filter { case (k,t) => ((t.mask >> i) & 1) == 0 && ((t.value >> i) & 1) == 0 }.map(_._1)
         val dc = termvalues.filter { case (k,t) => ((t.mask >> i) & 1) == 1 }.map(_._1)
