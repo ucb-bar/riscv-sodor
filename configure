@@ -564,6 +564,7 @@ PACKAGE_URL=''
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 chiseldir
+chisel_version
 OBJEXT
 EXEEXT
 ac_ct_CXX
@@ -2236,6 +2237,13 @@ if test "${with_chisel+set}" = set; then :
 fi
 
 
+if test "x$with_chisel" != "x"; then :
+  chisel_version=latest.release
+
+      chisel_version=latest.SNAPSHOT
+
+fi
+
 chiseldir=$with_chisel
 
 
@@ -3411,5 +3419,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
