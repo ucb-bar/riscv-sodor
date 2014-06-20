@@ -63,6 +63,7 @@ clean:
 	for d in $(patsubst %,emulator/%,$(all_targets)) ; do \
 		make -C $$d clean ; \
 	done
+	$(RM) test-results.xml
 
 reports: test-results.xml report-cpi report-bp report-stats
 
@@ -145,5 +146,5 @@ emulator/rv32_ucode/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
 
 .PHONY:	jenkins-build
 
-jenkins-build:
+jenkins-build:	clean clean-tests
 	make SBT_FLAGS="-Dsbt.log.noformat=true -DchiselVersion=2.3-SNAPSHOT" clean run-emulator reports
