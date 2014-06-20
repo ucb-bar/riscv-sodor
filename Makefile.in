@@ -147,4 +147,5 @@ emulator/rv32_ucode/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
 .PHONY:	jenkins-build
 
 jenkins-build:
-	make SBT_FLAGS="-Dsbt.log.noformat=true -DchiselVersion=2.3-SNAPSHOT" clean run-emulator reports
+	make SBT_FLAGS="-Dsbt.log.noformat=true -DchiselVersion=2.3-SNAPSHOT" clean run-emulator
+	make reports
