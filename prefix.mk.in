@@ -1,6 +1,5 @@
 # Declaration of common variables
 
-RISCV           := @prefix@
 srcDir          := @abs_top_srcdir@
 installTop      := $(DESTDIR)$(RISCV)
 buildIncludeDir := $(RISCV)/include
@@ -11,5 +10,5 @@ buildDir        := @abs_top_builddir@
 chiseldir       := @chiseldir@
 
 CXX := @CXX@
-SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
+SBT := java -Xmx4096M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
 

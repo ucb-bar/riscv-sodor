@@ -1,5 +1,11 @@
 AC_INIT(sodor, 1.0)
 
+if [[ "$RISCV" == "" ]]
+then
+  echo 'The $RISCV environment variable must be set!'
+  exit 1
+fi
+
 AC_PROG_CXX
 
 # Chisel/Scala sources
@@ -14,3 +20,4 @@ AC_OUTPUT(
     project/build.properties
     project/build.scala
 )
+
