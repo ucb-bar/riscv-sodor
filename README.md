@@ -65,7 +65,7 @@ Build the sodor emulators
 
     $ git clone https://github.com/ucb-bar/riscv-sodor.git
     $ cd riscv-sodor
-    $ ./configure --prefix=/usr/local
+    $ ./configure --with-riscv=/usr/local
     $ make
 
 Install the executables on the local system
@@ -94,7 +94,7 @@ path to the local Chisel source directory to the configure script.
 
     $ git clone https://github.com/ucb-bar/chisel.git
     $ cd riscv-sodor
-    $ ./configure --prefix=/usr/local --with-chisel=../chisel
+    $ ./configure --with-riscv=/usr/local --with-chisel=../chisel
     $ make
 
 Creating a source release package
