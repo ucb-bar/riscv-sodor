@@ -1714,6 +1714,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+if [ "$RISCV" == "" ]
+then
+  echo 'The $RISCV environment variable must be set!'
+  exit 1
+fi
+
 ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -3405,4 +3411,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
