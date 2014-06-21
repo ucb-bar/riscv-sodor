@@ -1,5 +1,6 @@
 # Declaration of common variables
 
+RISCV           := @riscv_path@
 srcDir          := @abs_top_srcdir@
 installTop      := $(DESTDIR)$(RISCV)
 buildIncludeDir := $(RISCV)/include
