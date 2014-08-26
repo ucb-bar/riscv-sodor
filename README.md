@@ -13,13 +13,14 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 
 * 1-stage (essentially an ISA simulator)
 * 2-stage (demonstrates pipelining in Chisel)
-* 3-stage ("Princeton-style", uses sequential memory)
+* 3-stage (uses sequential memory)
 * 5-stage (can toggle between fully bypassed or fully interlocked)
 * "bus"-based micro-coded implementation
 
 
 All of the cores implement the RISC-V 32b integer base user-level ISA (RV32I)
-version 2.0.  Only the 1-stage and 3-stage implement supervisor mode.
+version 2.0.  Only the 1-stage and 3-stage implement a minimal version of the
+supervisor mode (RV32IS), enough to execute the RISC-V proxy kernel (riscv-pk). 
 
 All processors talk to a simple scratchpad memory (asynchronous,
 single-cycle), with no backing outer memory (the 3-stage is the exception
@@ -33,7 +34,8 @@ write their own testharness and glue code to interface with their own tool
 flows.
 
 This repo works great as an undergraduate lab (and has been used by Berkeley's
-CS152 class for 3 semesters and counting). See doc/ for an example. 
+CS152 class for 3 semesters and counting). See doc/ for an example, as well as
+for some processor diagrams. 
 
 
 
@@ -154,6 +156,61 @@ tests/riscv-bmarks/Makefile SUPERVISOR\_MODE variable).
 
 Have fun!
 
+FAQ
+===
+ 
+*What is the goal of these cores?*
+
+First and foremost, to provide a set of easy to understand cores that users can
+easily modify and play with. Sodor is useful both as a quick introduction to
+the [RISC-V ISA](http://riscv.org) and to the hardware construction language
+[Chisel](http://chisel.eecs.berkeley.edu).
+ 
+*Are there any diagrams of these cores?*
+
+Diagrams of the 1-stage, 2-stage, and ucode can be found in doc/, at the end of
+the lab handout.  A more comprehensive write-up on the micro-code implementation can
+be found at the [CS152 website](http://inst.eecs.berkeley.edu/~cs152/sp12/handouts/microcode.pdf).
+
+
+*How do I generate Verilog code for use on a FPGA?*
+
+The Sodor repository is set up to use the C++-backend of Chisel to generate and
+run the Sodor emulators. Users wishing to use the Verilog-backend will
+unfortunately need to write their own testharness and glue code to interface
+with their own tool flows. 
+
+*Why no Verilog?*
+
+In a past iteration, Sodor has used Synopsys's VCS and DirectC to provide a
+Verilog flow for Verlog RTL simulation.  However, as VCS/DirectC is not freely
+available, it was not clear that committing Verilog code dependent on a
+proprietary simulation program was a good idea. 
+
+
+*How can I generate Verilog myself?*
+
+You can generate the Verilog code by modifying the Makefile in
+emulator/common/Makefile.include.  In the CHISEL_ARGS variable, change
+"--backend c" to "--backend v". This will dump a Top.v verilog file of the core
+and its scratchpad memory (corresponding to the Chisel module named "Top") into
+the location specified by "--targetDir" in CHISEL_ARGS.
+
+Once you have the Top.v module, you will have to write your own testharness and
+glue code to talk to Top.v.  The main difficulty here is that you need to link
+the riscv-fesvr to the Sodor core via the HTIF link ("host-target interface").
+This allows the fesvr to load a binary into the Sodor core's scratchpad memory,
+bring the core out of reset, and communicate with the core while it's running
+to handle any syscalls, error conditions, or test successful/end conditions.
+
+This basically involves porting emulator/*/emulator.cpp to Verilog.  I
+recommend writing a Verilog testharness that interfaces with the existing C++
+code (emulator/common/htif_emulator.cc, etc.).  emulator/common/htif_main.cc
+shows an example stub that uses Synopsys's DirectC to interface between a
+Verilog test-harness and the existing C++ code. 
+
+
+
 TODO
 ----
 
@@ -170,4 +227,5 @@ contribute!
   Harvard mode with synchronous memory).
 * Use the riscv-dis binary to provide diassembly support (instead of using
   Chisel RTL, which is expensive), which is provided by the riscv-fesvr repository.
+* Update the 1-stage to implement more of the RV32SBare supervisor spec.
 
