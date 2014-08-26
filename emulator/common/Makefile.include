@@ -214,11 +214,11 @@ output/%.vpd: output/%.hex emulator-debug
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator 
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator output
 	./emulator +max-cycles=$(bmark_timeout) +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $@
-$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug
+$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
-$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug
+$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
 	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
 else                                                   
