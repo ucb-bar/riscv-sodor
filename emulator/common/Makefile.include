@@ -108,6 +108,7 @@ test:
 global_tstdir = $(install)/riscv-isa
 
 global_asm_tests += \
+	simple \
 	add addi \
 	and andi \
 	auipc \
@@ -123,7 +124,6 @@ global_asm_tests += \
 	srl srli \
 	sub \
 	xor xori \
-	#riscv_example \
 	# Local assembly tests
 local_tstdir = ../../test/riscv-tests
 
@@ -131,10 +131,6 @@ local_tstdir = ../../test/riscv-tests
 local_asm_tests := \
 	$(local_asm_tests)
 	#append any tests set by individual processors
-
-# taken out, b/c of bug with v1 being built at 0x2000, which is too big for LW
-# offsets without using LUI
-#	riscv-v1_lw \
 
 # Globally installed benchmarks
 global_bmarkdir = $(install)/riscv-bmarks

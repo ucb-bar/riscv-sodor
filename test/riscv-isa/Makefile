@@ -8,6 +8,7 @@ install_dir := $(isa_src_dir)/../../install/riscv-isa
 default: all
 
 tests := \
+	simple \
 	add addi \
 	and andi \
 	auipc \

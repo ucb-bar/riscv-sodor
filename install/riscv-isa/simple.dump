@@ -1,0 +1,15 @@
+
+../../install/riscv-isa/simple:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00002000 <_start>:
+    2000:	50b02973          	csrr	a0,hartid
+    2004:	00091063          	bnez	a0,2004 <_start+0x4>
+    2008:	04000913          	li	a0,64
+    200c:	50a93073          	csrc	status,a0
+    2010:	0ff0000f          	fence
+    2014:	51e0d073          	csrwi	tohost,1
+    2018:	00000063          	b	2018 <_start+0x18>
+    201c:	00000013          	nop
