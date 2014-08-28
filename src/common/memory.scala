@@ -8,11 +8,11 @@
 // Provides a variable number of ports to the core, and one port to the HTIF
 // (host-target interface).
 //
-// Assumes that if the port is ready, it will be performed immediately
+// Assumes that if the port is ready, it will be performed immediately.
 // For now, don't detect write collisions.
-// For now, written combinationally (except the HTIF read response), which is
-// required for the 1-stage.
-
+//
+// Optionally uses synchronous read (default is async). For example, a 1-stage
+// processor can only ever work using asynchronous memory!
 
 package Common
 {
@@ -64,7 +64,7 @@ class MemResp(data_width: Int) extends Bundle
 // NOTE: the default is enormous (and may crash your computer), but is bound by
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
-class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit conf: SodorConfiguration) extends Module
 {
    val io = new Bundle
    {
@@ -80,8 +80,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
    val num_banks = 2
    val num_lines = num_bytes / num_bytes_per_line
    println("\n    Sodor Tile: creating Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val data_bank0 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines)
-   val data_bank1 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines)
+   val data_bank0 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines, seqRead = seq_read)
+   val data_bank1 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines, seqRead = seq_read)
 
 
    // constants
@@ -100,7 +100,13 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
       // read access
       val data_idx = io.core_ports(i).req.bits.addr >> UInt(idx_lsb)
       val bank_idx = io.core_ports(i).req.bits.addr(bank_bit)
-      val read_data_out = Mux(bank_idx, data_bank1(data_idx), data_bank0(data_idx))
+      val read_data_out = Bits()
+
+      if (seq_read)
+         read_data_out := Mux(Reg(next=bank_idx), data_bank1(Reg(next=data_idx)), data_bank0(Reg(next=data_idx)))
+      else
+         read_data_out := Mux(bank_idx, data_bank1(data_idx), data_bank0(data_idx))
+
       val rdata_out = LoadDataGen((read_data_out >> bit_shift_amt), io.core_ports(i).req.bits.typ)
       io.core_ports(i).resp.bits.data := rdata_out
 
@@ -125,12 +131,14 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit
 
 
    // HTIF -------
+   
    io.htif_port.req.ready := Bool(true) // for now, no back pressure
-   val htif_idx = io.htif_port.req.bits.addr >> UInt(idx_lsb)
-   val htif_read_data_out = Cat(data_bank1(htif_idx), data_bank0(htif_idx))
-
-   io.htif_port.resp.valid      := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   io.htif_port.resp.bits.data  := Reg(next=htif_read_data_out)
+   // synchronous read
+   val htif_idx = Reg(UInt())
+   htif_idx := io.htif_port.req.bits.addr >> UInt(idx_lsb)
+   
+   io.htif_port.resp.valid     := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
+   io.htif_port.resp.bits.data := Cat(data_bank1(htif_idx), data_bank0(htif_idx))
 
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {
