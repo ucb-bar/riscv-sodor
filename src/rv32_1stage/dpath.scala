@@ -94,7 +94,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_j = Cat(inst(31), inst(19,12), inst(20), inst(30,21))
 
    val zimm = Cat(Fill(UInt(0), 27), inst(19,15))
-   val pcu  = Cat(pc_reg(31, 12), Fill(UInt(0), 12))
 
    // sign-extend immediates
    val imm_i_sext = Cat(Fill(imm_i(11), 20), imm_i)
@@ -107,7 +106,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val alu_op1 = MuxCase(UInt(0), Array(
                (io.ctl.op1_sel === OP1_RS1)  -> rs1_data,
                (io.ctl.op1_sel === OP1_ZIMM) -> zimm,
-               (io.ctl.op1_sel === OP1_PCU)  -> pcu,
                (io.ctl.op1_sel === OP1_PC)   -> pc_reg
                )).toUInt
    

@@ -59,14 +59,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_brjmp_target    = UInt()
    val exe_jump_reg_target = UInt()
    val exception_target    = UInt()
-   val exe_reg_pc_plus4    = UInt()
 
    io.imem.resp.ready := !wb_hazard_stall // stall IF if we detect a WB->EXE hazard
 
-   val if_pc_next = Mux(io.ctl.pc_sel === PC_4,     exe_reg_pc_plus4,
-                    Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
+   val if_pc_next = Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
                     Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
-                                                    exe_brjmp_target))) // PC_BR or PC_J
+                                                    exe_brjmp_target)) // PC_BR or PC_J
                                                     
 
    io.imem.req.bits.pc := if_pc_next
@@ -85,7 +83,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                        
    val wb_wbdata    = Bits(width = conf.xprlen)
  
-   exe_reg_pc_plus4 := exe_pc + UInt(4) // TODO get rid of this?
 
    // Hazard Stall Logic 
    wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
@@ -141,7 +138,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> exe_rs2_data,
                (io.ctl.op2_sel === OP2_IMI) -> imm_i_sext,
-               (io.ctl.op2_sel === OP2_IMB) -> imm_b_sext,
                (io.ctl.op2_sel === OP2_IMU) -> imm_u_sext,
                (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext
               )).toUInt
@@ -158,7 +154,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Branch/Jump Target Calculation
    val imm_brjmp = Mux(io.ctl.brjmp_sel, imm_j_sext, imm_b_sext)
-   exe_brjmp_target := exe_pc + Cat(imm_brjmp(conf.xprlen-2,0), UInt(0,1)).toUInt
+   exe_brjmp_target := exe_pc + imm_brjmp
    exe_jump_reg_target := alu.io.adder_out 
 
 
@@ -220,7 +216,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
-                  (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_reg_pc_plus4,
+                  (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> csr_out
                   )).toSInt()
                                 
@@ -229,12 +225,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Printout
 
    val tsc_reg = Reg(init=UInt(0, conf.xprlen))
+   val irt_reg = Reg(init=UInt(0, conf.xprlen))
    tsc_reg := tsc_reg + UInt(1)
+   when (wb_reg_valid) { irt_reg := irt_reg + UInt(1) }
 
    val debug_wb_pc = UInt(width=64)
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc))
    val debug_wb_inst = Mux(Reg(next=wb_hazard_stall || io.ctl.exe_kill), BUBBLE, Reg(next=exe_inst))
-   printf("Cyc=%d %s PC=(0x%x,0x%x,0x%x) [%s,%s,%s] Wb: %s %s %s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d]\n"
+   printf("Cyc=%d %s PC=(0x%x,0x%x,0x%x) [%s,%s,%s] Wb: %s %s %s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d] %d\n"
       , tsc_reg(23,0)
       , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
       , io.imem.debug.if_pc(19,0)
@@ -245,7 +243,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Disassemble(debug_wb_inst, true)
       , Disassemble(debug_wb_inst)
       , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
-      , Mux(io.ctl.pc_sel  === UInt(1), Str("Br/J"),
+      , Mux(io.ctl.pc_sel === UInt(1), Str("Br/J"),
         Mux(io.ctl.pc_sel === UInt(2), Str(" JR "),
         Mux(io.ctl.pc_sel === UInt(3), Str("XPCT"),
         Mux(io.ctl.pc_sel === UInt(0), Str("   "), Str(" ?? ")))))
@@ -256,23 +254,25 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , wb_wbdata
       , Mux(io.ctl.exception, Str("E"), Str("_"))
       , io.ctl.exc_cause
+      , irt_reg(11,0)
       )
 
    // for debugging, print out the commit information.
    // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
-//   when (wb_reg_valid && (csr.io.status.ei || com_uops(w).sret))
-//   when (Mux(wb_hazard_stall, Bool(false), Reg(next=exe_valid)))
-
-   when (wb_reg_valid)
+   // use "sed" to parse out "@@@" from the other printf code above.
+   if (PRINT_COMMIT_LOG)
    {
-      val rd = debug_wb_inst(RD_MSB,RD_LSB)
-      when (wb_reg_ctrl.rf_wen && rd != UInt(0))
+      when (wb_reg_valid)
       {
-         printf("@@@ 0x%x (0x%x) x%d 0x%x\n", debug_wb_pc, debug_wb_inst, rd, wb_wbdata)
-      }
-      .otherwise
-      {
-         printf("@@@ 0x%x (0x%x)\n", debug_wb_pc, debug_wb_inst)
+         val rd = debug_wb_inst(RD_MSB,RD_LSB)
+         when (wb_reg_ctrl.rf_wen && rd != UInt(0))
+         {
+            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", debug_wb_pc, debug_wb_inst, rd, Cat(Fill(wb_wbdata(31),32),wb_wbdata))
+         }
+         .otherwise
+         {
+            printf("@@@ 0x%x (0x%x)\n", debug_wb_pc, debug_wb_inst)
+         }
       }
    }
 

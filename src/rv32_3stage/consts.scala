@@ -19,6 +19,16 @@ trait SodorProcConstants
    
    val NUM_MEMORY_PORTS = 2; require(NUM_MEMORY_PORTS==2) // princeton mode not yet supported
 
+   // if the front-end ONLY predicts PC+4, this simplifies quite a bit of logic.
+   // First, the PC select mux never needs to compute ExePC + 4 on a branch
+   // redirect (since PC+4 is always predicted).
+   // Second, JAL can write-back to rd the ExePC, since it will already be PC+4
+   // relative to the JAL. 
+   val PREDICT_PCP4 = true; require(PREDICT_PCP4==true) // no BTB, etc, added yet
+
+   //************************************
+   // Debugging
+   val PRINT_COMMIT_LOG = false
 }
    
 trait ScalarOpConstants
@@ -55,32 +65,17 @@ trait ScalarOpConstants
    val OP1_X    = UInt(0, 2)
    
    // RS2 Operand Select Signal
-   val OP2_RS2 = UInt(0, 3) // Register Source #2
-   val OP2_IMI = UInt(1, 3) // immediate, I-type
-   val OP2_IMB = UInt(2, 3) // immediate, B-type
-   val OP2_IMS = UInt(3, 3) // immediate, S-type
-   val OP2_IMU = UInt(4, 3) // immediate, U-type
-   val OP2_X   = UInt(0, 3)
+   val OP2_RS2 = UInt(0, 2) // Register Source #2
+   val OP2_IMI = UInt(1, 2) // immediate, I-type
+   val OP2_IMS = UInt(2, 2) // immediate, S-type
+   val OP2_IMU = UInt(3, 2) // immediate, U-type
+   val OP2_X   = UInt(0, 2)
     
    // Register File Write Enable Signal
    val REN_0   = Bool(false)
    val REN_1   = Bool(true)
    val REN_X   = Bool(false)
            
-   // ALU Operation Signal
-   val ALU_ADD = UInt ( 1, 4)
-   val ALU_SUB = UInt ( 2, 4)
-   val ALU_SLL = UInt ( 3, 4)
-   val ALU_SRL = UInt ( 4, 4)
-   val ALU_SRA = UInt ( 5, 4)
-   val ALU_AND = UInt ( 6, 4)
-   val ALU_OR  = UInt ( 7, 4)
-   val ALU_XOR = UInt ( 8, 4)
-   val ALU_SLT = UInt ( 9, 4)
-   val ALU_SLTU= UInt (10, 4)
-   val ALU_COPY2=UInt (11, 4) 
-   val ALU_X   = UInt ( 0, 4)
-    
    // Writeback Select Signal
    val WB_ALU  = UInt(0, 2)
    val WB_MEM  = UInt(1, 2)

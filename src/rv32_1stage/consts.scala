@@ -47,8 +47,7 @@ trait ScalarOpConstants
    // RS1 Operand Select Signal
    val OP1_RS1  = UInt(0, 2) // Register Source #1
    val OP1_PC   = UInt(1, 2) // PC 
-   val OP1_PCU  = UInt(2, 2) // PC w/ lower 12bits zeroed
-   val OP1_ZIMM = UInt(3, 2) // Zero-extended rs1 field of inst
+   val OP1_ZIMM = UInt(2, 2) // Zero-extended rs1 field of inst
    val OP1_X    = UInt(0, 2)
    
    // RS2 Operand Select Signal
@@ -122,15 +121,6 @@ trait ScalarOpConstants
    val MT_READ  = Bits(0,2)
    val MT_WRITE = Bits(1,2)
    val MT_FENCE = Bits(2,2)
-
-
-   // The Bubble Instruction (Machine generated NOP)
-   // Insert (XOR x0,x0,x0) which is different from software compiler 
-   // generated NOPs which are (ADDI x0, x0, 0).
-   // Reasoning for this is to let visualizers and stat-trackers differentiate
-   // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x5033, 32)
- 
 }
  
 }

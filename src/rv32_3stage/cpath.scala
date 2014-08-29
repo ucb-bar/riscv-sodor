@@ -92,12 +92,12 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   
                   JAL     -> List(Y, BR_J  , Y, OP1_RS1 , OP2_X   , ALU_X   , WB_PC4, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
                   JALR    -> List(Y, BR_JR , Y, OP1_RS1 , OP2_IMI , ALU_X   , WB_PC4, REN_1, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BEQ     -> List(Y, BR_EQ , N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BNE     -> List(Y, BR_NE , N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BGE     -> List(Y, BR_GE , N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BGEU    -> List(Y, BR_GEU, N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BLT     -> List(Y, BR_LT , N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
-                  BLTU    -> List(Y, BR_LTU, N, OP1_RS1 , OP2_IMB , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BEQ     -> List(Y, BR_EQ , N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BNE     -> List(Y, BR_NE , N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BGE     -> List(Y, BR_GE , N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BGEU    -> List(Y, BR_GEU, N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BLT     -> List(Y, BR_LT , N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
+                  BLTU    -> List(Y, BR_LTU, N, OP1_RS1 , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N,  M_N, N, N, N),
   
                   CSRRWI  -> List(Y, BR_N  , N, OP1_ZIMM, OP2_IMI , ALU_COPY2,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.W,  M_N, N, N, N),
                   CSRRSI  -> List(Y, BR_N  , N, OP1_ZIMM, OP2_IMI , ALU_COPY2,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.S,  M_N, N, N, N),

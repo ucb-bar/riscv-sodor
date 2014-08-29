@@ -82,8 +82,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = Reg(init=Bool(false))
-//   val if_reg_pc     = Reg(outType=UInt(width=conf.xprlen))
-//   val if_reg_pc     = Reg(init=UInt(0,conf.xprlen))
    val if_reg_pc     = Reg(init=UInt(START_ADDR-4,conf.xprlen))
     
    val exe_reg_valid = Reg(init=Bool(false))
@@ -93,58 +91,38 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Next PC Stage (if we can call it that)
    val if_pc_next = UInt()
-   val if_val_next = Bool()
-   if_val_next := Bool(true)
+   val if_val_next = Bool(true) // for now, always true
    
    val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
 
    // stall IF/EXE if backend not ready
-//   when (reset.toBool)
-//   {
-//      if_val_next := Bool(false)
-//   }
-//   when (!reset.toBool && Reg(next=reset.toBool))
-//   {
-//      if_pc_next  := UInt(START_ADDR, conf.xprlen)
-//   }
    when (io.cpu.resp.ready)
    {
-//      if_val_next := Bool(true)
-//      when (io.imem.req.ready)
-//      {
-         if_pc_next  := if_pc_plus4
-//      }
+      if_pc_next := if_pc_plus4
+
       when (io.cpu.req.valid)
       {
-         if_pc_next  := io.cpu.req.bits.pc
+         // datapath is redirecting the PC stream (misspeculation)
+         if_pc_next := io.cpu.req.bits.pc
       }
    }
    .otherwise
    {
       if_pc_next  := if_reg_pc
-//      if_val_next := if_reg_valid
    }
 
    if_reg_pc    := if_pc_next
-
    if_reg_valid := if_val_next
-
-   
 
    // set up outputs to the instruction memory
    io.imem.req.bits.addr := if_pc_next
-//   io.imem.req.valid     := if_val_next
-   io.imem.req.valid     := Bool(true)
+   io.imem.req.valid     := if_val_next
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
 
    //**********************************
    // Inst Fetch/Return Stage
-
-   // set the defaults
-//   exe_reg_valid := exe_reg_valid
-//   exe_reg_inst  := exe_reg_inst
 
    when (io.cpu.resp.ready)
    {

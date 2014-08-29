@@ -7,11 +7,31 @@ import Chisel._
 import Node._
 import Common._
 import Constants._
-//import Instructions._
 
 object ALU
 {
+  // TODO is this the optimal encoding?
   val SZ_ALU_FN = 4
+//  val ALU_X    = Bits("b????")
+  val ALU_X    = Bits(0) // TODO use a more optimal decode table, which uses "???" format
+  val ALU_ADD  = Bits(0)
+  val ALU_SLL  = Bits(1)
+  val ALU_XOR  = Bits(4)
+  val ALU_OR   = Bits(6)
+  val ALU_AND  = Bits(7)
+  val ALU_SRL  = Bits(5)
+//  val FN_SEQ  = Bits(8)
+//  val FN_SNE  = Bits(9)
+  val ALU_SUB  = Bits(10)
+  val ALU_SRA  = Bits(11)
+  val ALU_SLT  = Bits(12)
+//  val FN_SGE  = Bits(13)
+  val ALU_SLTU = Bits(14)
+//  val FN_SGEU = Bits(15)
+  val ALU_COPY2= Bits(8)   
+    
+
+
   val ALU_DIV  = ALU_XOR
   val ALU_DIVU = ALU_SRL
   val ALU_REM  = ALU_OR
