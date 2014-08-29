@@ -16,9 +16,9 @@ trait SodorProcConstants
 {
    //************************************
    // Machine Parameters
-//   val XPRLEN = 32           // native width of machine
-                             // (i.e., the width of a register in 
-                             // the general-purpose register file)
+   
+   val NUM_MEMORY_PORTS = 2; require(NUM_MEMORY_PORTS==2) // princeton mode not yet supported
+
 }
    
 trait ScalarOpConstants
@@ -60,7 +60,6 @@ trait ScalarOpConstants
    val OP2_IMB = UInt(2, 3) // immediate, B-type
    val OP2_IMS = UInt(3, 3) // immediate, S-type
    val OP2_IMU = UInt(4, 3) // immediate, U-type
-   val OP2_IMJ = UInt(5, 3) // immediate, J-type
    val OP2_X   = UInt(0, 3)
     
    // Register File Write Enable Signal
@@ -81,11 +80,6 @@ trait ScalarOpConstants
    val ALU_SLTU= UInt (10, 4)
    val ALU_COPY2=UInt (11, 4) 
    val ALU_X   = UInt ( 0, 4)
-    
-   // Writeback Address Select Signal
-   val WA_RD   = Bool(true)   // write to register rd
-   val WA_RA   = Bool(false)  // write to register x1 (return address)
-   val WA_X    = Bool(true)
     
    // Writeback Select Signal
    val WB_ALU  = UInt(0, 2)
@@ -127,13 +121,6 @@ trait ScalarOpConstants
    val MT_FENCE = Bits(2,2)
 
 
-   // The Bubble Instruction (Machine generated NOP)
-   // Insert (XOR x0,x0,x0) which is different from software compiler 
-   // generated NOPs which are (ADDI x0, x0, 0).
-   // Reasoning for this is to let visualizers and stat-trackers differentiate
-   // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x5033, 32)
- 
 }
  
 }

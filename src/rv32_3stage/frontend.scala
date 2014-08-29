@@ -5,7 +5,7 @@
 // Christopher Celio
 // 2013 Jn 29
 //
-// Handling the fetching of instructions. 
+// Handles the fetching of instructions. 
 // 
 // The front-end will go into cruise-control and fetch whichever instrutions it
 // feels like (probably just PC+4 for this simple pipeline), and it's the job
@@ -20,6 +20,8 @@
 //     - It can use a stall cache (Krste Asanovic paper), which holds a cache
 //     of previously stalled instructions.
 //
+// None of the above are implemented - I leave them as an excercise to the
+// reader for now...
 
 
 package Sodor
@@ -80,7 +82,9 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = Reg(init=Bool(false))
-   val if_reg_pc     = Reg(outType=UInt(width=conf.xprlen))
+//   val if_reg_pc     = Reg(outType=UInt(width=conf.xprlen))
+//   val if_reg_pc     = Reg(init=UInt(0,conf.xprlen))
+   val if_reg_pc     = Reg(init=UInt(START_ADDR-4,conf.xprlen))
     
    val exe_reg_valid = Reg(init=Bool(false))
    val exe_reg_pc    = Reg(outType=UInt(width=conf.xprlen))
@@ -90,43 +94,47 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    // Next PC Stage (if we can call it that)
    val if_pc_next = UInt()
    val if_val_next = Bool()
-   if_val_next := Bool(false)
+   if_val_next := Bool(true)
    
    val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
 
    // stall IF/EXE if backend not ready
+//   when (reset.toBool)
+//   {
+//      if_val_next := Bool(false)
+//   }
+//   when (!reset.toBool && Reg(next=reset.toBool))
+//   {
+//      if_pc_next  := UInt(START_ADDR, conf.xprlen)
+//   }
    when (io.cpu.resp.ready)
    {
-      when (io.imem.req.ready)
-      {
+//      if_val_next := Bool(true)
+//      when (io.imem.req.ready)
+//      {
          if_pc_next  := if_pc_plus4
-         if_val_next := Bool(true)
-      }
+//      }
       when (io.cpu.req.valid)
       {
          if_pc_next  := io.cpu.req.bits.pc
-         if_val_next := Bool(true)
-      }
-      when (!reset.toBool && Reg(next=reset.toBool))
-      {
-         if_pc_next  := UInt(START_ADDR, conf.xprlen)
-         if_val_next := Bool(true)
       }
    }
    .otherwise
    {
       if_pc_next  := if_reg_pc
-      if_val_next := if_reg_valid
+//      if_val_next := if_reg_valid
    }
 
    if_reg_pc    := if_pc_next
+
    if_reg_valid := if_val_next
 
    
 
    // set up outputs to the instruction memory
    io.imem.req.bits.addr := if_pc_next
-   io.imem.req.valid     := if_val_next
+//   io.imem.req.valid     := if_val_next
+   io.imem.req.valid     := Bool(true)
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
@@ -135,15 +143,15 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    // Inst Fetch/Return Stage
 
    // set the defaults
-   exe_reg_valid := Bool(false)
-   exe_reg_inst  := BUBBLE
-   exe_reg_pc    := if_reg_pc
+//   exe_reg_valid := exe_reg_valid
+//   exe_reg_inst  := exe_reg_inst
 
    when (io.cpu.resp.ready)
    {
       when (io.imem.resp.valid && if_reg_valid)
       {
          exe_reg_valid := Bool(true)
+         exe_reg_pc    := if_reg_pc
          exe_reg_inst  := io.imem.resp.bits.data
       }
       when (io.cpu.req.valid)
@@ -153,23 +161,17 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
          exe_reg_inst  := BUBBLE
       }
    }
-   .otherwise
-   {
-      exe_reg_valid := Bool(false)
-      exe_reg_inst  := exe_reg_inst
-      exe_reg_pc    := exe_reg_pc
-   }
    
    //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
 
    io.cpu.resp.valid     := exe_reg_valid
-   io.cpu.resp.valid     := Bool(true)
    io.cpu.resp.bits.inst := exe_reg_inst
    io.cpu.resp.bits.pc   := exe_reg_pc
     
    //**********************************
+   // only used for debugging 
    io.cpu.debug.if_pc := if_reg_pc
    io.cpu.debug.if_inst := io.imem.resp.bits.data
 }

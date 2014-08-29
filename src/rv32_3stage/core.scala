@@ -20,22 +20,22 @@ class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends 
 {
    val io = new CoreIo()
 
-   val fe = Module(new FrontEnd())
-   val c  = Module(new CtlPath())
-   val d  = Module(new DatPath())
+   val frontend = Module(new FrontEnd())
+   val cpath  = Module(new CtlPath())
+   val dpath  = Module(new DatPath())
 
-   fe.io.imem <> io.imem
-   fe.io.cpu <> c.io.imem
-   fe.io.cpu <> d.io.imem
+   frontend.io.imem <> io.imem
+   frontend.io.cpu <> cpath.io.imem
+   frontend.io.cpu <> dpath.io.imem
 
-   c.io.ctl  <> d.io.ctl
-   c.io.dat  <> d.io.dat
+   cpath.io.ctl  <> dpath.io.ctl
+   cpath.io.dat  <> dpath.io.dat
    
    
-   c.io.dmem <> io.dmem
-   d.io.dmem <> io.dmem
+   cpath.io.dmem <> io.dmem
+   dpath.io.dmem <> io.dmem
    
-   d.io.host <> io.host
+   dpath.io.host <> io.host
 }
 
 }

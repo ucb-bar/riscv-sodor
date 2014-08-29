@@ -492,8 +492,11 @@ object Disassemble
 
     SCALL->     List(Str("scall     "), FMT_0),
     CSRRW->     List(Str("csrrw     "), FMT_I),
-    CSRRS->     List(Str("csrrw     "), FMT_I),
-    CSRRC->     List(Str("csrrw     "), FMT_I),
+    CSRRS->     List(Str("csrrs     "), FMT_I),
+    CSRRC->     List(Str("csrrc     "), FMT_I),
+    CSRRWI->    List(Str("csrrwi    "), FMT_I),
+    CSRRSI->    List(Str("csrrsi    "), FMT_I),
+    CSRRCI->    List(Str("csrrci    "), FMT_I),
     SRET->      List(Str("sret      "), FMT_0),
     FENCE->     List(Str("fence     "), FMT_0),
     FENCE_I->   List(Str("fence.i   "), FMT_0)

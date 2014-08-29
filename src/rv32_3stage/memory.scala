@@ -14,7 +14,10 @@
 // This version of the scratchpadmemory is synchronous, to better match
 // realistic FPGA and ASIC targets (SRAM only provides a single R/W port).
 //
-// TODO: shrink the number of ports... currently using too many.
+// TODO: shrink the number of ports... currently using too many. Any HTIF
+//accesses should probably stall the core (or vice versa). Another option is for
+//HTIF requests to inject code into the processor pipeline to service HTIF
+//requests.
 
 
 package Common
