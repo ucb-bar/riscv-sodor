@@ -46,17 +46,19 @@ CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
 vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC)
 vpath %.a    $(buildLibDir)
 
-generated-src/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala
+generated-src/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS)"
 
-generated-src-debug/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala
+generated-src-debug/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
 
 $(MODEL).o: %.o: generated-src/%.cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
+	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
+	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp)) -o $@
 
 $(MODEL)-debug.o: %-debug.o: generated-src-debug/%.cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
+	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp))
+	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp)) -o $@
 
 $(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src/$(MODEL).cpp
 	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
@@ -202,9 +204,17 @@ output/%.run: output/%.hex emulator
 
 output/%.out: output/%.hex emulator
 	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
+#	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $(patsubst %.out,%.temp,$@)
+#	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
+#	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
+#	rm $(patsubst %.out,%.temp,$@)
 
+# Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug
-	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.commit,$@)
+	sed -e '/@@@/ d' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.out,$@)
+	rm $(patsubst %.vpd,%.temp,$@)
 
 
 
@@ -215,7 +225,7 @@ $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator output
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
-	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
 else                                                   
 

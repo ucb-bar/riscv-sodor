@@ -217,7 +217,6 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
-* Parallelize the compilation of the C++ files (Top-1.cpp, Top-2.cpp, etc.)
 * Add stat information back in (e.g., print out the CPI).
 * Leverage the uarch-counters (need to update CSRFile).
 * Use the newest riscv-test benchmarks, which provide printf (but require

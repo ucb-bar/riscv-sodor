@@ -28,7 +28,7 @@ trait SodorProcConstants
 
    //************************************
    // Debugging
-   val PRINT_COMMIT_LOG = true
+   val PRINT_COMMIT_LOG = false
 }
    
 trait ScalarOpConstants
