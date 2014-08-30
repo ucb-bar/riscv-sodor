@@ -41,7 +41,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Instruction Fetch
    val pc_next          = UInt()
    val pc_plus4         = UInt()
-   val brjmp_target     = UInt()
+   val br_target        = UInt()
+   val jmp_target       = UInt()
    val jump_reg_target  = UInt()
    val exception_target = UInt()
  
@@ -57,8 +58,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    pc_next := MuxCase(pc_plus4, Array(
                   (io.ctl.pc_sel === PC_4)   -> pc_plus4,
-                  (io.ctl.pc_sel === PC_BR)  -> brjmp_target,
-                  (io.ctl.pc_sel === PC_J )  -> brjmp_target,
+                  (io.ctl.pc_sel === PC_BR)  -> br_target,
+                  (io.ctl.pc_sel === PC_J )  -> jmp_target,
                   (io.ctl.pc_sel === PC_JR)  -> jump_reg_target,
                   (io.ctl.pc_sel === PC_EXC) -> exception_target
                   ))
@@ -68,9 +69,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                  
    
    // Decode
-   val rs1_addr = inst(19, 15).toUInt
-   val rs2_addr = inst(24, 20).toUInt
-   val wb_addr  = inst(11, 7).toUInt
+   val rs1_addr = inst(RS1_MSB, RS1_LSB)
+   val rs2_addr = inst(RS2_MSB, RS2_LSB)
+   val wb_addr  = inst(RD_MSB,  RD_LSB)
    
    val wb_data = Bits(width = conf.xprlen)
  
@@ -92,8 +93,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_b = Cat(inst(31), inst(7), inst(30,25), inst(11,8))
    val imm_u = inst(31, 12)
    val imm_j = Cat(inst(31), inst(19,12), inst(20), inst(30,21))
-
-   val zimm = Cat(Fill(UInt(0), 27), inst(19,15))
+   val imm_z = Cat(Fill(UInt(0), 27), inst(19,15))
 
    // sign-extend immediates
    val imm_i_sext = Cat(Fill(imm_i(11), 20), imm_i)
@@ -104,20 +104,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    
    val alu_op1 = MuxCase(UInt(0), Array(
-               (io.ctl.op1_sel === OP1_RS1)  -> rs1_data,
-               (io.ctl.op1_sel === OP1_ZIMM) -> zimm,
-               (io.ctl.op1_sel === OP1_PC)   -> pc_reg
+               (io.ctl.op1_sel === OP1_RS1) -> rs1_data,
+               (io.ctl.op1_sel === OP1_IMU) -> imm_u_sext,
+               (io.ctl.op1_sel === OP1_IMZ) -> imm_z
                )).toUInt
    
    val alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> rs2_data,
+               (io.ctl.op2_sel === OP2_PC)  -> pc_reg,
                (io.ctl.op2_sel === OP2_IMI) -> imm_i_sext,
-               (io.ctl.op2_sel === OP2_IMB) -> imm_b_sext,
-               (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext,
-               (io.ctl.op2_sel === OP2_IMU) -> imm_u_sext,
-               (io.ctl.op2_sel === OP2_IMJ) -> imm_j_sext
+               (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext
                )).toUInt
-  
  
  
 
@@ -137,28 +134,35 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
                   (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.toSInt >> alu_shamt).toUInt,
                   (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).toUInt,
-                  (io.ctl.alu_fun === ALU_COPY2)-> alu_op2 
+                  (io.ctl.alu_fun === ALU_COPY1)-> alu_op1
                   ))
 
    // Branch/Jump Target Calculation
-   val brjmp_offset = alu_op2.toUInt
-   brjmp_target    := pc_reg + brjmp_offset
+   br_target       := pc_reg + imm_b_sext
+   jmp_target      := pc_reg + imm_j_sext
    jump_reg_target := (rs1_data.toUInt + imm_i_sext.toUInt)
                                   
    // Control Status Registers
    val csr = Module(new CSRFile())
+   val csr_cmd = io.ctl.csr_cmd
    csr.io.host <> io.host
-   csr.io.rw.addr  := alu_op2(11,0)
-   csr.io.rw.wdata := alu_op1
-   csr.io.rw.cmd   := io.ctl.csr_cmd
+   csr.io.rw.addr  := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.rw.wdata := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  alu_out,
+                      Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~alu_out,
+                                            alu_out))
+   csr.io.rw.cmd   := csr_cmd
    val csr_out = csr.io.rw.rdata
 
+   csr.io.retire    := Bool(false) // TODO 
    csr.io.exception := io.ctl.exception
-   io.dat.status := csr.io.status
-   csr.io.cause  := io.ctl.exc_cause
-   csr.io.sret   := io.ctl.sret
-   csr.io.pc     := pc_reg
+   io.dat.status    := csr.io.status
+   csr.io.cause     := io.ctl.exc_cause
+   csr.io.sret      := io.ctl.sret
+   csr.io.pc        := pc_reg
    exception_target := csr.io.evec
+
+   // Add your own uarch counters here!
+   csr.io.uarch_counters.foreach(_ := Bool(false))
 
    // WB Mux
    wb_data := MuxCase(alu_out, Array(

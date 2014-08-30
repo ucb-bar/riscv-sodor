@@ -8,7 +8,11 @@
 // Describes a simple RISCV 1-stage processor
 //   - No div/mul/rem
 //   - No FPU
-//   - implements supervisor mode (can trap to handle the above instructions)
+//   - implements a minimal supervisor mode (can trap to handle the
+//       above instructions)
+//
+// The goal of the 1-stage is to provide the simpliest, easiest-to-read code to
+// demonstrate the RISC-V ISA.
  
 package Sodor
 {

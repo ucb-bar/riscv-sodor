@@ -8,8 +8,7 @@
 # Many different processors are provided. To switch between which processor(s)
 # you would like to build, simply set the $(targets) variable as appropriate. 
 
-#all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode
-all_targets := rv32_1stage rv32_2stage rv32_5stage rv32_ucode
+all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode
 targets     := $(all_targets)
  
 # To switch between which processor the Makefile would like to build, it will

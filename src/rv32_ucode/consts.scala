@@ -19,10 +19,6 @@ trait SodorProcConstants
     
    //************************************
    // Machine Parameters
-//   val XPRLEN = 32           // native width of machine
-                             // (i.e., the width of a register in 
-                             // the general-purpose register file)
-  
 }
 
 trait ScalarOpConstants extends MemoryOpConstants
@@ -40,7 +36,6 @@ trait ScalarOpConstants extends MemoryOpConstants
    val RS_RD   = UInt(1, 3)
    val RS_RS1  = UInt(2, 3)
    val RS_RS2  = UInt(3, 3)
-   val RS_RA   = UInt(4, 3)
    val RS_CA   = UInt(5, 3)
    val RS_CR   = UInt(6, 3)
    val RS_X0   = UInt(7, 3)
@@ -141,8 +136,6 @@ trait ScalarOpConstants extends MemoryOpConstants
    val UPC_DISPATCH= UInt(3,2)
 
    // Registers
-   val X0   = UInt(0)     //x0             register
-   val RA   = UInt(1)     //return address register
    val PC   = UInt(32)    //pc             register
                          
    // Memory Mask Type Signal

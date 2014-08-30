@@ -35,11 +35,11 @@ public:
    void tick                
    (
       // these are inputs into the htif, from the testharness
-      bool pcr_req_ready,
+      bool csr_req_ready,
       bool mem_req_ready,
       
-      bool pcr_rep_valid,
-      uint64_t pcr_rep_bits,
+      bool csr_rep_valid,
+      uint64_t csr_rep_bits,
 
       bool mem_rep_valid,
       uint64_t mem_rep_bits
@@ -47,12 +47,12 @@ public:
             
    // Inputs to the design under test
    bool     reset; // visible to the core (allow us to initialize memory)
-   bool     pcr_rep_ready;
+   bool     csr_rep_ready;
 
-   bool     pcr_req_valid;
-   uint64_t pcr_req_bits_addr;
-   uint64_t pcr_req_bits_data;
-   bool     pcr_req_bits_rw;
+   bool     csr_req_valid;
+   uint64_t csr_req_bits_addr;
+   uint64_t csr_req_bits_data;
+   bool     csr_req_bits_rw;
    
    bool     mem_req_valid;
    uint64_t mem_req_bits_addr;

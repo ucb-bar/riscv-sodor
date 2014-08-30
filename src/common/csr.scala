@@ -4,7 +4,9 @@ import Chisel._
 import Node._
 import Constants._
 import Util._
+import scala.math._
 
+// TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
 
 class Status extends Bundle {
   val ip = Bits(width = 8)
@@ -34,28 +36,29 @@ object CSR
 
 class CSRFile(implicit conf: SodorConfiguration) extends Module
 {
-  val io = new Bundle {
-    val host = new HTIFIO()
-    val rw = new Bundle {
-      val addr = UInt(INPUT, 12)
-      val cmd = Bits(INPUT, CSR.SZ)
-      val rdata = Bits(OUTPUT, conf.xprlen)
-      val wdata = Bits(INPUT, conf.xprlen)
-    }
+   val io = new Bundle {
+      val host = new HTIFIO()
+      val rw = new Bundle {
+         val addr = UInt(INPUT, 12)
+         val cmd = Bits(INPUT, CSR.SZ)
+         val rdata = Bits(OUTPUT, conf.xprlen)
+         val wdata = Bits(INPUT, conf.xprlen)
+      }
     
-    val status = new Status().asOutput
-    val ptbr = UInt(OUTPUT, PADDR_BITS)
-    val evec = UInt(OUTPUT, VADDR_BITS+1)
-    val exception = Bool(INPUT)
-    val retire = Bool(INPUT)
-    val cause = UInt(INPUT, conf.xprlen)
-    val badvaddr_wen = Bool(INPUT)
-    val pc = UInt(INPUT, VADDR_BITS+1)
-    val sret = Bool(INPUT)
-    val fatc = Bool(OUTPUT)
-    val replay = Bool(OUTPUT)
-    val time = UInt(OUTPUT, conf.xprlen)
-  }
+      val status = new Status().asOutput
+      val ptbr = UInt(OUTPUT, PADDR_BITS)
+      val evec = UInt(OUTPUT, VADDR_BITS+1)
+      val exception = Bool(INPUT)
+      val retire = Bool(INPUT)
+      val uarch_counters = Vec.fill(16)(Bool(INPUT))
+      val cause = UInt(INPUT, conf.xprlen)
+      val badvaddr_wen = Bool(INPUT)
+      val pc = UInt(INPUT, VADDR_BITS+1)
+      val sret = Bool(INPUT)
+      val fatc = Bool(OUTPUT)
+      val replay = Bool(OUTPUT)
+      val time = UInt(OUTPUT, conf.xprlen)
+   }
  
   val reg_epc = Reg(Bits(width = VADDR_BITS+1))
   val reg_badvaddr = Reg(Bits(width = VADDR_BITS))
@@ -71,6 +74,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_status = Reg(new Status) // reset down below
   val reg_time = WideCounter(conf.xprlen)
   val reg_instret = WideCounter(conf.xprlen, io.retire)
+  val reg_uarch_counters = io.uarch_counters.map(WideCounter(conf.xprlen, _))
   val reg_fflags = Reg(UInt(width = 5))
   val reg_frm = Reg(UInt(width = 3))
 
@@ -78,27 +82,27 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val r_irq_ipi = Reg(init=Bool(true))
 
   val cpu_req_valid = io.rw.cmd != CSR.N
-  val host_pcr_req_valid = Reg(Bool()) // don't reset
-  val host_pcr_req_fire = host_pcr_req_valid && !cpu_req_valid
-  val host_pcr_rep_valid = Reg(Bool()) // don't reset
-  val host_pcr_bits = Reg(io.host.pcr_req.bits)
-  io.host.pcr_req.ready := !host_pcr_req_valid && !host_pcr_rep_valid
-  io.host.pcr_rep.valid := host_pcr_rep_valid
-  io.host.pcr_rep.bits := host_pcr_bits.data
-  when (io.host.pcr_req.fire()) {
-    host_pcr_req_valid := true
-    host_pcr_bits := io.host.pcr_req.bits
+  val host_csr_req_valid = Reg(Bool()) // don't reset
+  val host_csr_req_fire = host_csr_req_valid && !cpu_req_valid
+  val host_csr_rep_valid = Reg(Bool()) // don't reset
+  val host_csr_bits = Reg(io.host.csr_req.bits)
+  io.host.csr_req.ready := !host_csr_req_valid && !host_csr_rep_valid
+  io.host.csr_rep.valid := host_csr_rep_valid
+  io.host.csr_rep.bits := host_csr_bits.data
+  when (io.host.csr_req.fire()) {
+    host_csr_req_valid := true
+    host_csr_bits := io.host.csr_req.bits
   }
-  when (host_pcr_req_fire) {
-    host_pcr_req_valid := false
-    host_pcr_rep_valid := true
-    host_pcr_bits.data := io.rw.rdata
+  when (host_csr_req_fire) {
+    host_csr_req_valid := false
+    host_csr_rep_valid := true
+    host_csr_bits.data := io.rw.rdata
   }
-  when (io.host.pcr_rep.fire()) { host_pcr_rep_valid := false }
+  when (io.host.csr_rep.fire()) { host_csr_rep_valid := false }
   
-  io.host.debug_stats_pcr := reg_stats // direct export up the hierarchy
+  io.host.debug_stats_csr := reg_stats // direct export up the hierarchy
 
-  val addr = Mux(cpu_req_valid, io.rw.addr, host_pcr_bits.addr | 0x500)
+  val addr = Mux(cpu_req_valid, io.rw.addr, host_csr_bits.addr | 0x500)
   val decoded_addr = {
     val default = List(Bits("b" + ("?"*CSRs.all.size), CSRs.all.size))
     val outs = for (i <- 0 until CSRs.all.size)
@@ -111,8 +115,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     a
   }
 
-  val wen = cpu_req_valid || host_pcr_req_fire && host_pcr_bits.rw
-  val wdata = Mux(cpu_req_valid, io.rw.wdata, host_pcr_bits.data)
+  val wen = cpu_req_valid || host_csr_req_fire && host_csr_bits.rw
+  val wdata = Mux(cpu_req_valid, io.rw.wdata, host_csr_bits.data)
 
   io.status := reg_status
   io.status.ip := Cat(r_irq_timer, reg_fromhost.orR, r_irq_ipi,   Bool(false),
@@ -151,12 +155,12 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.host.ipi_req.bits := io.rw.wdata
   io.replay := io.host.ipi_req.valid && !io.host.ipi_req.ready
 
-  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.tohost)) { reg_tohost := UInt(0) }
+  when (host_csr_req_fire && !host_csr_bits.rw && decoded_addr(CSRs.tohost)) { reg_tohost := UInt(0) }
 
   val read_impl = Bits(2)
   val read_ptbr = reg_ptbr(PADDR_BITS-1,PGIDX_BITS) << PGIDX_BITS
 
-  val read_mapping = Map[Int,Bits](
+  val read_mapping = collection.mutable.LinkedHashMap[Int,Bits](
     CSRs.fflags -> (UInt(0)),
     CSRs.frm -> (UInt(0)),
     CSRs.fcsr -> (UInt(0)),
@@ -182,6 +186,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     CSRs.stats -> reg_stats,
     CSRs.tohost -> reg_tohost,
     CSRs.fromhost -> reg_fromhost)
+  
+   for (i <- 0 until reg_uarch_counters.size)
+      read_mapping += (CSRs.uarch0 + i) -> reg_uarch_counters(i)
 
   io.rw.rdata := Mux1H(for ((k, v) <- read_mapping) yield decoded_addr(k) -> v)
 
@@ -202,8 +209,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.evec))     { reg_evec := wdata(VADDR_BITS-1,0).toSInt }
     when (decoded_addr(CSRs.count))    { reg_time := wdata.toUInt }
     when (decoded_addr(CSRs.compare))  { reg_compare := wdata(31,0).toUInt; r_irq_timer := Bool(false) }
-    when (decoded_addr(CSRs.fromhost)) { when (reg_fromhost === UInt(0) || !host_pcr_req_fire) { reg_fromhost := wdata } }
-    when (decoded_addr(CSRs.tohost))   { when (reg_tohost === UInt(0) || host_pcr_req_fire) { reg_tohost := wdata } }
+    when (decoded_addr(CSRs.fromhost)) { when (reg_fromhost === UInt(0) || !host_csr_req_fire) { reg_fromhost := wdata } }
+    when (decoded_addr(CSRs.tohost))   { when (reg_tohost === UInt(0) || host_csr_req_fire) { reg_tohost := wdata } }
     when (decoded_addr(CSRs.clear_ipi)){ r_irq_ipi := wdata(0) }
     when (decoded_addr(CSRs.sup0))     { reg_sup0 := wdata }
     when (decoded_addr(CSRs.sup1))     { reg_sup1 := wdata }

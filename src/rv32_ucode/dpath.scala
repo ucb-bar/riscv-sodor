@@ -90,16 +90,15 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    // Register File (Single Port)
    // also holds the PC register
-   val rs1 = ir(19, 15).toUInt
-   val rs2 = ir(24, 20).toUInt
-   val rd  = ir(11, 7).toUInt
+   val rs1 = ir(RS1_MSB, RS1_LSB)
+   val rs2 = ir(RS2_MSB, RS2_LSB)
+   val rd  = ir(RD_MSB,  RD_LSB)
 
    val reg_addr  = MuxCase(UInt(0), Array(
                      (io.ctl.reg_sel === RS_PC)  -> PC, 
                      (io.ctl.reg_sel === RS_RD)  -> rd,
                      (io.ctl.reg_sel === RS_RS1) -> rs1,
                      (io.ctl.reg_sel === RS_RS2) -> rs2,
-                     (io.ctl.reg_sel === RS_RA)  -> RA,
                      (io.ctl.reg_sel === RS_X0)  -> X0,
                      (io.ctl.reg_sel === RS_CA)  -> X0,
                      (io.ctl.reg_sel === RS_CR)  -> X0
@@ -144,6 +143,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.sret      := Bool(false)  // tie them down anyways.
    csr.io.pc        := Bits(0)
 
+   // Add your own uarch counters here!
+   csr.io.uarch_counters.foreach(_ := Bool(false))
 
    // ALU
    val alu_shamt = reg_b(4,0).toUInt

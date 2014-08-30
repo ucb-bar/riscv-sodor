@@ -50,7 +50,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    // Execute State
    val exe_reg_inst          = Reg(init=BUBBLE)
-//   val exe_reg_pc            = Reg(){ UInt() }
    val exe_reg_pc            = Reg(init=UInt(0, conf.xprlen))
    val exe_reg_wbaddr        = Reg(UInt())
    val exe_reg_rs1_addr      = Reg(UInt())
@@ -70,6 +69,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    // Memory State
    val mem_reg_pc            = Reg(UInt())
+   val mem_reg_inst          = Reg(Bits())
    val mem_reg_alu_out       = Reg(Bits())
    val mem_reg_wbaddr        = Reg(UInt())
    val mem_reg_rs1_addr      = Reg(UInt())
@@ -130,9 +130,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    //**********************************
    // Decode Stage
-   val dec_rs1_addr = dec_reg_inst(19, 15).toUInt
-   val dec_rs2_addr = dec_reg_inst(24, 20).toUInt
-   val dec_wbaddr  = Mux(io.ctl.wa_sel, dec_reg_inst(11, 7).toUInt, RA)
+   val dec_rs1_addr = dec_reg_inst(19, 15)
+   val dec_rs2_addr = dec_reg_inst(24, 20)
+   val dec_wbaddr   = dec_reg_inst(11, 7)
    
  
    // Register File
@@ -153,8 +153,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_utype  = dec_reg_inst(31, 12)
    val imm_ujtype = Cat(dec_reg_inst(31), dec_reg_inst(19,12), dec_reg_inst(20), dec_reg_inst(30,21))
 
-   val zimm = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
-   val pcu  = Cat(dec_reg_pc(31,12), Fill(UInt(0), 12))
+   val imm_z = Cat(Fill(UInt(0), 27), dec_reg_inst(19,15))
 
    // sign-extend immediates
    val imm_itype_sext  = Cat(Fill(imm_itype(11), 20), imm_itype)
@@ -187,8 +186,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       // roll the OP1 mux into the bypass mux logic
       dec_op1_data := MuxCase(rf_rs1_data, Array(
-                           ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
-                           ((io.ctl.op1_sel === OP1_PCU)) -> pcu,
+                           ((io.ctl.op1_sel === OP1_IMZ)) -> imm_z,
                            ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc,
                            ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
                            ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != UInt(0)) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
@@ -211,9 +209,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       // Rely only on control interlocking to resolve hazards
       dec_op1_data := MuxCase(rf_rs1_data, Array(
-                          ((io.ctl.op1_sel === OP1_ZIMM)) -> zimm,
-                          ((io.ctl.op1_sel === OP1_PCU))  -> pcu, 
-                          ((io.ctl.op1_sel === OP1_PC))   -> dec_reg_pc
+                          ((io.ctl.op1_sel === OP1_IMZ)) -> imm_z,
+                          ((io.ctl.op1_sel === OP1_PC))  -> dec_reg_pc
                           ))
       dec_rs2_data := rf_rs2_data
       dec_op2_data := dec_alu_op2
@@ -292,6 +289,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (exe_reg_ctrl_alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SRA)  -> (exe_alu_op1.toSInt >> alu_shamt).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).toUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_COPY_1)-> exe_alu_op1,
                   (exe_reg_ctrl_alu_fun === ALU_COPY_2)-> exe_alu_op2
                   ))
 
@@ -306,6 +304,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    when (!io.ctl.full_stall)
    {
       mem_reg_pc            := exe_reg_pc
+      mem_reg_inst          := exe_reg_inst
       mem_reg_alu_out       := Mux((exe_reg_ctrl_wb_sel === WB_PC4), exe_pc_plus4, exe_alu_out)
       mem_reg_wbaddr        := exe_reg_wbaddr
       mem_reg_rs1_addr      := exe_reg_rs1_addr
@@ -328,13 +327,22 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Control Status Registers
    val csr = Module(new CSRFile())
    csr.io.host <> io.host
-   csr.io.rw.addr  := mem_reg_op2_data(11,0)
-   csr.io.rw.wdata := mem_reg_op1_data(30, 0)
+   val csr_cmd = mem_reg_ctrl_csr_cmd
+   csr.io.rw.addr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.rw.wdata := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  mem_reg_alu_out,
+                      Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~mem_reg_alu_out,
+                                            mem_reg_alu_out))
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
    val csr_out = csr.io.rw.rdata
 
-   csr.io.exception := Bool(false)
+   csr.io.retire    := Bool(false) // TODO
+   csr.io.exception := Bool(false) // supervisor mode not supported
+   csr.io.sret      := Bool(false)
  
+   // Add your own uarch counters here!
+   csr.io.uarch_counters.foreach(_ := Bool(false))
+
+
    // WB Mux
    mem_wbdata := MuxCase(mem_reg_alu_out, Array(
                   (mem_reg_ctrl_wb_sel === WB_ALU) -> mem_reg_alu_out,

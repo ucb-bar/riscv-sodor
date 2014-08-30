@@ -15,7 +15,7 @@ import Common.Util._
 
 class SodorTileIo extends Bundle  
 {
-   val host     = new HTIFIO()
+   val host = new HTIFIO()
 }
 
 class SodorTile(implicit val conf: SodorConfiguration) extends Module

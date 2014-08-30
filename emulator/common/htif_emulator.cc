@@ -10,11 +10,11 @@
 // or waiting on the chip (target). 
 
 void htif_emulator_t::tick(
-   bool pcr_req_ready,
+   bool csr_req_ready,
    bool mem_req_ready,
       
-   bool pcr_rep_valid,
-   uint64_t pcr_rep_bits,
+   bool csr_rep_valid,
+   uint64_t csr_rep_bits,
 
    bool mem_rep_valid,
    uint64_t mem_rep_bits
@@ -22,12 +22,12 @@ void htif_emulator_t::tick(
 {
 
    // default outputs 
-   pcr_rep_ready = true;
+   csr_rep_ready = true;
 
-   pcr_req_valid = false;
-   pcr_req_bits_addr = 0;
-   pcr_req_bits_data = 0;
-   pcr_req_bits_rw = false;
+   csr_req_valid = false;
+   csr_req_bits_addr = 0;
+   csr_req_bits_data = 0;
+   csr_req_bits_rw = false;
    
    mem_req_valid = false;
    mem_req_bits_addr = 0;
@@ -35,18 +35,18 @@ void htif_emulator_t::tick(
    mem_req_bits_rw = false;
 
    // if we receive a response back from the chip, send it to the fesvr
-   if (pcr_rep_valid)
+   if (csr_rep_valid)
    {
-      //fprintf(stderr, "\n\tPCR reply VALID, data: %lx\n\n", pcr_rep_bits);
+      //fprintf(stderr, "\n\tcsr reply VALID, data: %lx\n\n", csr_rep_bits);
       packet_header_t ack(HTIF_CMD_ACK, seqno, 1, 0);
       send(&ack, sizeof(ack));
-      send(&pcr_rep_bits, sizeof(pcr_rep_bits));
+      send(&csr_rep_bits, sizeof(csr_rep_bits));
 
       state = PENDING_HOST;
    }
    if (mem_rep_valid)
    {
-      //fprintf(stderr, "\n\tmem reply VALID, data: %lx\n\n", pcr_rep_bits);
+      //fprintf(stderr, "\n\tmem reply VALID, data: %lx\n\n", csr_rep_bits);
       packet_header_t ack(HTIF_CMD_ACK, seqno, 1, 0);
       send(&ack, sizeof(ack));
       send(&mem_rep_bits, sizeof(mem_rep_bits));
@@ -166,10 +166,10 @@ void htif_emulator_t::tick(
          }
          else
          {
-            pcr_req_valid = true;
-            pcr_req_bits_addr = regno;
-            pcr_req_bits_data = new_val;
-            pcr_req_bits_rw = (hdr.cmd == HTIF_CMD_WRITE_CONTROL_REG);
+            csr_req_valid = true;
+            csr_req_bits_addr = regno;
+            csr_req_bits_data = new_val;
+            csr_req_bits_rw = (hdr.cmd == HTIF_CMD_WRITE_CONTROL_REG);
 
             state = PENDING_TARGET;
          }

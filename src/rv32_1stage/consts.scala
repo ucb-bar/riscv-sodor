@@ -45,19 +45,17 @@ trait ScalarOpConstants
    val BR_JR  = UInt(8, 4)  // Jump Register
  
    // RS1 Operand Select Signal
-   val OP1_RS1  = UInt(0, 2) // Register Source #1
-   val OP1_PC   = UInt(1, 2) // PC 
-   val OP1_ZIMM = UInt(2, 2) // Zero-extended rs1 field of inst
-   val OP1_X    = UInt(0, 2)
+   val OP1_RS1 = UInt(0, 2) // Register Source #1
+   val OP1_IMU = UInt(1, 2) // immediate, U-type
+   val OP1_IMZ = UInt(2, 2) // Zero-extended rs1 field of inst, for CSRI instructions
+   val OP1_X   = UInt(0, 2)
    
    // RS2 Operand Select Signal
-   val OP2_RS2 = UInt(0, 3) // Register Source #2
-   val OP2_IMI = UInt(1, 3) // immediate, I-type
-   val OP2_IMB = UInt(2, 3) // immediate, B-type
-   val OP2_IMS = UInt(3, 3) // immediate, S-type
-   val OP2_IMU = UInt(4, 3) // immediate, U-type
-   val OP2_IMJ = UInt(5, 3) // immediate, J-type
-   val OP2_X   = UInt(0, 3)
+   val OP2_RS2 = UInt(0, 2) // Register Source #2
+   val OP2_IMI = UInt(1, 2) // immediate, I-type
+   val OP2_IMS = UInt(2, 2) // immediate, S-type
+   val OP2_PC  = UInt(3, 2) // PC 
+   val OP2_X   = UInt(0, 2)
     
    // Register File Write Enable Signal
    val REN_0   = Bool(false)
@@ -75,13 +73,8 @@ trait ScalarOpConstants
    val ALU_XOR = UInt ( 8, 4)
    val ALU_SLT = UInt ( 9, 4)
    val ALU_SLTU= UInt (10, 4)
-   val ALU_COPY2=UInt (11, 4) 
+   val ALU_COPY1=UInt (11, 4) 
    val ALU_X   = UInt ( 0, 4)
-    
-   // Writeback Address Select Signal
-   val WA_RD   = Bool(true)   // write to register rd
-   val WA_RA   = Bool(false)  // write to register x1 (return address)
-   val WA_X    = Bool(true)
     
    // Writeback Select Signal
    val WB_ALU  = UInt(0, 2)

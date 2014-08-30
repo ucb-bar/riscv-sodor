@@ -9,8 +9,8 @@ import scala.math._
 object Constants extends
    SodorProcConstants with
    ScalarOpConstants with
+   Common.constants.RISCVConstants with
    Common.constants.ExcCauseConstants with
    Common.MemoryOpConstants
 {
-  val START_ADDR = 0x2000
 }

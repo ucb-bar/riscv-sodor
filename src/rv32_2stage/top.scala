@@ -15,7 +15,7 @@ object ReferenceChipBackend {
 }
 
 class TopIO() extends Bundle  {
-  val debug_stats_pcr = Bool(OUTPUT)
+  val debug_stats_csr = Bool(OUTPUT)
   val htif  = new Common.HTIFIO()
 }
 
@@ -30,13 +30,13 @@ class Top extends Module
   
    tile.io.host.reset := reset_signal
    tile.io.host.id := UInt(0,1)
-   tile.io.host.pcr_req <> Queue(io.htif.pcr_req)
-   io.htif.pcr_rep <> Queue(tile.io.host.pcr_rep)
+   tile.io.host.csr_req <> Queue(io.htif.csr_req)
+   io.htif.csr_rep <> Queue(tile.io.host.csr_rep)
 
    tile.io.host.mem_req <> Queue(io.htif.mem_req)
    io.htif.mem_rep <> tile.io.host.mem_rep
 
-   io.debug_stats_pcr := Reg(next=tile.io.host.debug_stats_pcr)
+   io.debug_stats_csr := Reg(next=tile.io.host.debug_stats_csr)
 }
 
 object elaborate {

@@ -21,10 +21,6 @@ trait SodorProcConstants
                                   // on load-use). Otherwise rely 
                                   // entirely on interlocking to handle
                                   // pipeline hazards.
-
-  // val XPRLEN = 32              // native width of machine
-                                  // (i.e., the width of a register in 
-                                  // the general-purpose register file)
 }
 
 trait ScalarOpConstants
@@ -54,8 +50,7 @@ trait ScalarOpConstants
    // RS1 Operand Select Signal
    val OP1_RS1   = UInt(0, 2) // Register Source #1
    val OP1_PC    = UInt(1, 2) // PC
-   val OP1_ZIMM  = UInt(2, 2) // Zero-extended Immediate from RS1 field
-   val OP1_PCU   = UInt(3, 2) // Upper 20 bits of PC (used by AUIPC)
+   val OP1_IMZ   = UInt(2, 2) // Zero-extended Immediate from RS1 field, for use by CSRI instructions
    val OP1_X     = UInt(0, 2)  
 
    // RS2 Operand Select Signal
@@ -86,13 +81,9 @@ trait ScalarOpConstants
    val ALU_XOR    = UInt ( 7, 4)
    val ALU_SLT    = UInt ( 8, 4)
    val ALU_SLTU   = UInt ( 9, 4)
-   val ALU_COPY_2 = UInt ( 10,4)
+   val ALU_COPY_1 = UInt (10, 4)
+   val ALU_COPY_2 = UInt (11, 4)
    val ALU_X      = UInt ( 0, 4)
-    
-   // Writeback Address Select Signal
-   val WA_RD   = Bool(true)   // write to register rd
-   val WA_RA   = Bool(false)  // write to RA register (return address)
-   val WA_X    = Bool(true)
     
    // Writeback Select Signal
    val WB_ALU  = UInt(0, 2)
@@ -119,16 +110,6 @@ trait ScalarOpConstants
    val MSK_W   = UInt(4, 3)
    val MSK_X   = UInt(4, 3)
                      
- 
-   // The Bubble Instruction (Machine generated NOP)
-   // Insert (XOR x0,x0,x0) which is different from software compiler 
-   // generated NOPs which are (ADDI x0, x0, 0).
-   // Reasoning for this is to let visualizers and stat-trackers differentiate
-   // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x5033, 32)
-
-   val RA = UInt(1) // address of the return address register
-  
 }
 
 }

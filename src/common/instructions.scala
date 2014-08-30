@@ -246,6 +246,26 @@ object CSRs {
   val cycle = 0xc00
   val time = 0xc01
   val instret = 0xc02
+  val uarch0 = 0xcc0
+  val uarch1 = 0xcc1
+  val uarch2 = 0xcc2
+  val uarch3 = 0xcc3
+  val uarch4 = 0xcc4
+  val uarch5 = 0xcc5
+  val uarch6 = 0xcc6
+  val uarch7 = 0xcc7
+  val uarch8 = 0xcc8
+  val uarch9 = 0xcc9
+  val uarch10 = 0xcca
+  val uarch11 = 0xccb
+  val uarch12 = 0xccc
+  val uarch13 = 0xccd
+  val uarch14 = 0xcce
+  val uarch15 = 0xccf
+  val counth = 0x586
+  val cycleh = 0xc80
+  val timeh = 0xc81
+  val instreth = 0xc82
   val all = {
     val res = collection.mutable.ArrayBuffer[Int]()
     res += fflags
@@ -274,6 +294,30 @@ object CSRs {
     res += cycle
     res += time
     res += instret
+    res += uarch0
+    res += uarch1
+    res += uarch2
+    res += uarch3
+    res += uarch4
+    res += uarch5
+    res += uarch6
+    res += uarch7
+    res += uarch8
+    res += uarch9
+    res += uarch10
+    res += uarch11
+    res += uarch12
+    res += uarch13
+    res += uarch14
+    res += uarch15
+    res.toArray
+  }
+  val all32 = {
+    val res = collection.mutable.ArrayBuffer(all:_*)
+    res += counth
+    res += cycleh
+    res += timeh
+    res += instreth
     res.toArray
   }
 }

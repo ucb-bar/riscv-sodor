@@ -6,26 +6,26 @@ import Constants._
 import Util._
 
 
-class PCRReq(addr_width: Int) extends Bundle
+class CSRReq(addr_width: Int) extends Bundle
 {
    val rw = Bool()
    val addr = Bits(width = addr_width)
    val data = Bits(width = 64)
-   override def clone = { new PCRReq(addr_width).asInstanceOf[this.type] }
+   override def clone = { new CSRReq(addr_width).asInstanceOf[this.type] }
 }
 
 
 class HTIFIO() extends Bundle
 {
    val reset = Bool(INPUT)
-   val debug_stats_pcr = Bool(OUTPUT)
+   val debug_stats_csr = Bool(OUTPUT)
    val id = UInt(INPUT, 1)
-   val pcr_req = Decoupled(new PCRReq(addr_width = 12)).flip
-   val pcr_rep = Decoupled(Bits(width = 64))
+   val csr_req = Decoupled(new CSRReq(addr_width = 12)).flip
+   val csr_rep = Decoupled(Bits(width = 64))
    val ipi_req = Decoupled(Bits(width = 1))
    val ipi_rep = Decoupled(Bool()).flip
    
-   val mem_req = Decoupled(new PCRReq(addr_width = 64)).flip
+   val mem_req = Decoupled(new CSRReq(addr_width = 64)).flip
    val mem_rep = new ValidIO(Bits(width = 64))
 }
 

@@ -128,7 +128,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
 
    // Operand Muxes
-   val exe_alu_op1 = Mux(io.ctl.op1_sel === OP1_ZIM, imm_z,
+   val exe_alu_op1 = Mux(io.ctl.op1_sel === OP1_IMZ, imm_z,
                      Mux(io.ctl.op1_sel === OP1_IMU, imm_u,
                                                      exe_rs1_data)).toUInt
    
@@ -185,7 +185,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Writeback Stage
    
    wb_reg_valid    := exe_valid && !wb_hazard_stall 
-   wb_reg_csr_addr := exe_inst(31,20)
+   wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
  
    // Control Status Registers
    val csr = Module(new CSRFile())
@@ -206,6 +206,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
    io.dat.status    := csr.io.status
 
+   // Add your own uarch counters here!
+   csr.io.uarch_counters.foreach(_ := Bool(false))
 
    // WB Mux                                                                   
    // Note: I'm relying on the fact that the EXE stage is holding the

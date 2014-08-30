@@ -60,7 +60,7 @@ trait ScalarOpConstants
    // RS1 Operand Select Signal
    val OP1_RS1 = UInt(0, 2) // Register Source #1
    val OP1_IMU = UInt(1, 2) // immediate, U-type
-   val OP1_ZIM = UInt(2, 2) // zero-extended 5-bit immediate; used by CSRI instructions
+   val OP1_IMZ = UInt(2, 2) // zero-extended 5-bit immediate; used by CSRI instructions
    val OP1_X   = UInt(0, 2)
    
    // RS2 Operand Select Signal

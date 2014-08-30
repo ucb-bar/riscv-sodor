@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
    // i'm using uint64_t for these variables, so they shouldn't be larger
    // (also consequences all the way to the Chisel memory)
-   assert (dut.Top__io_htif_pcr_rep_bits.width() <= 64);
+   assert (dut.Top__io_htif_csr_rep_bits.width() <= 64);
    assert (dut.Top__io_htif_mem_rep_bits.width() <= 64);  
 
 //  int htif_bits = dut.Top__io_host_in_bits.width();
@@ -142,23 +142,23 @@ int main(int argc, char** argv)
       // perform all fesvr HostIO to HTIFIO transformations in software
       htif->tick(
          // from tile to me,the testharness
-           dut.Top__io_htif_pcr_req_ready.lo_word()
+           dut.Top__io_htif_csr_req_ready.lo_word()
          , dut.Top__io_htif_mem_req_ready.lo_word()
          
-         , dut.Top__io_htif_pcr_rep_valid.lo_word()
-         , dut.Top__io_htif_pcr_rep_bits.lo_word()
+         , dut.Top__io_htif_csr_rep_valid.lo_word()
+         , dut.Top__io_htif_csr_rep_bits.lo_word()
          
          , dut.Top__io_htif_mem_rep_valid.lo_word()
          , dut.Top__io_htif_mem_rep_bits.lo_word()
       );
 
       // send HTIF signals to the chip
-      dut.Top__io_htif_pcr_rep_ready = htif->pcr_rep_ready;
+      dut.Top__io_htif_csr_rep_ready = htif->csr_rep_ready;
 
-      dut.Top__io_htif_pcr_req_valid = htif->pcr_req_valid;
-      dut.Top__io_htif_pcr_req_bits_data = htif->pcr_req_bits_data;
-      dut.Top__io_htif_pcr_req_bits_addr = htif->pcr_req_bits_addr;
-      dut.Top__io_htif_pcr_req_bits_rw = htif->pcr_req_bits_rw;
+      dut.Top__io_htif_csr_req_valid = htif->csr_req_valid;
+      dut.Top__io_htif_csr_req_bits_data = htif->csr_req_bits_data;
+      dut.Top__io_htif_csr_req_bits_addr = htif->csr_req_bits_addr;
+      dut.Top__io_htif_csr_req_bits_rw = htif->csr_req_bits_rw;
 
       dut.Top__io_htif_mem_req_valid = htif->mem_req_valid;
       dut.Top__io_htif_mem_req_bits_addr = htif->mem_req_bits_addr;
