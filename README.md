@@ -203,7 +203,7 @@ This allows the fesvr to load a binary into the Sodor core's scratchpad memory,
 bring the core out of reset, and communicate with the core while it's running
 to handle any syscalls, error conditions, or test successful/end conditions.
 
-This basically involves porting emulator/*/emulator.cpp to Verilog.  I
+This basically involves porting emulator/\*/emulator.cpp to Verilog.  I
 recommend writing a Verilog testharness that interfaces with the existing C++
 code (emulator/common/htif_emulator.cc, etc.).  emulator/common/htif_main.cc
 shows an example stub that uses Synopsys's DirectC to interface between a
@@ -217,14 +217,13 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
-* Add stat information back in (e.g., print out the CPI).
-* Leverage the uarch-counters (need to update CSRFile).
+* Update the 3-stage to optionally use Princeton mode.
+* Add stat information back in (e.g., print out the CPI, preferably leveraging
+  the uarch-counters).
 * Use the newest riscv-test benchmarks, which provide printf (but require
   syscall support) and dump out the uarch counter state.
-* Update the 3-stage to RISC-V 2.0.
-* Update the 3-stage to work in Princeton mode (previously only worked in 
-  Harvard mode with synchronous memory).
 * Use the riscv-dis binary to provide diassembly support (instead of using
-  Chisel RTL, which is expensive), which is provided by the riscv-fesvr repository.
-* Update the 1-stage to implement more of the RV32SBare supervisor spec.
+  Chisel RTL, which is expensive), which is provided by the riscv-isa-run
+  repository.
+* Provide a Verilog test harness, and put the 3-stage on a FPGA. 
 
