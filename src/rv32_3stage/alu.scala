@@ -1,6 +1,7 @@
 // This is borrowed from rocket, and modified to be hardcoded to 32b.
 // I will leave it as an excercise to the reader to make a parameterizable ALU
-// that doesn't generate extra hardware for 32b.
+// that doesn't generate extra hardware for 32b. I also didn't carefully
+// consider the function encodings. - Chris
 package Sodor
 
 import Chisel._
@@ -28,7 +29,7 @@ object ALU
 //  val FN_SGE  = Bits(13)
   val ALU_SLTU = Bits(14)
 //  val FN_SGEU = Bits(15)
-  val ALU_COPY2= Bits(8)   
+  val ALU_COPY1= Bits(8)   
     
 
 
@@ -87,7 +88,7 @@ class ALU(implicit conf: SodorConfiguration) extends Module
     Mux(io.fn === ALU_AND, io.in1 & io.in2,
     Mux(io.fn === ALU_OR,  io.in1 | io.in2,
     Mux(io.fn === ALU_XOR, io.in1 ^ io.in2,
-        io.in2))) // ALU_OP2
+                           io.in1))) // ALU_COPY1
 
 //  val out64 =
   val out_xpr_length =

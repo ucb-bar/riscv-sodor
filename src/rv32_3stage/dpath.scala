@@ -47,9 +47,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
 
+   val wb_reg_valid    = Reg(init=Bool(false))
    val wb_reg_ctrl     = Reg(outType = new CtrlSignals)
    val wb_reg_alu      = Reg(outType = Bits(width=conf.xprlen))
-   val wb_reg_rs1_addr = Reg(outType = UInt(width=log2Up(32))) // needed for CSR
+   val wb_reg_csr_addr = Reg(outType = UInt(width=12)) 
    val wb_reg_wbaddr   = Reg(outType = UInt(width=log2Up(32)))
    
    val wb_hazard_stall = Bool() // hazard detected, stall in IF/EXE required
@@ -62,12 +63,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    io.imem.resp.ready := !wb_hazard_stall // stall IF if we detect a WB->EXE hazard
 
-   val if_pc_next = Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
-                    Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
-                                                    exe_brjmp_target)) // PC_BR or PC_J
+   // if front-end mispredicted, tell it which PC to take
+   val take_pc = Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
+                 Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
+                                                 exe_brjmp_target)) // PC_BR or PC_J
                                                     
-
-   io.imem.req.bits.pc := if_pc_next
+   io.imem.req.bits.pc := take_pc
 
    
    //**********************************
@@ -105,16 +106,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_i = exe_inst(31, 20) 
    val imm_s = Cat(exe_inst(31, 25), exe_inst(11,7))
    val imm_b = Cat(exe_inst(31), exe_inst(7), exe_inst(30,25), exe_inst(11,8))
-   val imm_u = exe_inst(31, 12)
+   val imm_u = Cat(exe_inst(31, 12), Fill(UInt(0), 12))
    val imm_j = Cat(exe_inst(31), exe_inst(19,12), exe_inst(20), exe_inst(30,21))
-
-   val zimm = Cat(Fill(UInt(0), 27), exe_inst(19,15))
+   val imm_z = exe_inst(19,15)
 
    // sign-extend immediates
    val imm_i_sext = Cat(Fill(imm_i(11), 20), imm_i)
    val imm_s_sext = Cat(Fill(imm_s(11), 20), imm_s)
    val imm_b_sext = Cat(Fill(imm_b(11), 19), imm_b, UInt(0))
-   val imm_u_sext = Cat(imm_u, Fill(UInt(0), 12))
    val imm_j_sext = Cat(Fill(imm_j(19), 11), imm_j, UInt(0))
  
    
@@ -129,18 +128,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
 
    // Operand Muxes
-   val exe_alu_op1 = MuxCase(UInt(0), Array(
-               (io.ctl.op1_sel === OP1_RS1)  -> exe_rs1_data,
-               (io.ctl.op1_sel === OP1_ZIMM) -> zimm,
-               (io.ctl.op1_sel === OP1_PC)   -> exe_pc
-               )).toUInt
+   val exe_alu_op1 = Mux(io.ctl.op1_sel === OP1_ZIM, imm_z,
+                     Mux(io.ctl.op1_sel === OP1_IMU, imm_u,
+                                                     exe_rs1_data)).toUInt
    
-   val exe_alu_op2 = MuxCase(UInt(0), Array(
-               (io.ctl.op2_sel === OP2_RS2) -> exe_rs2_data,
-               (io.ctl.op2_sel === OP2_IMI) -> imm_i_sext,
-               (io.ctl.op2_sel === OP2_IMU) -> imm_u_sext,
-               (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext
-              )).toUInt
+   val exe_alu_op2 = Mux(io.ctl.op2_sel === OP2_IMI, imm_i_sext,
+                     Mux(io.ctl.op2_sel === OP2_PC,  exe_pc,
+                     Mux(io.ctl.op2_sel === OP2_IMS, imm_s_sext,
+                                                     exe_rs2_data))).toUInt
   
         
    // ALU
@@ -175,9 +170,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       wb_reg_ctrl.sret      := Bool(false)
    }
 
-   wb_reg_alu := exe_alu_out
-   wb_reg_rs1_addr := exe_rs1_addr
-   wb_reg_wbaddr := exe_wbaddr
+   wb_reg_alu      := exe_alu_out
+   wb_reg_wbaddr   := exe_wbaddr
      
    
    // datapath to data memory outputs
@@ -190,29 +184,35 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Writeback Stage
    
-   val wb_reg_valid = Reg(init=Bool(false))
-   wb_reg_valid := exe_valid && !wb_hazard_stall 
+   wb_reg_valid    := exe_valid && !wb_hazard_stall 
+   wb_reg_csr_addr := exe_inst(31,20)
  
    // Control Status Registers
    val csr = Module(new CSRFile())
+   val csr_cmd = wb_reg_ctrl.csr_cmd
    csr.io.host <> io.host
-   csr.io.rw.addr   := exe_alu_op2(11,0)
-   csr.io.rw.wdata  := exe_alu_op1
-   csr.io.rw.cmd    := io.ctl.csr_cmd
+   csr.io.rw.addr   := wb_reg_csr_addr
+   csr.io.rw.wdata  := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  wb_reg_alu,
+                       Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~wb_reg_alu,
+                                             wb_reg_alu))
+   csr.io.rw.cmd    := csr_cmd 
    val csr_out = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
-   csr.io.exception := io.ctl.exception
-   io.dat.status    := csr.io.status
-   csr.io.cause     := io.ctl.exc_cause
-   csr.io.sret      := io.ctl.sret
-   csr.io.pc        := exe_pc
+   csr.io.exception := wb_reg_ctrl.exception
+   csr.io.cause     := wb_reg_ctrl.exc_cause
+   csr.io.sret      := wb_reg_ctrl.sret
+   csr.io.pc        := exe_pc - UInt(4)
    exception_target := csr.io.evec
+   io.dat.status    := csr.io.status
 
 
    // WB Mux                                                                   
-   // Note: I'm relying on the fact that the EXE stage is holding the instruction behind our JR
-   // assumes we always predict PC+4, and we don't clear the "mispredicted" PC when we jump
+   // Note: I'm relying on the fact that the EXE stage is holding the
+   // instruction behind our jal, which assumes we always predict PC+4, and we
+   // don't clear the "mispredicted" PC when we jump.
+   require (PREDICT_PCP4==true)
+
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
