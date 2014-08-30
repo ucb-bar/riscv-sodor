@@ -1,7 +1,9 @@
 //**************************************************************************
 // RISCV Processor Control Path
 //--------------------------------------------------------------------------
-
+//
+// cpath must check io.imem.resp.valid to verify it's decoding an actual
+// instruction. Otherwise, it is in charge of muxing off ctrl signals.
 
 package Sodor
 {
@@ -118,6 +120,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Put these control signals in variables
    val cs_inst_val :: cs_br_type :: cs_brjmp_sel :: cs_op1_sel :: cs_op2_sel :: cs_alu_fun :: cs_wb_sel :: cs_rf_wen :: cs_bypassable :: cs_mem_en :: cs_mem_fcn :: cs_msk_sel :: cs_csr_cmd :: cs_sync_fcn :: cs_sret :: cs_syscall :: cs_privileged ::  Nil = csignals
 
+
+   // Is the instruction valid? If not, mux off all control signals!
+   val ctrl_valid = io.imem.resp.valid
                            
    // Branch Logic   
    val take_evec = Bool() // jump to the csr.io.evec target 
@@ -138,9 +143,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      ))))))))))
                            
 
-
-   val take_pc = io.ctl.pc_sel != PC_4 
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4)
+   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
@@ -149,12 +152,12 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
-   io.ctl.rf_wen     := Mux(exe_exception, Bool(false), cs_rf_wen.toBool)
-   io.ctl.bypassable := cs_bypassable.toBool
-   io.ctl.csr_cmd    := Mux(exe_exception, CSR.N, cs_csr_cmd)
+   io.ctl.rf_wen     := Mux(exe_exception || !ctrl_valid, Bool(false), cs_rf_wen.toBool)
+   io.ctl.bypassable := cs_bypassable.toBool 
+   io.ctl.csr_cmd    := Mux(exe_exception || !ctrl_valid, CSR.N, cs_csr_cmd)
    
    // Memory Requests
-   io.ctl.dmem_val   := cs_mem_en.toBool
+   io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid
    io.ctl.dmem_fcn   := cs_mem_fcn
    io.ctl.dmem_typ   := cs_msk_sel
 
@@ -179,7 +182,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                        exc_priv ||
                        cs_sret.toBool // i'm cheating here, treating sret like an exception (same thing re: pc_sel)
                      ) && 
-                     !io.ctl.exe_kill // clear exceptions behind us in the pipeline
+                     !io.ctl.exe_kill && // clear exceptions behind us in the pipeline
+                     ctrl_valid
                  
    wb_exception   := exe_exception
 

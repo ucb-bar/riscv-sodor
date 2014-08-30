@@ -231,7 +231,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    val debug_wb_pc = UInt(width=64)
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc))
-   val debug_wb_inst = Mux(Reg(next=wb_hazard_stall || io.ctl.exe_kill), BUBBLE, Reg(next=exe_inst))
+   val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
    printf("Cyc=%d %s PC=(0x%x,0x%x,0x%x) [%s,%s,%s] Wb: %s %s %s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d] %d\n"
       , tsc_reg(23,0)
       , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
@@ -239,7 +239,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_pc(19,0)
       , Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc)(19,0))
       , Disassemble(io.imem.debug.if_inst, true)
-      , Disassemble(exe_inst, true)
+      , Disassemble(Mux(exe_valid, exe_inst, BUBBLE), true)
       , Disassemble(debug_wb_inst, true)
       , Disassemble(debug_wb_inst)
       , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))

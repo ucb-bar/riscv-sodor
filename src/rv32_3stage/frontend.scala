@@ -86,7 +86,8 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
     
    val exe_reg_valid = Reg(init=Bool(false))
    val exe_reg_pc    = Reg(outType=UInt(width=conf.xprlen))
-   val exe_reg_inst  = Reg(init=BUBBLE)
+   val exe_reg_inst  = Reg(outType=Bits(width=32))
+//   val exe_reg_inst  = Reg(init=BUBBLE)
 
    //**********************************
    // Next PC Stage (if we can call it that)
@@ -126,17 +127,16 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    when (io.cpu.resp.ready)
    {
+      exe_reg_pc    := if_reg_pc
+      exe_reg_inst  := io.imem.resp.bits.data
       when (io.imem.resp.valid && if_reg_valid)
       {
          exe_reg_valid := Bool(true)
-         exe_reg_pc    := if_reg_pc
-         exe_reg_inst  := io.imem.resp.bits.data
       }
       when (io.cpu.req.valid)
       {
          // datapath is redirecting the PC stream (misspeculation)
          exe_reg_valid := Bool(false)
-         exe_reg_inst  := BUBBLE
       }
    }
    
