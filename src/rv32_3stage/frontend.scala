@@ -85,14 +85,14 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    val if_reg_pc     = Reg(init=UInt(START_ADDR-4,conf.xprlen))
     
    val exe_reg_valid = Reg(init=Bool(false))
-   val exe_reg_pc    = Reg(outType=UInt(width=conf.xprlen))
-   val exe_reg_inst  = Reg(outType=Bits(width=32))
-//   val exe_reg_inst  = Reg(init=BUBBLE)
+   val exe_reg_pc    = Reg(UInt(width=conf.xprlen))
+   val exe_reg_inst  = Reg(Bits(width=32))
 
    //**********************************
    // Next PC Stage (if we can call it that)
    val if_pc_next = UInt()
-   val if_val_next = Bool(true) // for now, always true
+   val if_val_next = Bool(true) // for now, always true. But instruction
+                                // buffers, etc., could make that not the case.
    
    val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
 
@@ -112,8 +112,11 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
       if_pc_next  := if_reg_pc
    }
 
-   if_reg_pc    := if_pc_next
-   if_reg_valid := if_val_next
+   when (io.cpu.resp.ready)
+   {
+      if_reg_pc    := if_pc_next
+      if_reg_valid := if_val_next
+   }
 
    // set up outputs to the instruction memory
    io.imem.req.bits.addr := if_pc_next
@@ -127,17 +130,9 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    when (io.cpu.resp.ready)
    {
+      exe_reg_valid := io.imem.resp.valid && if_reg_valid && !io.cpu.req.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.resp.bits.data
-      when (io.imem.resp.valid && if_reg_valid)
-      {
-         exe_reg_valid := Bool(true)
-      }
-      when (io.cpu.req.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         exe_reg_valid := Bool(false)
-      }
    }
    
    //**********************************
