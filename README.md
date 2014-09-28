@@ -1,11 +1,13 @@
 About The Sodor Processor Collection
 ====================================
 
-Author : Christopher Celio (celio@eecs.berkeley.edu)
+Author  : Christopher Celio (celio@eecs.berkeley.edu)
 
-Author : Eric Love
+Author  : Eric Love
 
-Date   : 2014 May 6
+Date    : 2014 May 6
+
+Diagrams: [Sodor Github wiki](https://github.com/ucb-bar/riscv-sodor/wiki)
  
 
 This repo has been put together to demonstrate a number of simple [RISC-V](http://riscv.org)
@@ -168,8 +170,9 @@ the [RISC-V ISA](http://riscv.org) and to the hardware construction language
  
 *Are there any diagrams of these cores?*
 
-Diagrams of the 1-stage, 2-stage, and ucode can be found in doc/, at the end of
-the lab handout.  A more comprehensive write-up on the micro-code implementation can
+Diagrams of some of the processors can be found either in the 
+[Sodor Github wiki](https://github.com/ucb-bar/riscv-sodor/wiki), in doc/, 
+or in doc/lab1.pdf.  A more comprehensive write-up on the micro-code implementation can
 be found at the [CS152 website](http://inst.eecs.berkeley.edu/~cs152/sp12/handouts/microcode.pdf).
 
 
@@ -217,7 +220,10 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
-* Update the 3-stage to optionally use Princeton mode.
+* Update the 3-stage to optionally use Princeton mode (instruction fetch 
+  and load/stores share a single port to memory).
+* Reduce the port count on the scratchpad memory by having the HTIF port 
+  share one of the cpu ports.
 * Add stat information back in (e.g., print out the CPI, preferably leveraging
   the uarch-counters).
 * Use the newest riscv-test benchmarks, which provide printf (but require
