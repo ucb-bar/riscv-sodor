@@ -231,7 +231,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    tsc_reg := tsc_reg + UInt(1)
    when (wb_reg_valid) { irt_reg := irt_reg + UInt(1) }
 
-   val debug_wb_pc = UInt(width=64)
+   val debug_wb_pc = UInt(width=32)
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc))
    val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
    printf("Cyc=%d %s PC=(0x%x,0x%x,0x%x) [%s,%s,%s] Wb: %s %s %s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d] %d\n"
@@ -258,7 +258,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , io.ctl.exc_cause
       , irt_reg(11,0)
       )
-
+   printf("%x%x%x%x", exe_valid, exe_inst, exe_pc, debug_wb_pc)
    // for debugging, print out the commit information.
    // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
    // use "sed" to parse out "@@@" from the other printf code above.

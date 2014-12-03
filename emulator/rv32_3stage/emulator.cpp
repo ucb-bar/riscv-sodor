@@ -28,7 +28,8 @@ int main(int argc, char** argv)
    const char* failure = NULL;
    disassembler disasm;
    int memory_size = (1 << 21); // 2 MB is the smallest allowed memory by the fesvr 
- 
+   bool api_mode = false;
+
    // for disassembly
    char inst_str[1024];
    uint64_t reg_inst = 0;
@@ -47,6 +48,8 @@ int main(int argc, char** argv)
          max_cycles = atoll(argv[i]+12);
       else if (arg.substr(0, 9) == "+loadmem=")
          loadmem = argv[i]+9;
+      else if (arg.substr(0, 4) == "+api")
+         api_mode = true;
    }
 
    const int disasm_len = 24;
@@ -130,6 +133,16 @@ int main(int argc, char** argv)
    {
       dut.clock_lo(LIT<1>(1));
       dut.clock_hi(LIT<1>(1));
+   }
+
+   if (api_mode) {
+      dut.Top__io_htif_reset = 0;
+      while (1) {
+      	Top_api_t dutApi;
+	dutApi.init(&dut);
+	dutApi.read_eval_print_loop();
+	return 0;
+      }
    }
 
    while (!htif->done())
