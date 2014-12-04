@@ -6,7 +6,8 @@
 #define __UTIL_H
 
 #include <machine/syscall.h>
-
+#include <stdbool.h>
+  
 #define rdcycle() ({ unsigned long _c; asm volatile ("rdcycle %0" : "=r"(_c) :: "memory"); _c; })
 #define rdinstret() ({ unsigned long _c; asm volatile ("rdinstret %0" : "=r"(_c) :: "memory"); _c; })
                             
