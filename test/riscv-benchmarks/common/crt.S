@@ -44,18 +44,6 @@ _start:
   li  x30,0
   li  x31,0
 
-# Wait 8k cycles for BTB to reset, then set stats=1
-  li  x1,1
-  li  x2,12
-  sll x1, x1, x2
-init1:
-  addi  x1, x1, -1
-  bnez  x1, init1
-  li    x1, 1
-  csrw stats, 1
-  li    x1, 0
-  li    x2, 0
-
 # Commented code sets up trap vector for processors supporting
 # supervisor mode--add this back later when we support that again.
 
