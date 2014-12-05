@@ -376,7 +376,7 @@ object Disassemble
     val immv = insn(31,20).toSInt
     val smmv = Cat(insn(31, 25), insn(11,7)).toSInt
     val bmmv = Cat(insn(31), insn(7), insn(30,25), insn(11,8)).toSInt
-    val jmmv = Cat(insn(31,7), insn(19,12), insn(20), insn(30,21)).toSInt
+    val jmmv = Cat(insn(31), insn(19,12), insn(20), insn(30,21)).toSInt
 
     val imm = hex(immv)
     val bmm = hex(bmmv << UInt(1))
