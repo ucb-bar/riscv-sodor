@@ -53,11 +53,11 @@ bmarks_host = \
 HOST_OPTS = -std=gnu99 -DPREALLOCATE=0 -DHOST_DEBUG=1
 HOST_COMP = gcc $(HOST_OPTS)
 
-RISCV_GCC = riscv-gcc
+RISCV_GCC = riscv64-unknown-elf-gcc
 RISCV_GCC_OPTS = -m32 -std=gnu99 -O2 -nostdlib -nostartfiles #-Wa,-march=RVIMAFDXhwacha 
-RISCV_LINK = riscv-gcc  -m32 -T $(bmarkdir)/common/test.ld $(incs)
+RISCV_LINK = riscv64-unknown-elf-gcc  -nostdlib -m32 -T $(bmarkdir)/common/test.ld $(incs)
 RISCV_LINK_OPTS = -lc -m32
-RISCV_OBJDUMP = riscv-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
+RISCV_OBJDUMP = riscv64-unknown-elf-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
 RISCV_SIM = spike
 
 VPATH += $(addprefix $(bmarkdir)/, $(bmarks))
