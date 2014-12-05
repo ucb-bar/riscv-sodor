@@ -5,37 +5,37 @@
 Disassembly of section .text:
 
 00002000 <_start>:
-    2000:	50b02973 	csrr	a0,hartid
-    2004:	00091063 	bnez	a0,2004 <_start+0x4>
-    2008:	04000913 	li	a0,64
-    200c:	50a93073 	csrc	status,a0
-    2010:	00200e13 	li	t2,2
-    2014:	0080006f 	j	201c <test_2>
-    2018:	0340006f 	j	204c <fail>
+    2000:	50b02973          	csrr	a0,hartid
+    2004:	00091063          	bnez	a0,2004 <_start+0x4>
+    2008:	04000913          	li	a0,64
+    200c:	50a93073          	csrc	status,a0
+    2010:	00200e13          	li	t2,2
+    2014:	0080006f          	j	201c <test_2>
+    2018:	0340006f          	j	204c <fail>
 
 0000201c <test_2>:
-    201c:	00100093 	li	ra,1
-    2020:	0140006f 	j	2034 <test_2+0x18>
-    2024:	00108093 	addi	ra,ra,1
-    2028:	00108093 	addi	ra,ra,1
-    202c:	00108093 	addi	ra,ra,1
-    2030:	00108093 	addi	ra,ra,1
-    2034:	00108093 	addi	ra,ra,1
-    2038:	00108093 	addi	ra,ra,1
-    203c:	00300e93 	li	t3,3
-    2040:	00300e13 	li	t2,3
-    2044:	01d09463 	bne	ra,t3,204c <fail>
-    2048:	01c01e63 	bne	zero,t2,2064 <pass>
+    201c:	00100093          	li	ra,1
+    2020:	0140006f          	j	2034 <test_2+0x18>
+    2024:	00108093          	addi	ra,ra,1
+    2028:	00108093          	addi	ra,ra,1
+    202c:	00108093          	addi	ra,ra,1
+    2030:	00108093          	addi	ra,ra,1
+    2034:	00108093          	addi	ra,ra,1
+    2038:	00108093          	addi	ra,ra,1
+    203c:	00300e93          	li	t3,3
+    2040:	00300e13          	li	t2,3
+    2044:	01d09463          	bne	ra,t3,204c <fail>
+    2048:	01c01e63          	bne	zero,t2,2064 <pass>
 
 0000204c <fail>:
-    204c:	0ff0000f 	fence
-    2050:	000e0863 	beqz	t2,2060 <fail+0x14>
-    2054:	001e1e13 	slli	t2,t2,0x1
-    2058:	001e6e13 	ori	t2,t2,1
-    205c:	51ee1073 	csrw	tohost,t2
-    2060:	00000063 	b	2060 <fail+0x14>
+    204c:	0ff0000f          	fence
+    2050:	000e0863          	beqz	t2,2060 <fail+0x14>
+    2054:	001e1e13          	slli	t2,t2,0x1
+    2058:	001e6e13          	ori	t2,t2,1
+    205c:	51ee1073          	csrw	tohost,t2
+    2060:	00000063          	b	2060 <fail+0x14>
 
 00002064 <pass>:
-    2064:	0ff0000f 	fence
-    2068:	51e0d073 	csrwi	tohost,1
-    206c:	00000063 	b	206c <pass+0x8>
+    2064:	0ff0000f          	fence
+    2068:	51e0d073          	csrwi	tohost,1
+    206c:	00000063          	b	206c <pass+0x8>
