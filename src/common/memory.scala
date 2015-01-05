@@ -197,7 +197,7 @@ object StoreMask
    {
       val mask = Mux(sel === MT_H || sel === MT_HU, Bits(0xffff, 32),
                  Mux(sel === MT_B || sel === MT_BU, Bits(0xff, 32),
-                                                    Bits(0xffffffff, 32)))
+                                                    Bits(0xffffffffL, 32)))
 
       return mask
    }
