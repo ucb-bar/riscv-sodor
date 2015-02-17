@@ -52,15 +52,15 @@ Building the processor emulators
 
 Because this repository is designed to be used as RISC-V processor
 examples written in [Chisel](http://chisel.eecs.berkeley.edu) (and a regressive testsuite for Chisel updates),
-no external [RISC-V tools](http://riscv.org) are used (with the exception of the RISC-V [front-end server](https://github.com/ucb-bar/riscv-fesvr)). 
-The assumption is that [riscv-gcc](https://github.com/ucb-bar/riscv-gcc) is not
+no external [RISC-V tools](http://riscv.org) are used (with the exception of the RISC-V [front-end server](https://github.com/riscv/riscv-fesvr)). 
+The assumption is that [riscv-gcc](https://github.com/riscv/riscv-gcc) is not
 available on the local system.  Thus, RISC-V unit tests and benchmarks were
 compiled and committed to the sodor repository in the ./install directory (as are the .dump files). 
 
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
 
-    $ git clone https://github.com/ucb-bar/riscv-fesvr.git
+    $ git clone https://github.com/riscv/riscv-fesvr.git
     $ cd riscv-fesvr
     $ ./configure --prefix=/usr/local
     $ make install
