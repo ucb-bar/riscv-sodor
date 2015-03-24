@@ -59,9 +59,11 @@ compiled and committed to the sodor repository in the ./install directory (as ar
 
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
+(Currently, the front-end server is undergoing development and we need to use a specific version.)
 
     $ git clone https://github.com/riscv/riscv-fesvr.git
     $ cd riscv-fesvr
+    $ git checkout 0a30552
     $ ./configure --prefix=/usr/local
     $ make install
  
