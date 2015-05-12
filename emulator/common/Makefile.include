@@ -39,7 +39,7 @@ LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lp
 OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
 DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
 
-CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src
+CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src --compileInitializationUnoptimized
 CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
 
 # To find emulator.cpp
