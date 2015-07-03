@@ -14,3 +14,4 @@ install/share
 *.vpd
 .DS_Store
 sbt/*/target
+*.log

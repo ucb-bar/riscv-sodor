@@ -1,0 +1,3 @@
+[submodule "riscv-tests"]
+	path = riscv-tests
+	url = git@github.com:riscv/riscv-tests.git
