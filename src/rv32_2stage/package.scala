@@ -10,7 +10,6 @@ object Constants extends
    SodorProcConstants with
    ScalarOpConstants with
    Common.constants.RISCVConstants with
-   Common.constants.ExcCauseConstants with
    Common.MemoryOpConstants
 {
 }

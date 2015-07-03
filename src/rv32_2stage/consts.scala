@@ -32,6 +32,7 @@ trait ScalarOpConstants
    val PC_BR  = UInt(1, 3)  // branch_target
    val PC_J   = UInt(2, 3)  // jump_target
    val PC_JR  = UInt(3, 3)  // jump_reg_target
+   val PC_EXC = UInt(4, 3)  // exception 
                                    
    // Branch Type
    val BR_N   = UInt(0, 4) // Next
@@ -107,11 +108,6 @@ trait ScalarOpConstants
    val MSK_HU  = UInt(3, 3)
    val MSK_W   = UInt(4, 3)
    val MSK_X   = UInt(4, 3)
-                     
-   // Enable Co-processor Register Signal (ToHost Register, etc.)
-   val PCR_N   = UInt(0,2)
-   val PCR_F   = UInt(1,2)
-   val PCR_T   = UInt(2,2)
 }
 
 }

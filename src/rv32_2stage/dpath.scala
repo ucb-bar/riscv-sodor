@@ -15,12 +15,16 @@ import Constants._
 import Common._
 import Common.Constants._
 
-class DatToCtlIo extends Bundle() 
+class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
    val inst  = Bits(OUTPUT, 32)
    val br_eq = Bool(OUTPUT)
    val br_lt = Bool(OUTPUT)
    val br_ltu= Bool(OUTPUT)
+   val csr_eret = Bool(OUTPUT)
+   val csr_interrupt = Bool(OUTPUT)
+   val csr_xcpt = Bool(OUTPUT)
+   val csr_interrupt_cause = UInt(OUTPUT, conf.xprlen)
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -50,6 +54,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_br_target       = UInt()
    val exe_jmp_target      = UInt()
    val exe_jump_reg_target = UInt()
+   val exception_target    = UInt()
  
    when (!io.ctl.stall)
    {
@@ -62,7 +67,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.pc_sel === PC_4)  -> if_pc_plus4,
                   (io.ctl.pc_sel === PC_BR) -> exe_br_target,
                   (io.ctl.pc_sel === PC_J ) -> exe_jmp_target,
-                  (io.ctl.pc_sel === PC_JR) -> exe_jump_reg_target
+                  (io.ctl.pc_sel === PC_JR) -> exe_jump_reg_target,
+                  (io.ctl.pc_sel === PC_EXC)-> exception_target
                   ))
    
    //Instruction Memory
@@ -98,7 +104,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Register File
    val regfile = Mem(Bits(width = conf.xprlen), 32)
 
-   when (io.ctl.rf_wen && (exe_wbaddr != UInt(0)))
+   when (io.ctl.rf_wen && (exe_wbaddr != UInt(0)) && !io.dat.csr_xcpt)
    {
       regfile(exe_wbaddr) := exe_wbdata
    }
@@ -164,18 +170,24 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
-   val csr_cmd = io.ctl.csr_cmd
    csr.io.host <> io.host
    csr.io.rw.addr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
-   csr.io.rw.wdata := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  exe_alu_out,
-                      Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~exe_alu_out,
-                                            exe_alu_out))
-   csr.io.rw.cmd   := csr_cmd
+   csr.io.rw.cmd   := io.ctl.csr_cmd
+   csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
-   csr.io.retire := Bool(false) // TODO
-   csr.io.exception := Bool(false) // no supervisor mode supported
-   
+   csr.io.retire    := !io.ctl.stall // TODO verify this works properly
+   csr.io.exception := io.ctl.exception
+   csr.io.cause     := io.ctl.exc_cause
+   csr.io.pc        := exe_reg_pc
+   exception_target := csr.io.evec
+                    
+   io.dat.csr_eret := csr.io.eret
+   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_interrupt := csr.io.interrupt
+   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
+   // TODO replay? stall?
+        
    // Add your own uarch counters here!
    csr.io.uarch_counters.foreach(_ := Bool(false))
 
@@ -210,13 +222,21 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         
    
    // Printout
-   printf("Cyc= %d PC= (0x%x,0x%x) [%s,%s] Exe: %s %s%s%s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x]\n"
+   // TODO: provide a way to provide a disassembly on just the opcode.
+   // left as "n/a" for now.
+   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] PC= (0x%x,0x%x) [%x,%x] %s%s%s Exe: DASM(%x)\n"
       , tsc_reg(31,0)
+      , exe_alu_op1
+      , exe_alu_op2
+      , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
+      , exe_wbaddr
+      , exe_wbdata
       , if_reg_pc
       , exe_reg_pc
-      , Disassemble(if_inst, true)
-      , Disassemble(exe_reg_inst, true)
-      , Disassemble(exe_reg_inst)
+//      , Disassemble(if_inst, true)
+//      , Disassemble(exe_reg_inst, true)
+      , if_inst(6,0)
+      , exe_reg_inst(6,0)
       , Mux(io.ctl.stall, Str("stall"), Str("     "))
       , Mux(io.ctl.if_kill, Str("KILL"), Str("     "))
       , Mux(io.ctl.pc_sel  === UInt(1), Str("BR"),
@@ -224,11 +244,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          Mux(io.ctl.pc_sel === UInt(3), Str("JR"),
          Mux(io.ctl.pc_sel === UInt(4), Str("EX"),
          Mux(io.ctl.pc_sel === UInt(0), Str("  "), Str("??"))))))
-      , exe_alu_op1
-      , exe_alu_op2
-      , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
-      , exe_wbaddr
-      , exe_wbdata
+      , exe_reg_inst
       )
 }
 
