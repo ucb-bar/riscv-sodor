@@ -1,7 +1,6 @@
 #include "htif_emulator.h"
 #include "common.h"
 #include "emulator.h"
-#include "disasm.h"
 #include "Top.h" // chisel-generated code...
 #include <fcntl.h>
 #include <signal.h>
@@ -26,7 +25,6 @@ int main(int argc, char** argv)
    const char* loadmem = NULL;
    FILE *vcdfile = NULL, *logfile = stderr;
    const char* failure = NULL;
-   disassembler disasm;
    int memory_size = (1 << 21); // 2 MB is the smallest allowed memory by the fesvr 
  
    // for disassembly
@@ -49,7 +47,6 @@ int main(int argc, char** argv)
          loadmem = argv[i]+9;
    }
 
-   const int disasm_len = 24;
    if (vcd)
    {
       // Create a VCD file

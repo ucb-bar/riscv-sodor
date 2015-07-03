@@ -5,6 +5,14 @@ install     := $(srcDir)/install
 
 ELF         := elf2hex
 
+# pipe processor output through the spike-dasm program to turn 
+# raw instruction bits into pretty, readable diassembly
+disasm_exe := 2>
+which_disasm := $(shell which spike-dasm)
+ifneq ($(which_disasm),)
+	disasm_exe := 3>&1 1>&2 2>&3 | $(which_disasm) $(DISASM_EXTENSION) >
+endif
+ 
 
 MODEL := Top
 
@@ -39,7 +47,7 @@ LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lp
 OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
 DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
 
-CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --targetDir emulator/${MK_TARGET_PROC}/generated-src --compileInitializationUnoptimized
+CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --compileInitializationUnoptimized --W0W --targetDir emulator/${MK_TARGET_PROC}/generated-src
 CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
 
 # To find emulator.cpp
@@ -107,28 +115,58 @@ test:
 
 
 # Globally installed assembly tests
-global_tstdir = $(install)/riscv-isa
+global_tstdir = $(install)/riscv-tests
 
 global_asm_tests += \
-	simple \
-	add addi \
-	and andi \
-	auipc \
-	beq bge bgeu blt bltu bne \
-	j jal jalr \
-	lb lbu lh lhu lw \
-	lui \
-	or ori \
-	sb sh sw \
-	sll slli \
-	slt slti \
-	sra srai \
-	srl srli \
-	sub \
-	xor xori \
+	rv32ui-p-simple \
+	rv32ui-p-add \
+	rv32ui-p-addi \
+	rv32ui-p-auipc \
+	rv32ui-p-fence_i \
+	rv32ui-p-sb \
+	rv32ui-p-sh \
+	rv32ui-p-sw \
+	rv32ui-p-and \
+	rv32ui-p-andi \
+	rv32ui-p-beq \
+	rv32ui-p-bge \
+	rv32ui-p-bgeu \
+	rv32ui-p-blt \
+	rv32ui-p-bltu \
+	rv32ui-p-bne \
+	rv32ui-p-j \
+	rv32ui-p-jal \
+	rv32ui-p-jalr \
+	rv32ui-p-lb \
+	rv32ui-p-lbu \
+	rv32ui-p-lh \
+	rv32ui-p-lhu \
+	rv32ui-p-lui \
+	rv32ui-p-lw \
+	rv32ui-p-or \
+	rv32ui-p-ori \
+	rv32ui-p-sll \
+	rv32ui-p-slli \
+	rv32ui-p-slt \
+	rv32ui-p-slti \
+	rv32ui-p-sra \
+	rv32ui-p-srai \
+	rv32ui-p-sub \
+	rv32ui-p-xor \
+	rv32ui-p-xori \
+	rv32mi-p-csr \
+	rv32mi-p-illegal \
+	rv32mi-p-sbreak \
+	rv32mi-p-scall \
+
+# wait for Privileged v1.8 to add M-level timers
+#	rv32mi-p-timer \
+# need to add support for ma exceptions
+#	rv32mi-p-ma_addr \
+	rv32mi-p-ma_fetch \
+
 	# Local assembly tests
 local_tstdir = ../../test/riscv-tests
-
 
 local_asm_tests := \
 	$(local_asm_tests)
@@ -138,6 +176,7 @@ local_asm_tests := \
 global_bmarkdir = $(install)/riscv-bmarks
 global_bmarks = \
 	median \
+	multiply \
 	qsort \
 	towers \
 	vvadd \
@@ -200,11 +239,11 @@ output:
 	mkdir -p $@
 
 output/%.run: output/%.hex emulator
-	./emulator +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none 2> /dev/null
+	./emulator +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none $(disasm_exe) /dev/null
 
 output/%.out: output/%.hex emulator
-	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $@
-#	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none 2> $(patsubst %.out,%.temp,$@)
+	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $@
+#	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
 #	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
 #	rm $(patsubst %.out,%.temp,$@)
@@ -221,7 +260,7 @@ output/%.vpd: output/%.hex emulator-debug
 ifeq ($(SUPERVISOR_MODE),"false")
  
 $(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator output
-	./emulator +max-cycles=$(bmark_timeout) +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $@
+	./emulator +max-cycles=$(bmark_timeout) +verbose +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none $(disasm_exe) $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output

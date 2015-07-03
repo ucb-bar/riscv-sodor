@@ -4,7 +4,7 @@
 #include <vector>
 #include <sstream>
 #include <iterator>
-#include "pcr.h"
+#include "encoding.h"
 
 // The HTIF is in one of two states: waiting on the fesvr (host),
 // or waiting on the chip (target). 
@@ -80,12 +80,14 @@ void htif_emulator_t::tick(
 
    assert(hdr.seqno == seqno);
 
+   //fprintf(stderr, "\t\thtif_emulator:tick() - hdr.cmd: %d seq: %d .... datasize: %d, addr:0x%x\n"
+   //   , hdr.cmd, hdr.seqno, hdr.data_size, hdr.addr);
    switch (hdr.cmd)
    {
       case HTIF_CMD_READ_MEM:
       {
          //fprintf(stderr, "\t\thtif_emulator:tick() - CMD_READ_MEM seq: %d .... datasize: %d, addr:0x%x\n"
-         //   , hdr.seqno, hdr.data_size, hdr.addr, (hdr.addr+0)*HTIF_DATA_ALIGN);
+         //   , hdr.seqno, hdr.data_size, hdr.addr);
          assert(hdr.data_size == 1);
           
          mem_req_valid = true;
@@ -121,6 +123,10 @@ void htif_emulator_t::tick(
       {
          reg_t coreid = hdr.addr >> 20;
          reg_t regno = hdr.addr & ((1<<20)-1);
+
+         //fprintf(stderr, "\t\thtif_emulator:tick() - HTIF READ/WRITE CSR, seq: %d ... coreid: %d, regno: 0x%x\n",
+         //   hdr.seqno, coreid, regno);
+
          assert(hdr.data_size == 1);
          if (coreid == 0xFFFFF) // system control register space
          {
@@ -132,6 +138,8 @@ void htif_emulator_t::tick(
                case 1: scr = memsz >> 20; break;
                default: scr = -1; 
             }
+            //fprintf(stderr, "\t\thtif_emulator:tick() - reading System Control Register: %d, scr: %d, packet.addr: 0x%x\n"
+            //   , regno, scr, hdr.addr);
             packet_header_t ack(HTIF_CMD_ACK, seqno, 1, 0);
             send(&ack, sizeof(ack));
             send(&scr, sizeof(scr));
@@ -144,7 +152,7 @@ void htif_emulator_t::tick(
          uint64_t new_val;
          memcpy(&new_val, p.get_payload(), sizeof(new_val));
          // handle reset specially, since it's not a register that resides on chip
-         if (hdr.cmd == HTIF_CMD_WRITE_CONTROL_REG && regno == PCR_RESET)
+         if (hdr.cmd == HTIF_CMD_WRITE_CONTROL_REG && regno == CSR_MRESET)
          {
             uint64_t old_val = reset;
             if (reset && !(new_val & 1))
@@ -156,7 +164,7 @@ void htif_emulator_t::tick(
             send(&old_val, sizeof(old_val));
             break;
          }
-         else if (regno == 10)
+         else if (regno == CSR_MHARTID)
          {
             // TODO XXX this is a hack, we should actually send this packet to the target
             uint64_t tmp = 1;

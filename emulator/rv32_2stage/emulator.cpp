@@ -1,7 +1,7 @@
 #include "htif_emulator.h"
 #include "common.h"
 #include "emulator.h"
-#include "disasm.h"
+//#include "disasm.h"
 #include "Top.h" // chisel-generated code...
 #include <fcntl.h>
 #include <signal.h>
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
    const char* loadmem = NULL;
    FILE *vcdfile = NULL, *logfile = stderr;
    const char* failure = NULL;
-   disassembler disasm;
+//   disassembler disasm;
    int memory_size = (1 << 21); // 2 MB is the smallest allowed memory by the fesvr 
  
    // for disassembly
@@ -180,13 +180,13 @@ int main(int argc, char** argv)
 
          if (vcd)
          {
-            insn_t insn;
-            insn.bits = dut.Top_tile_core_d__exe_reg_inst.lo_word();
-            std::string inst_disasm = disasm.disassemble(insn); 
-            inst_disasm.resize(disasm_len, ' ');
-            dat_t<disasm_len*8> disasm_dat;
-            for (int i = 0; i < disasm_len; i++)
-               disasm_dat = disasm_dat << 8 | LIT<8>(inst_disasm[i]);
+            //insn_t insn;
+            //insn.bits = dut.Top_tile_core_d__exe_reg_inst.lo_word();
+            //std::string inst_disasm = disasm.disassemble(insn); 
+            //inst_disasm.resize(disasm_len, ' ');
+            //dat_t<disasm_len*8> disasm_dat;
+            //for (int i = 0; i < disasm_len; i++)
+            //   disasm_dat = disasm_dat << 8 | LIT<8>(inst_disasm[i]);
 
             dut.dump(vcdfile, trace_count);
          }

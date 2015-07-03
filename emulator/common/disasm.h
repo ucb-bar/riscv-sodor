@@ -1,3 +1,4 @@
+#if 0
 #ifndef _RISCV_DISASM_H
 #define _RISCV_DISASM_H
 
@@ -20,4 +21,5 @@ class disassembler
   const disasm_insn_t* lookup(insn_t insn);
 };
 
+#endif
 #endif

@@ -112,7 +112,7 @@ void Tracer_t::print()
    
    fprintf(logfile, "#      CPI   : %2.2f\n",  ((float) trace_data.cycles) / trace_data.inst_count);
    fprintf(logfile, "#      IPC   : %2.2f\n",  ((float) trace_data.inst_count) / trace_data.cycles);
-   fprintf(logfile, "#      cycles: %llu\n",  trace_data.cycles);
+   fprintf(logfile, "#      cycles: %lu\n",  trace_data.cycles);
    fprintf(logfile, "#\n");
    fprintf(logfile, "#      Bubbles     : %2.3f %%\n",  100.0f * ((float) trace_data.bubble_count)/ trace_data.cycles);
    fprintf(logfile, "#      Nop instr   : %2.3f %%\n",  100.0f * ((float) trace_data.nop_count  ) / trace_data.cycles);

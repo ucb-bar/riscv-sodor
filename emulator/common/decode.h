@@ -1,3 +1,4 @@
+#if 0
 #ifndef _RISCV_DECODE_H
 #define _RISCV_DECODE_H
 
@@ -279,4 +280,5 @@ enum vt_command_t
   vt_command_stop,
 };
 
+#endif
 #endif
