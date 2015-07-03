@@ -22,6 +22,7 @@ class HTIFIO() extends Bundle
    val id = UInt(INPUT, 1)
    val csr_req = Decoupled(new CSRReq(addr_width = 12)).flip
    val csr_rep = Decoupled(Bits(width = 64))
+   // inter-processor interrupts. Not really necessary for Sodor.
    val ipi_req = Decoupled(Bits(width = 1))
    val ipi_rep = Decoupled(Bool()).flip
    

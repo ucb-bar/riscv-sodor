@@ -16,6 +16,9 @@ object Util
    implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
    implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
    implicit def booleanToBool(x: Boolean): Bool = Bool(x)
+   implicit def sextToConv(x: UInt) = new AnyRef {
+      def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
+   }
 
    implicit def wcToUInt(c: WideCounter): UInt = c.value
 }

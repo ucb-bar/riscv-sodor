@@ -7,8 +7,6 @@ import scala.math._
 
 trait RISCVConstants
 {
-   val START_ADDR = 0x2000
-
    // abstract out instruction decode magic numbers
    val RD_MSB  = 11
    val RD_LSB  = 7
@@ -24,22 +22,39 @@ trait RISCVConstants
    val SHAMT_5_BIT = 25
    val LONGEST_IMM_SZ = 20
    val X0 = UInt(0)
- 
+
    // The Bubble Instruction (Machine generated NOP)
-   // Insert (XOR x0,x0,x0) which is different from software compiler 
+   // Insert (XOR x0,x0,x0) which is different from software compiler
    // generated NOPs which are (ADDI x0, x0, 0).
    // Reasoning for this is to let visualizers and stat-trackers differentiate
    // between software NOPs and machine-generated Bubbles in the pipeline.
    val BUBBLE  = Bits(0x4033, 32)
 }
 
-
-trait ExcCauseConstants
+trait PrivilegedConstants
 {
-  // Extra Exception Causes (check instructions.scala)
-  val EXC_CAUSE_SZ = 5
-  val EXC_RETURN = UInt(31, EXC_CAUSE_SZ)
-}
+   val MTVEC = 0x100
+   val START_ADDR = MTVEC + 0x100
+
+   val SZ_PRV = 2
+   val PRV_U = 0
+   val PRV_S = 1
+   val PRV_H = 2
+   val PRV_M = 3
 }
 
- 
+trait AddressConstants
+{
+   // 32 bit address space (4 kB pages)
+   val PADDR_BITS = 32
+   val VADDR_BITS = 32
+   val PGIDX_BITS = 12
+   val PPN_BITS = PADDR_BITS-PGIDX_BITS
+   val VPN_BITS = VADDR_BITS-PGIDX_BITS
+   val ASID_BITS = 7
+   val PERM_BITS = 6
+}
+
+}
+
+

@@ -11,6 +11,7 @@ case class SodorConfiguration
    val nxpr = 32
    val nxprbits = log2Up(nxpr)
    val rvc = false
+   val vm = false
 }
 
 
