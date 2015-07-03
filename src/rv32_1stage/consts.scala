@@ -14,8 +14,9 @@ import Node._
    
 trait SodorProcConstants
 {
-   //************************************
-   // Machine Parameters
+   // for debugging, print out the commit information.
+   // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
+   val PRINT_COMMIT_LOG = false
 }
    
 trait ScalarOpConstants

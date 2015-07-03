@@ -32,6 +32,8 @@ class Top extends Module
    tile.io.host.id := UInt(0,1)
    tile.io.host.csr_req <> Queue(io.htif.csr_req)
    io.htif.csr_rep <> Queue(tile.io.host.csr_rep)
+   tile.io.host.ipi_rep <> Queue(io.htif.ipi_rep)
+   io.htif.ipi_req <> Queue(tile.io.host.ipi_req)
 
    tile.io.host.mem_req <> Queue(io.htif.mem_req)
    io.htif.mem_rep <> tile.io.host.mem_rep

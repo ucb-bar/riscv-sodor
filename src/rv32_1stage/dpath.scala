@@ -15,13 +15,18 @@ import Constants._
 import Common._
 import Common.Constants._
 
-class DatToCtlIo extends Bundle() 
+class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
    val inst   = Bits(OUTPUT, 32)
    val br_eq  = Bool(OUTPUT)
    val br_lt  = Bool(OUTPUT)
    val br_ltu = Bool(OUTPUT)
-   val status = new Status().asOutput()
+//   val csr    = new CSRFileIO()
+//   val status = new MStatus().asOutput()
+   val csr_eret = Bool(OUTPUT)
+   val csr_interrupt = Bool(OUTPUT)
+   val csr_xcpt = Bool(OUTPUT)
+   val csr_interrupt_cause = UInt(OUTPUT, conf.xprlen)
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -78,7 +83,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Register File
    val regfile = Mem(Bits(width = conf.xprlen), 32)
 
-   when (io.ctl.rf_wen && (wb_addr != UInt(0)))
+   when (io.ctl.rf_wen && (wb_addr != UInt(0)) && !io.dat.csr_xcpt)
    {
       regfile(wb_addr) := wb_data
    }
@@ -144,22 +149,24 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                                   
    // Control Status Registers
    val csr = Module(new CSRFile())
-   val csr_cmd = io.ctl.csr_cmd
    csr.io.host <> io.host
+//   csr.io <> io.dat.csr
    csr.io.rw.addr  := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
-   csr.io.rw.wdata := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  alu_out,
-                      Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~alu_out,
-                                            alu_out))
-   csr.io.rw.cmd   := csr_cmd
-   val csr_out = csr.io.rw.rdata
+   csr.io.rw.cmd   := io.ctl.csr_cmd
+   csr.io.rw.wdata := alu_out
 
-   csr.io.retire    := Bool(false) // TODO 
+   csr.io.retire    := !io.ctl.stall
    csr.io.exception := io.ctl.exception
-   io.dat.status    := csr.io.status
+//   io.dat.status    := csr.io.status
    csr.io.cause     := io.ctl.exc_cause
-   csr.io.sret      := io.ctl.sret
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
+
+   io.dat.csr_eret := csr.io.eret
+   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_interrupt := csr.io.interrupt
+   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
+   // TODO replay? stall?
 
    // Add your own uarch counters here!
    csr.io.uarch_counters.foreach(_ := Bool(false))
@@ -169,7 +176,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.wb_sel === WB_ALU) -> alu_out,
                   (io.ctl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
                   (io.ctl.wb_sel === WB_PC4) -> pc_plus4,
-                  (io.ctl.wb_sel === WB_CSR) -> csr_out
+                  (io.ctl.wb_sel === WB_CSR) -> csr.io.rw.rdata
                   )).toSInt()
                                   
 
@@ -186,19 +193,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    
    // Printout
-   val tsc_reg = Reg(init=UInt(0,32))
-   tsc_reg := tsc_reg + UInt(1)
-
-   printf("Cyc= %d PC= 0x%x %s %s%s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] %s Mem[%s %d: 0x%x]\n"
-      , tsc_reg(31,0)
-      , pc_reg
-      , Disassemble(inst)
-      , Mux(io.ctl.stall, Str("stall"), Str("     "))
-      , Mux(io.ctl.pc_sel  === UInt(1), Str("BR"),
-         Mux(io.ctl.pc_sel === UInt(2), Str("J "),
-         Mux(io.ctl.pc_sel === UInt(3), Str("JR"),
-         Mux(io.ctl.pc_sel === UInt(4), Str("EX"),
-         Mux(io.ctl.pc_sel === UInt(0), Str("  "), Str("??"))))))
+   // pass output through the spike-dasm binary (found in riscv-tools) to turn
+   // the DASM(%x) into a disassembly string.
+   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] %s Mem[%s %d: 0x%x] PC= 0x%x %s%s DASM(%x)\n"
+      , csr.io.time(31,0)
       , alu_op1
       , alu_op2
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
@@ -208,8 +206,32 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(io.ctl.debug_dmem_val, Str("V"), Str("_"))
       , io.ctl.debug_dmem_typ
       , io.dmem.resp.bits.data
+      , pc_reg
+      , Mux(io.ctl.stall, Str("stall"), Str("     "))
+      , Mux(io.ctl.pc_sel  === UInt(1), Str("BR"),
+         Mux(io.ctl.pc_sel === UInt(2), Str("J "),
+         Mux(io.ctl.pc_sel === UInt(3), Str("JR"),
+         Mux(io.ctl.pc_sel === UInt(4), Str("EX"),
+         Mux(io.ctl.pc_sel === UInt(0), Str("  "), Str("??"))))))
+      , inst
       )
-    
+ 
+   if (PRINT_COMMIT_LOG)
+   {
+      when (!io.ctl.stall)
+      {
+         // use "sed" to parse out "@@@" from the other printf code above.
+         val rd = inst(RD_MSB,RD_LSB)
+         when (io.ctl.rf_wen && rd != UInt(0))
+         {
+            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", pc_reg, inst, rd, Cat(Fill(wb_data(31),32),wb_data))
+         }
+         .otherwise
+         {
+            printf("@@@ 0x%x (0x%x)\n", pc_reg, inst)
+         }
+      }
+   }   
 }
 
  
