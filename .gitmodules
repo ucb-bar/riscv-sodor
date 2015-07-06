@@ -1,3 +1,6 @@
 [submodule "riscv-tests"]
 	path = riscv-tests
 	url = git@github.com:riscv/riscv-tests.git
+[submodule "riscv-fesvr"]
+	path = riscv-fesvr
+	url = git@github.com:riscv/riscv-fesvr.git
