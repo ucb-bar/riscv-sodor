@@ -173,15 +173,15 @@ users, the tests and benchmarks have been pre-compiled and placed in the
 Building a RV32I Toolchain
 --------------------------
 
-First, you will need to build a RV32I compiler. Set $RISCV to where you would
-like to install RISC-V related tools, and make sure that $RISCV/bin is in your
-path.
+If you would like to compile your own tests, you will need to build an
+RV32I compiler. Set $RISCV to where you would like to install RISC-V related
+tools, and make sure that $RISCV/bin is in your path.
 
-   $ git clone git@github.com:riscv/riscv-gnu-toolchain.git
-   $ cd riscv-gnu-toolchain
-   $ mkdir build; cd build
-   $ ../configure --prefix=$RISCV --disable-float --disable-atomic --with-xlen=32 --with-arch=RV32I
-   $ make install
+    $ git clone git@github.com:riscv/riscv-gnu-toolchain.git
+    $ cd riscv-gnu-toolchain
+    $ mkdir build; cd build
+    $ ../configure --prefix=$RISCV --disable-float --disable-atomic --with-xlen=32 --with-arch=I
+    $ make install
 
 This will install a compiler named riscv32-unknown-elf-gcc, complete with
 newlib libraries that will only emit integer instructions. More advanced users
@@ -191,18 +191,22 @@ for different base ISAs.
 Compiling the tests yourself
 ----------------------------
 
-   cd riscv-tests/isa
-   make
+    cd riscv-tests/isa
+    make
 
 This will compile ALL RISC-V assembly tests (32b and 64b). Sodor only supports
 the rv32ui-p (user-level) and rv32mi-p (machine-level) physical memory tests.
 
 
-   cd riscv-tests/benchmarks
-   make
+    cd riscv-tests/benchmarks
+    make
 
 You will need to modify the Makefile in riscv-tests/benchmarks to compile RV32I
-binaries.  By default, it will compile RV64G.
+binaries.  By default, it will compile RV64G. If you compiled a pure RV32I
+compiler, then you may only need to change the name of the compiler used
+(riscv32-unknown-elf-gcc).  If your toolchain supports multiple ISAs, then you
+may need to specify "-m32 --with-arch=RV32I" for the compiler and linker flags
+as appropriate.
 
 Running tests on the ISA simulator
 ----------------------------------
@@ -211,9 +215,9 @@ If you would like to run tests yourself, you can use the Spike ISA simulator
 (found in riscv-tools on the riscv.org webpage). By default, Spike executes in
 RV64G mode. To execute RV32I binaries, for example:
 
-  cd ./install
-  spike --ISA=RV32I rv32ui-p-simple
-  spike --ISA=RV32I dhrystone.riscv
+    cd ./install
+    spike --ISA=RV32I rv32ui-p-simple
+    spike --ISA=RV32I dhrystone.riscv
 
 The generated assembly code looks too complex!
 ----------------------------------------------
@@ -284,15 +288,13 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
-* Move CSRFile to stage after Execute in 3-stage, 5-stage (more optimal
-  design).
 * Update the 3-stage to optionally use Princeton mode (instruction fetch
   and load/stores share a single port to memory).
 * Reduce the port count on the scratchpad memory by having the HTIF port
   share one of the cpu ports.
-* Add stat information back in (e.g., print out the CPI, preferably leveraging
-  the uarch-counters).
 * Provide a Verilog test harness, and put the 3-stage on a FPGA.
 * Add support for the ma_addr, ma_fetch ISA tests. This requires detecting
   misaligned address exceptions.
+* Greatly cleanup the common/csr.scala file, to make it clearer and more
+  understandable.
 
