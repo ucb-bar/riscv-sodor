@@ -22,12 +22,17 @@ import Constants._
 import Common._
 import Common.Constants._
 
-class DatToCtlIo extends Bundle() 
+class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
    val br_eq  = Bool(OUTPUT)
    val br_lt  = Bool(OUTPUT)
    val br_ltu = Bool(OUTPUT)
-   val status = new Status().asOutput
+
+   // TODO consolidate these signals
+   val csr_eret = Bool(OUTPUT)
+   val csr_interrupt = Bool(OUTPUT)
+   val csr_xcpt = Bool(OUTPUT)
+   val csr_interrupt_cause = UInt(OUTPUT, conf.xprlen)
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -48,10 +53,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Pipeline State Registers
 
    val wb_reg_valid    = Reg(init=Bool(false))
-   val wb_reg_ctrl     = Reg(outType = new CtrlSignals)
-   val wb_reg_alu      = Reg(outType = Bits(width=conf.xprlen))
-   val wb_reg_csr_addr = Reg(outType = UInt(width=12)) 
-   val wb_reg_wbaddr   = Reg(outType = UInt(width=log2Up(32)))
+   val wb_reg_ctrl     = Reg(new CtrlSignals)
+   val wb_reg_alu      = Reg(Bits(width=conf.xprlen))
+   val wb_reg_csr_addr = Reg(UInt())
+   val wb_reg_wbaddr   = Reg(UInt(width=log2Up(32)))
    
    val wb_hazard_stall = Bool() // hazard detected, stall in IF/EXE required
 
@@ -93,7 +98,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Register File
    val regfile = Mem(Bits(width = conf.xprlen), 32)
 
-   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr != UInt(0)))
+   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr != UInt(0)) && !io.dat.csr_xcpt)
    {
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
@@ -157,7 +162,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
    io.dat.br_lt  := (exe_rs1_data.toSInt < exe_rs2_data.toSInt) 
    io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
-                                  
+    
+   // datapath to data memory outputs
+   io.dmem.req.valid     := io.ctl.dmem_val
+   io.dmem.req.bits.fcn  := io.ctl.dmem_fcn
+   io.dmem.req.bits.typ  := io.ctl.dmem_typ
+   io.dmem.req.bits.addr := exe_alu_out
+   io.dmem.req.bits.data := exe_rs2_data
+                                                   
 
    // execute to wb registers
    wb_reg_ctrl :=  io.ctl
@@ -167,48 +179,41 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := Bool(false)
       wb_reg_ctrl.exception := Bool(false)
-      wb_reg_ctrl.sret      := Bool(false)
    }
 
    wb_reg_alu      := exe_alu_out
    wb_reg_wbaddr   := exe_wbaddr
-     
-   
-   // datapath to data memory outputs
-   io.dmem.req.valid     := io.ctl.dmem_val
-   io.dmem.req.bits.fcn  := io.ctl.dmem_fcn
-   io.dmem.req.bits.typ  := io.ctl.dmem_typ
-   io.dmem.req.bits.addr := exe_alu_out
-   io.dmem.req.bits.data := exe_rs2_data
-                                 
+   wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+                                   
    //**********************************
    // Writeback Stage
    
-   wb_reg_valid    := exe_valid && !wb_hazard_stall 
-   wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
- 
+   wb_reg_valid := exe_valid && !wb_hazard_stall 
+    
    // Control Status Registers
+   // TODO CSRFile for now handled in Execute stage (same as branch redirect),
+   // but it should actually be in WB (alu_out is put on critical path).
    val csr = Module(new CSRFile())
-   val csr_cmd = wb_reg_ctrl.csr_cmd
    csr.io.host <> io.host
    csr.io.rw.addr   := wb_reg_csr_addr
-   csr.io.rw.wdata  := Mux(csr_cmd=== CSR.S, csr.io.rw.rdata |  wb_reg_alu,
-                       Mux(csr_cmd=== CSR.C, csr.io.rw.rdata & ~wb_reg_alu,
-                                             wb_reg_alu))
-   csr.io.rw.cmd    := csr_cmd 
-   val csr_out = csr.io.rw.rdata
+   csr.io.rw.wdata  := wb_reg_alu
+   csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd 
+   val wb_csr_out    = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
    csr.io.exception := wb_reg_ctrl.exception
    csr.io.cause     := wb_reg_ctrl.exc_cause
-   csr.io.sret      := wb_reg_ctrl.sret
    csr.io.pc        := exe_pc - UInt(4)
    exception_target := csr.io.evec
-   io.dat.status    := csr.io.status
+
+   io.dat.csr_eret := csr.io.eret
+   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_interrupt := csr.io.interrupt
+   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
 
    // Add your own uarch counters here!
    csr.io.uarch_counters.foreach(_ := Bool(false))
-
+   
    // WB Mux                                                                   
    // Note: I'm relying on the fact that the EXE stage is holding the
    // instruction behind our jal, which assumes we always predict PC+4, and we
@@ -219,36 +224,21 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
                   (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
-                  (wb_reg_ctrl.wb_sel === WB_CSR) -> csr_out
+                  (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   )).toSInt()
                                 
    
    //**********************************
    // Printout
 
-   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
    val irt_reg = Reg(init=UInt(0, conf.xprlen))
-   tsc_reg := tsc_reg + UInt(1)
    when (wb_reg_valid) { irt_reg := irt_reg + UInt(1) }
 
    val debug_wb_pc = UInt(width=64)
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc))
    val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
-   printf("Cyc=%d %s PC=(0x%x,0x%x,0x%x) [%s,%s,%s] Wb: %s %s %s Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d] %d\n"
-      , tsc_reg(23,0)
-      , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
-      , io.imem.debug.if_pc(19,0)
-      , exe_pc(19,0)
-      , Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc)(19,0))
-      , Disassemble(io.imem.debug.if_inst, true)
-      , Disassemble(Mux(exe_valid, exe_inst, BUBBLE), true)
-      , Disassemble(debug_wb_inst, true)
-      , Disassemble(debug_wb_inst)
-      , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
-      , Mux(io.ctl.pc_sel === UInt(1), Str("Br/J"),
-        Mux(io.ctl.pc_sel === UInt(2), Str(" JR "),
-        Mux(io.ctl.pc_sel === UInt(3), Str("XPCT"),
-        Mux(io.ctl.pc_sel === UInt(0), Str("   "), Str(" ?? ")))))
+   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] [%s,%d] %d %s %s PC=(0x%x,0x%x,0x%x) [%d,%d,%d], WB: DASM(%x)\n"
+      , csr.io.time(23,0)
       , exe_alu_op1
       , exe_alu_op2
       , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))
@@ -257,6 +247,21 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(io.ctl.exception, Str("E"), Str("_"))
       , io.ctl.exc_cause
       , irt_reg(11,0)
+      , Mux(wb_hazard_stall, Str("HAZ"), Str("   "))
+      , Mux(io.ctl.pc_sel === UInt(1), Str(" Br "),
+        Mux(io.ctl.pc_sel === UInt(2), Str(" J  "),
+        Mux(io.ctl.pc_sel === UInt(3), Str(" JR "),
+        Mux(io.ctl.pc_sel === UInt(4), Str("XPCT"),
+        Mux(io.ctl.pc_sel === UInt(0), Str("   "), Str(" ?? "))))))
+      , io.imem.debug.if_pc(19,0)
+      , exe_pc(19,0)
+      , Mux(Reg(next=wb_hazard_stall), UInt(0), Reg(next=exe_pc)(19,0))
+      , io.imem.debug.if_inst(6,0)
+      , Mux(exe_valid, exe_inst, BUBBLE)(6,0)
+      , debug_wb_inst(6,0)
+      , debug_wb_inst
+
+
       )
 
    // for debugging, print out the commit information.
@@ -289,7 +294,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := Bool(false)
       wb_reg_ctrl.exception := Bool(false)
-      wb_reg_ctrl.sret      := Bool(false)
    }
  
 }

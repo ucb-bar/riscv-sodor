@@ -32,6 +32,7 @@ import Node._
 
 import Constants._
 import Common._
+//import Common.Constants._
 
 
 class FrontEndIO(implicit conf: SodorConfiguration) extends Bundle

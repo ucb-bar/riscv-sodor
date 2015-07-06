@@ -1,9 +1,13 @@
 // See LICENSE for license details.
 
 // TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
-// TODO: implement a leaner version of the privileged ISA.
-//       This is mostly a copy from the Berkeley Rocket-chip csr file. It is
-//       overkill for a small, embedded processor. 
+// TODO: implement a leaner version of the privileged ISA (that more clearer
+//       supports M- and U-modes).
+// NOTE: This is mostly a copy from the Berkeley Rocket-chip csr file. It is
+//       overkill for a small, embedded processor. It also doesn't do a good
+//       job of delineating between what HW is required to support the
+//       different privileged modes, and there is still a lot of vestigial code
+//       for describing the S-mode.
 
 package Common
 

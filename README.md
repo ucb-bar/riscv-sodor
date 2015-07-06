@@ -19,6 +19,8 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 * 5-stage (can toggle between fully bypassed or fully interlocked)
 * "bus"-based micro-coded implementation
 
+**NOTE**: the repository is currently in flux due to the Privileged ISA v1.7
+changes. The 5-stage and u-code cores have not yet been updated.
 
 All of the cores implement the RISC-V 32b integer base user-level ISA (RV32I)
 version 2.0. None of the cores support virtual memory, and thus only implement
@@ -282,17 +284,14 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
+* Move CSRFile to stage after Execute in 3-stage, 5-stage (more optimal
+  design).
 * Update the 3-stage to optionally use Princeton mode (instruction fetch
   and load/stores share a single port to memory).
 * Reduce the port count on the scratchpad memory by having the HTIF port
   share one of the cpu ports.
 * Add stat information back in (e.g., print out the CPI, preferably leveraging
   the uarch-counters).
-* Use the newest riscv-test benchmarks, which provide printf (but require
-  syscall support) and dump out the uarch counter state.
-* Use the riscv-dis binary to provide diassembly support (instead of using
-  Chisel RTL, which is expensive), which is provided by the riscv-isa-run
-  repository.
 * Provide a Verilog test harness, and put the 3-stage on a FPGA.
 * Add support for the ma_addr, ma_fetch ISA tests. This requires detecting
   misaligned address exceptions.
