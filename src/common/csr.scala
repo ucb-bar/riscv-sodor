@@ -1,13 +1,8 @@
 // See LICENSE for license details.
 
 // TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
-// TODO: implement a leaner version of the privileged ISA (that more clearer
-//       supports M- and U-modes).
 // NOTE: This is mostly a copy from the Berkeley Rocket-chip csr file. It is
-//       overkill for a small, embedded processor. It also doesn't do a good
-//       job of delineating between what HW is required to support the
-//       different privileged modes, and there is still a lot of vestigial code
-//       for describing the S-mode.
+//       overkill for a small, embedded processor. 
 
 package Common
 
@@ -36,21 +31,6 @@ class MStatus extends Bundle {
   val prv1 = UInt(width = 2)
   val ie1 = Bool()
   val prv = UInt(width = 2)
-  val ie = Bool()
-}
-
-class SStatus extends Bundle {
-  val sd = Bool()
-  val zero4 = UInt(width = 31)
-  val sd_rv32 = UInt(width = 1)
-  val zero3 = UInt(width = 14)
-  val mprv = Bool()
-  val xs = UInt(width = 2)
-  val fs = UInt(width = 2)
-  val zero2 = UInt(width = 7)
-  val ps = Bool()
-  val pie = Bool()
-  val zero1 = UInt(width = 2)
   val ie = Bool()
 }
 
@@ -118,14 +98,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mcause = Reg(Bits(width = conf.xprlen))
   val reg_mbadaddr = Reg(UInt(width = VADDR_BITS))
   val reg_mscratch = Reg(Bits(width = conf.xprlen))
-
-  val reg_sepc = Reg(UInt(width = VADDR_BITS))
-  val reg_scause = Reg(Bits(width = conf.xprlen))
-  val reg_sbadaddr = Reg(UInt(width = VADDR_BITS))
-  val reg_sscratch = Reg(Bits(width = conf.xprlen))
-  val reg_stvec = Reg(UInt(width = VADDR_BITS))
-  val reg_stimecmp = Reg(Bits(width = 32))
-  val reg_sptbr = Reg(UInt(width = PADDR_BITS))
+  val reg_mtimecmp = Reg(Bits(width = conf.xprlen))
   val reg_wfi = Reg(init=Bool(false))
 
   val reg_tohost = Reg(init=Bits(0, conf.xprlen))
@@ -147,10 +120,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     }
   }
 
-  checkInterrupt(PRV_S, reg_mie.ssip && reg_mip.ssip, 0)
   checkInterrupt(PRV_M, reg_mie.msip && reg_mip.msip, 0)
-  checkInterrupt(PRV_S, reg_mie.stip && reg_mip.stip, 1)
   checkInterrupt(PRV_M, reg_fromhost != UInt(0), 2)
+  checkInterrupt(PRV_M, reg_mie.mtip && reg_mip.mtip, 1)
 
   val system_insn = io.rw.cmd === CSR.I
   val cpu_ren = io.rw.cmd != CSR.N && !system_insn
@@ -201,12 +173,10 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     CSRs.mip -> reg_mip.toBits,
     CSRs.mie -> reg_mie.toBits,
     CSRs.mscratch -> reg_mscratch,
-//    CSRs.mepc -> reg_mepc.sextTo(conf.xprlen),
-//    CSRs.mbadaddr -> reg_mbadaddr.sextTo(conf.xprlen),
     CSRs.mepc -> reg_mepc,
     CSRs.mbadaddr -> reg_mbadaddr,
     CSRs.mcause -> reg_mcause,
-    CSRs.stimecmp -> reg_stimecmp,
+    CSRs.mtimecmp -> reg_mtimecmp,
     CSRs.mhartid -> io.host.id,
     CSRs.send_ipi -> io.host.id, /* don't care */
     CSRs.stats -> reg_stats,
@@ -236,8 +206,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val insn_break = !opcode(8) && opcode(0) && system_insn
   val insn_ret = opcode(8) && !opcode(1) && !opcode(0) && system_insn && priv_sufficient
   val insn_sfence_vm = opcode(8) && !opcode(1) && opcode(0) && system_insn && priv_sufficient
-  val maybe_insn_redirect_trap = opcode(2) && system_insn
-  val insn_redirect_trap = maybe_insn_redirect_trap && priv_sufficient
   val insn_wfi = opcode(8) && opcode(1) && !opcode(0) && system_insn && priv_sufficient
 
   val csr_xcpt = (cpu_wen && read_only) ||
@@ -250,12 +218,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
 
   io.fatc := insn_sfence_vm
   io.evec := Mux(io.exception || csr_xcpt, (reg_mstatus.prv << 6) + MTVEC,
-             Mux(maybe_insn_redirect_trap, reg_stvec,
-//             Mux(maybe_insn_redirect_trap, reg_stvec.sextTo(VADDR_BITS),
-             Mux(reg_mstatus.prv(1), reg_mepc, reg_sepc)))
-  io.ptbr := reg_sptbr
+                                           reg_mepc)
   io.csr_xcpt := csr_xcpt
-  io.eret := insn_ret || insn_redirect_trap
+  io.eret := insn_ret
   io.status := reg_mstatus
   io.status.fs := reg_mstatus.fs.orR.toSInt // either off or dirty (no clean/initial support yet)
   io.status.xs := reg_mstatus.xs.orR.toSInt // either off or dirty (no clean/initial support yet)
@@ -292,22 +257,11 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     reg_mstatus.ie2 := true
   }
   
-  when (insn_redirect_trap) {
-    reg_mstatus.prv := PRV_S
-    reg_sbadaddr := reg_mbadaddr
-    reg_scause := reg_mcause
-    reg_sepc := reg_mepc
-  }
+  assert(PopCount(insn_ret :: io.exception :: csr_xcpt :: io.csr_replay :: Nil) <= 1, "these conditions must be mutually exclusive")
 
-  assert(PopCount(insn_ret :: insn_redirect_trap :: io.exception :: csr_xcpt :: io.csr_replay :: Nil) <= 1, "these conditions must be mutually exclusive")
-//  when (!(PopCount(insn_ret :: insn_redirect_trap :: io.exception :: csr_xcpt :: io.csr_replay :: Nil)))
-//  {
-//     printf ("these conditions must be mutually exclusive")
-//  }
-
-  when (reg_time(reg_stimecmp.getWidth-1,0) === reg_stimecmp) {
-    reg_mip.stip := true
-  }
+   when (reg_time >= reg_mtimecmp) {
+      reg_mip.mtip := true
+   }
 
   io.time := reg_time
   io.host.ipi_req.valid := cpu_wen && decoded_addr(CSRs.send_ipi)
@@ -352,8 +306,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.cyclew))   { reg_time := wdata }
     when (decoded_addr(CSRs.instretw)) { reg_instret := wdata }
     when (decoded_addr(CSRs.timew))    { reg_time := wdata }
-    when (decoded_addr(CSRs.stimew))   { reg_time := wdata }
-    when (decoded_addr(CSRs.stimecmp)) { reg_stimecmp := wdata(31,0); reg_mip.stip := false }
+    when (decoded_addr(CSRs.mtimecmp)) { reg_mtimecmp := wdata; reg_mip.mtip := false }
     when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === UInt(0) || !host_pcr_req_fire) { reg_fromhost := wdata } }
     when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === UInt(0) || host_pcr_req_fire) { reg_tohost := wdata } }
     when (decoded_addr(CSRs.stats))    { reg_stats := wdata(0) }
