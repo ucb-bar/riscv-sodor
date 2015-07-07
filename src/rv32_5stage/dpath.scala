@@ -117,7 +117,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                  /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target)))
 
    // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
-   when (io.ctl.dec_fencei && io.ctl.exe_pc_sel === PC_4 && 
+   when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 && 
          !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill)
    {
       if_pc_next := if_reg_pc

@@ -35,7 +35,7 @@ class CtlToDatIo extends Bundle()
    val mem_fcn    = Bits(OUTPUT, 2)
    val mem_typ    = Bits(OUTPUT, 3)
    val csr_cmd    = UInt(OUTPUT, CSR.SZ)
-   val dec_fencei = Bool(OUTPUT)
+   val fencei     = Bool(OUTPUT)    // pipeline is executing a fencei
 
    val pipeline_kill = Bool(OUTPUT) // an exception occurred (detected in mem stage).
                                     // Kill the entire pipeline disregard stalls
@@ -143,7 +143,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                                                             PC_4
                      ))))))))))
 
-   val ifkill  = (ctrl_exe_pc_sel != PC_4) || !io.imem.resp.valid || cs_fencei
+   val ifkill  = (ctrl_exe_pc_sel != PC_4) || !io.imem.resp.valid || cs_fencei || Reg(next=cs_fencei)
    val deckill = (ctrl_exe_pc_sel != PC_4)
 
    // Exception Handling ---------------------
@@ -257,7 +257,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
    io.ctl.rf_wen     := cs_rf_wen
-   io.ctl.dec_fencei := cs_fencei
+   
+   // we need to stall IF while fencei goes through DEC and EXE, as there may
+   // be a store we need to wait to clear in MEM.
+   io.ctl.fencei     := cs_fencei || Reg(next=cs_fencei) 
  
    io.ctl.mem_exception := Reg(next=exe_reg_exception)
    io.ctl.mem_exc_cause := Reg(next=Reg(next=dec_exc_cause))
