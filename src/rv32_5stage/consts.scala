@@ -32,9 +32,10 @@ trait ScalarOpConstants
    val N        = Bool(false)
     
    // PC Select Signal
-   val PC_PLUS4 = UInt(0, 2)  // PC + 4
+   val PC_4     = UInt(0, 2)  // PC + 4
    val PC_BRJMP = UInt(1, 2)  // brjmp_target 
    val PC_JALR  = UInt(2, 2)  // jump_reg_target
+   val PC_EXC   = UInt(3, 2)  // exception
                                    
    // Branch Type
    val BR_N     = UInt(0, 4)  // Next
