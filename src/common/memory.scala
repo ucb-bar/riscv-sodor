@@ -94,9 +94,9 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    for (i <- 0 until num_core_ports)
    {
       if (seq_read) 
-         io.core_ports(i).resp.valid := io.core_ports(i).req.valid
-      else 
          io.core_ports(i).resp.valid := Reg(next = io.core_ports(i).req.valid)
+      else 
+         io.core_ports(i).resp.valid := io.core_ports(i).req.valid
       
       io.core_ports(i).req.ready := Bool(true) // for now, no back pressure 
 
