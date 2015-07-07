@@ -103,7 +103,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_jump_reg_target = UInt()
    val exception_target    = UInt()
 
-   when (!io.ctl.dec_stall && !io.ctl.full_stall)
+   when ((!io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill)
    {
       if_reg_pc := if_pc_next
    }
@@ -114,14 +114,19 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.exe_pc_sel === PC_4)     -> if_pc_plus4,
                   (io.ctl.exe_pc_sel === PC_BRJMP) -> exe_brjmp_target,
                   (io.ctl.exe_pc_sel === PC_JALR)  -> exe_jump_reg_target,
-                  (io.ctl.exe_pc_sel === PC_EXC)   -> exception_target
+                  (io.ctl.exe_pc_sel === PC_EXC)   -> exception_target,
+                  (io.ctl.exe_pc_sel === PC_FI)    -> if_reg_pc
                   ))
 
    // Instruction Memory
    io.imem.req.bits.addr := if_reg_pc
    val if_inst = io.imem.resp.bits.data
 
-   when (!io.ctl.dec_stall && !io.ctl.full_stall)
+   when (io.ctl.pipeline_kill)
+   {
+      dec_reg_inst := BUBBLE
+   }
+   .elsewhen (!io.ctl.dec_stall && !io.ctl.full_stall)
    {
       when (io.ctl.if_kill)
       {
@@ -225,7 +230,19 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
 
 
-   when(!io.ctl.dec_stall && !io.ctl.full_stall)
+   when ((io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill)
+   {
+      // (kill exe stage)
+      // insert NOP (bubble) into Execute stage on front-end stall (e.g., hazard clearing)
+      exe_reg_inst          := BUBBLE
+      exe_reg_wbaddr        := UInt(0)
+      exe_reg_ctrl_rf_wen   := Bool(false)
+      exe_reg_ctrl_mem_val  := Bool(false)
+      exe_reg_ctrl_mem_fcn  := M_X
+      exe_reg_ctrl_csr_cmd  := CSR.N
+      exe_reg_ctrl_br_type  := BR_N
+   }
+   .elsewhen(!io.ctl.dec_stall && !io.ctl.full_stall)
    {
       // no stalling...
       exe_reg_pc            := dec_reg_pc
@@ -260,19 +277,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          exe_reg_ctrl_br_type  := io.ctl.br_type
       }
    }
-   .elsewhen (io.ctl.dec_stall && !io.ctl.full_stall)
-   {
-      // (kill exe stage)
-      // insert NOP (bubble) into Execute stage on front-end stall (e.g., hazard clearing)
-      exe_reg_inst          := BUBBLE
-      exe_reg_wbaddr        := UInt(0)
-      exe_reg_ctrl_rf_wen   := Bool(false)
-      exe_reg_ctrl_mem_val  := Bool(false)
-      exe_reg_ctrl_mem_fcn  := M_X
-      exe_reg_ctrl_csr_cmd  := CSR.N
-      exe_reg_ctrl_br_type  := BR_N
-   }
-
 
    //**********************************
    // Execute Stage
@@ -308,24 +312,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    val exe_pc_plus4    = (exe_reg_pc + UInt(4))(conf.xprlen-1,0)
 
-   when (!io.ctl.full_stall)
+   when (io.ctl.pipeline_kill)
    {
-      when (io.ctl.mem_exception || io.dat.csr_eret || io.dat.csr_xcpt)
-      {
-         mem_reg_pc            := BUBBLE
-         mem_reg_ctrl_rf_wen   := Bool(false)
-         mem_reg_ctrl_mem_val  := Bool(false)
-         mem_reg_ctrl_csr_cmd  := Bool(false)
-      }
-      .otherwise
-      {
-         mem_reg_inst          := exe_reg_inst
-         mem_reg_ctrl_rf_wen   := exe_reg_ctrl_rf_wen
-         mem_reg_ctrl_mem_val  := exe_reg_ctrl_mem_val
-         mem_reg_ctrl_csr_cmd  := exe_reg_ctrl_csr_cmd
-      }
-
+      mem_reg_pc            := BUBBLE
+      mem_reg_ctrl_rf_wen   := Bool(false)
+      mem_reg_ctrl_mem_val  := Bool(false)
+      mem_reg_ctrl_csr_cmd  := Bool(false)
+   }
+   .elsewhen (!io.ctl.full_stall)
+   {
       mem_reg_pc            := exe_reg_pc
+      mem_reg_inst          := exe_reg_inst
       mem_reg_alu_out       := Mux((exe_reg_ctrl_wb_sel === WB_PC4), exe_pc_plus4, exe_alu_out)
       mem_reg_wbaddr        := exe_reg_wbaddr
       mem_reg_rs1_addr      := exe_reg_rs1_addr
@@ -333,9 +330,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       mem_reg_op1_data      := exe_reg_op1_data
       mem_reg_op2_data      := exe_reg_op2_data
       mem_reg_rs2_data      := exe_reg_rs2_data
+      mem_reg_ctrl_rf_wen   := exe_reg_ctrl_rf_wen
+      mem_reg_ctrl_mem_val  := exe_reg_ctrl_mem_val
       mem_reg_ctrl_mem_fcn  := exe_reg_ctrl_mem_fcn
       mem_reg_ctrl_mem_typ  := exe_reg_ctrl_mem_typ
       mem_reg_ctrl_wb_sel   := exe_reg_ctrl_wb_sel
+      mem_reg_ctrl_csr_cmd  := exe_reg_ctrl_csr_cmd
    }
 
    //**********************************
@@ -429,7 +429,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         Mux(io.ctl.exe_pc_sel === UInt(2), Str("JR"),
         Mux(io.ctl.exe_pc_sel === UInt(3), Str("EX"),
         Mux(io.ctl.exe_pc_sel === UInt(0), Str("  "), Str("??")))))
-      , exe_reg_inst
+      , Mux(io.ctl.pipeline_kill, BUBBLE, exe_reg_inst)
       )
 
 }
