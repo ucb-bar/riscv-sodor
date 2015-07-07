@@ -4,6 +4,8 @@
 //
 // Christopher Celio
 // 2012 Jan 13
+//
+// TODO refactor stall, kill, fencei, flush signals. They're more confusing than they need to be.
 
 package Sodor
 {
@@ -13,7 +15,6 @@ import Node._
 
 import Constants._
 import Common._
-//import Common.Constants._
 
 class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 {
@@ -110,13 +111,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))
 
-   if_pc_next := MuxCase(if_pc_plus4, Array(
-                  (io.ctl.exe_pc_sel === PC_4)     -> if_pc_plus4,
-                  (io.ctl.exe_pc_sel === PC_BRJMP) -> exe_brjmp_target,
-                  (io.ctl.exe_pc_sel === PC_JALR)  -> exe_jump_reg_target,
-                  (io.ctl.exe_pc_sel === PC_EXC)   -> exception_target,
-                  (io.ctl.exe_pc_sel === PC_FI)    -> if_reg_pc
-                  ))
+   if_pc_next := Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
+                 Mux(io.ctl.exe_pc_sel === PC_BRJMP,  exe_brjmp_target,
+                 Mux(io.ctl.exe_pc_sel === PC_JALR,   exe_jump_reg_target,
+                 /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target)))
+
+   // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
+   when (io.ctl.dec_fencei && io.ctl.exe_pc_sel === PC_4 && 
+         !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill)
+   {
+      if_pc_next := if_reg_pc
+   }
 
    // Instruction Memory
    io.imem.req.bits.addr := if_reg_pc

@@ -297,4 +297,6 @@ contribute!
   misaligned address exceptions.
 * Greatly cleanup the common/csr.scala file, to make it clearer and more
   understandable.
+* Refactor the stall, kill, fencei, and exception logic of the 5-stage to be
+  more understandable.
 

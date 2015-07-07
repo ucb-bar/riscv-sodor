@@ -22,7 +22,7 @@ class CtlToDatIo extends Bundle()
 {
    val dec_stall  = Bool(OUTPUT)    // stall IF/DEC stages (due to hazards)
    val full_stall = Bool(OUTPUT)    // stall entire pipeline (due to D$ misses)
-   val exe_pc_sel = UInt(OUTPUT, 3)
+   val exe_pc_sel = UInt(OUTPUT, 2)
    val br_type    = UInt(OUTPUT, 4)
    val if_kill    = Bool(OUTPUT)
    val dec_kill   = Bool(OUTPUT)
@@ -34,7 +34,8 @@ class CtlToDatIo extends Bundle()
    val mem_val    = Bool(OUTPUT)
    val mem_fcn    = Bits(OUTPUT, 2)
    val mem_typ    = Bits(OUTPUT, 3)
-   val csr_cmd   = UInt(OUTPUT, CSR.SZ)
+   val csr_cmd    = UInt(OUTPUT, CSR.SZ)
+   val dec_fencei = Bool(OUTPUT)
 
    val pipeline_kill = Bool(OUTPUT) // an exception occurred (detected in mem stage).
                                     // Kill the entire pipeline disregard stalls
@@ -130,7 +131,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Branch Logic
    val ctrl_exe_pc_sel = Mux(io.ctl.pipeline_kill         , PC_EXC,
-                         Mux(cs_fencei                    , PC_FI,
                          Mux(io.dat.exe_br_type === BR_N  , PC_4,
                          Mux(io.dat.exe_br_type === BR_NE , Mux(!io.dat.exe_br_eq,  PC_BRJMP, PC_4),
                          Mux(io.dat.exe_br_type === BR_EQ , Mux( io.dat.exe_br_eq,  PC_BRJMP, PC_4),
@@ -141,7 +141,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                          Mux(io.dat.exe_br_type === BR_J  , PC_BRJMP,
                          Mux(io.dat.exe_br_type === BR_JR , PC_JALR,
                                                             PC_4
-                     )))))))))))
+                     ))))))))))
 
    val ifkill  = (ctrl_exe_pc_sel != PC_4) || !io.imem.resp.valid || cs_fencei
    val deckill = (ctrl_exe_pc_sel != PC_4)
@@ -257,6 +257,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
    io.ctl.rf_wen     := cs_rf_wen
+   io.ctl.dec_fencei := cs_fencei
  
    io.ctl.mem_exception := Reg(next=exe_reg_exception)
    io.ctl.mem_exc_cause := Reg(next=Reg(next=dec_exc_cause))
