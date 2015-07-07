@@ -20,7 +20,7 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 * "bus"-based micro-coded implementation
 
 **NOTE**: the repository is currently in flux due to the Privileged ISA v1.7
-changes. The 5-stage and u-code cores have not yet been updated.
+changes. The u-code core has not yet been updated.
 
 All of the cores implement the RISC-V 32b integer base user-level ISA (RV32I)
 version 2.0. None of the cores support virtual memory, and thus only implement
@@ -299,4 +299,5 @@ contribute!
   understandable.
 * Refactor the stall, kill, fencei, and exception logic of the 5-stage to be
   more understandable.
+* Update the u-code to understand the new Privileged ISA.
 
