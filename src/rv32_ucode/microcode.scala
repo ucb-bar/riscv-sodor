@@ -393,7 +393,22 @@ object Microcode
    /* A <- CSR.RS[addr] */,                 Signals(Cat(MT_X , CSR.S, LDIR_0, RS_CR , RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_N), "X")
    /* Reg[rd] <- A      */,                 Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_A , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
    /* UBr to FETCH      */
+    
+   /* --- Privileged Instructions -------- */
+
+   /*{ERET,ECALL,EBREAK}*/
+   /* pass inst to CSR  */
+   /* File and jmp to   */
+   /* mepc.             */,Label("SRET")
+                          ,Label("SCALL")
+                          ,Label("SBREAK")
+   /* Reg[CSR addr]<-Imm*/              , Signals(Cat(MT_X , CSR.N, LDIR_0, RS_CA , RWR_1, REN_1, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_I, IEN_1, UBR_N), "X")
+   /* PC <- EVEC        */,               Signals(Cat(MT_X , CSR.I, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_X, ALU_EVEC   , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
  
+   /* WFI               */
+   /* UBr to FETCH      */,Label("WFI"),  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
+  
+             
  ) 
 }
 

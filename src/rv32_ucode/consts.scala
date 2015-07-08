@@ -80,6 +80,7 @@ trait ScalarOpConstants extends MemoryOpConstants
    val ALU_SLTU     = UInt (15, 5)
    val ALU_INIT_PC  = UInt (16, 5)  // output START_ADDR, used to initialize the PC register
    val ALU_MASK_12  = UInt (17, 5)  // output A with lower 12 bits cleared (AUIPC)
+   val ALU_EVEC     = UInt (18, 5)  // output evec from CSR file
    val ALU_X        = UInt ( 0, 5)
 
    // ALU Enable Signal
@@ -136,16 +137,10 @@ trait ScalarOpConstants extends MemoryOpConstants
    val UPC_DISPATCH= UInt(3,2)
 
    // Registers
-   val PC   = UInt(32)    //pc             register
+   val PC_IDX = UInt(32)    //pc register
                          
    // Memory Mask Type Signal
    val MSK_SZ  = 3
-   /*val MSK_B   = UInt(0, 3)
-   val MSK_BU  = UInt(1, 3)
-   val MSK_H   = UInt(2, 3)
-   val MSK_HU  = UInt(3, 3)
-   val MSK_W   = UInt(4, 3)
-   val MSK_X   = UInt(4, 3)*/
 }
 
 }

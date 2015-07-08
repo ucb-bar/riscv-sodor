@@ -60,9 +60,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    
    // Macro Instruction Opcode Dispatch Table
    val upc_opgroup_target = MuxLookup (io.dat.inst, UInt(label_target_map("ILLEGAL"), label_sz),
-                                                    opcode_dispatch_table
-                                      )
-
+                                                    opcode_dispatch_table)
 
    // Micro-PC State Register
    val upc_state_next = UInt()
@@ -71,33 +69,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Micro-code ROM
    val micro_code = Vec(rombits)
    val uop = micro_code(upc_state)
-
     
    // Extract Control Signals from UOP
-//   val cs = new Bundle()
-//            {
-//               val ld_ir          = Bool()  
-//               val reg_sel        = UInt(width = RS_X.getWidth())  
-//               val reg_wr         = Bool()  
-//               val en_reg         = Bool()  
-//               val ld_a           = Bool()  
-//               val ld_b           = Bool()  
-//               val alu_op         = UInt(width = ALU_X.getWidth())  
-//               val en_alu         = Bool()  
-//               val ld_ma          = Bool()  
-//               val mem_wr         = Bool()  
-//               val en_mem         = Bool()  
-//               val is_sel         = UInt(width = IS_X.getWidth())  
-//               val en_imm         = Bool()  
-//               val ubr            = UInt(width = UBR_N.getWidth())  
-//               val upc_rom_target = UInt(width = label_sz)  
-//               override def clone = this.asInstanceOf[this.type]
-//            }.fromNode(uop)
-                  
-    
-   // Extract Control Signals from UOP
-   // TODO XXX this method is hacky, and will break if the widths of any of the signals change
-   // unfortunately the above method breaks in Verilog
    val cs = new Bundle()
             {
                val msk_sel        = UInt(width = MSK_SZ)
@@ -117,26 +90,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                val en_imm         = Bool()  
                val ubr            = UInt(width = UBR_N.getWidth())  
                val upc_rom_target = UInt(width = label_sz)  
-            }
-            cs.msk_sel        := uop(36, 34) 
-            cs.csr_cmd        := uop(33, 32)
-            cs.ld_ir          := uop(31)
-            cs.reg_sel        := uop(30,28).toUInt
-            cs.reg_wr         := uop(27)
-            cs.en_reg         := uop(26)
-            cs.ld_a           := uop(25)
-            cs.ld_b           := uop(24)
-            cs.alu_op         := uop(23,19).toUInt
-            cs.en_alu         := uop(18)
-            cs.ld_ma          := uop(17)
-            cs.mem_wr         := uop(16)
-            cs.en_mem         := uop(15)
-            cs.is_sel         := uop(14,12).toUInt
-            cs.en_imm         := uop(11)
-            cs.ubr            := uop(10,8).toUInt
-            require(label_sz == 8, "Label size must be 8")
-            cs.upc_rom_target := uop(label_sz-1,0).toUInt
-                  
+               override def clone = this.asInstanceOf[this.type]
+            }.fromNode(uop)
+   require(label_sz == 8, "Label size must be 8")
 
    val mem_is_busy = !(io.mem.resp.valid)
 
@@ -158,11 +114,20 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 		                (upc_sel === UPC_CURRENT)  -> upc_state
                     ))
 
-                        
+   
+   // Exception Handling ---------------------
+   // TODO handle exceptions
+   // somehow have illegal micro-code send an exception to the CSRFile
+
+//   val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
+//    
+//   io.ctl.exception := exc_illegal || io.dat.csr_interrupt
+//   io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
+//                                            UInt(Common.Causes.illegal_instruction))
+       
 
    // Cpath Control Interface
    io.ctl.msk_sel := cs.msk_sel
-   io.ctl.csr_cmd := cs.csr_cmd
    io.ctl.ld_ir   := cs.ld_ir      
    io.ctl.reg_sel := cs.reg_sel   
    io.ctl.reg_wr  := cs.reg_wr     
@@ -176,6 +141,15 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.en_mem  := cs.en_mem     
    io.ctl.is_sel  := cs.is_sel     
    io.ctl.en_imm  := cs.en_imm     
+
+   // convert CSR instructions with raddr1 == 0 to read-only CSR commands
+   val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
+   val csr_ren = (cs.csr_cmd === CSR.S || cs.csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_cmd = Mux(csr_ren, CSR.R, cs.csr_cmd)
+   io.ctl.csr_cmd := csr_cmd
+
+
+
 
    io.ctl.upc := upc_state
    io.ctl.upc_is_fetch := (upc_state === UInt(label_target_map("FETCH")))

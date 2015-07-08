@@ -154,8 +154,6 @@ global_asm_tests += \
 	rv32ui-p-sub \
 	rv32ui-p-xor \
 	rv32ui-p-xori \
-	rv32mi-p-csr \
-	rv32mi-p-illegal \
 	rv32mi-p-sbreak \
 	rv32mi-p-scall \
 

@@ -20,6 +20,9 @@ class DatToCtlIo extends Bundle()
 {
    val inst     = UInt(OUTPUT, 32)
    val alu_zero = Bool(OUTPUT)
+
+   val csr_eret = Bool(OUTPUT)
+   val csr_xcpt = Bool(OUTPUT)
 }
 
 
@@ -42,6 +45,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val alu       = Bits(width = conf.xprlen)
    val reg_rdata = Bits(width = conf.xprlen)
    val csr_rdata = Bits(width = conf.xprlen)
+   val exception_target = UInt()
 
    // The Bus 
    // (this is a bus-based RISCV implementation, so all data movement goes
@@ -50,10 +54,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0), 
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
-                 (io.ctl.reg_sel != RS_CR)) -> reg_rdata(conf.xprlen-1,0),
+                 (io.ctl.reg_sel != RS_CR))     -> reg_rdata(conf.xprlen-1,0),
                (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(31,0),
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
-                  (io.ctl.reg_sel === RS_CR))    -> csr_rdata
+                  (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
  
    
@@ -95,7 +99,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val rd  = ir(RD_MSB,  RD_LSB)
 
    val reg_addr  = MuxCase(UInt(0), Array(
-                     (io.ctl.reg_sel === RS_PC)  -> PC, 
+                     (io.ctl.reg_sel === RS_PC)  -> PC_IDX,
                      (io.ctl.reg_sel === RS_RD)  -> rd,
                      (io.ctl.reg_sel === RS_RS1) -> rs1,
                      (io.ctl.reg_sel === RS_RS2) -> rs2,
@@ -120,7 +124,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                     
 
    // CSR addr Register
-   val csr_addr = Reg(init=Bits(0, conf.xprlen))
+   val csr_addr = Reg(init=Bits(0, 12))
    when(io.ctl.reg_wr & (io.ctl.reg_sel === RS_CA)) {
      csr_addr := bus
    }
@@ -138,10 +142,19 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata 
 
-   csr.io.exception := Bool(false)  // for now, the ucode does NOT support exceptions
-   csr.io.cause     := Bits(0)      // although these signals are unused, we need to 
-   csr.io.sret      := Bool(false)  // tie them down anyways.
-   csr.io.pc        := Bits(0)
+   csr.io.retire    := io.ctl.upc_is_fetch
+
+   // for now, the ucode does NOT support exceptions
+   csr.io.exception := Bool(false)  
+   csr.io.cause     := UInt(Common.Causes.illegal_instruction)
+   csr.io.pc        := regfile(PC_IDX) - UInt(4) 
+   exception_target := csr.io.evec
+
+   io.dat.csr_eret := csr.io.eret
+   io.dat.csr_xcpt := csr.io.csr_xcpt
+   //io.dat.csr_interrupt := csr.io.interrupt
+   //io.dat.csr_interrupt_cause := csr.io.interrupt_cause
+
 
    // Add your own uarch counters here!
    csr.io.uarch_counters.foreach(_ := Bool(false))
@@ -167,7 +180,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.toSInt < reg_b.toSInt).toUInt,
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
               (io.ctl.alu_op === ALU_INIT_PC) ->  UInt(START_ADDR),
-              (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~UInt((1<<12)-1, conf.xprlen))
+              (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~UInt((1<<12)-1, conf.xprlen)),
+              (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))
 
 
@@ -179,28 +193,24 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.mem.req.bits.addr := reg_ma.toUInt
    io.mem.req.bits.data := bus
                               
-   // Time Stamp Counter & Retired Instruction Counter 
-   val tsc_reg = Reg(init=UInt(0, conf.xprlen))
-   tsc_reg := tsc_reg + UInt(1)
-
+   // Retired Instruction Counter 
    val irt_reg = Reg(init=UInt(0, conf.xprlen))
    when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + UInt(1) }
- 
 
    // Printout
-   printf("%sCyc= %d PCReg=( 0x%x ) InstReg=[ 0x%x : %s ] UPC=%d (MA=0x%x) %s RegAddr=%d Bus=0x%x A=0x%x B=0x%x\n"
+   printf("%sCyc= %d (MA=0x%x) %s RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
       , Mux(io.ctl.upc_is_fetch, Str("\n  "), Str(" "))
-      , tsc_reg(31,0)
-      , regfile(32) // this is the PC register
-      , ir
-      , Disassemble(ir)
-      , io.ctl.upc
+      , csr.io.time(31,0)
       , reg_ma
       , Mux(io.ctl.en_mem, Str("EN"), Str("  "))
       , reg_addr
       , bus
       , reg_a
       , reg_b
+      , regfile(PC_IDX) // this is the PC register
+      , io.ctl.upc
+      , ir
+      , ir
       );
   
 }
