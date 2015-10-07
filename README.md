@@ -93,10 +93,10 @@ This repository packages [SBT](http://github.com/harrah/xsbt/wiki/Getting-Starte
 (Scala Built Tool) for convenience.  By default SBT will fetch the Chisel
 package specified in project/build.scala.
 
-If you are a developer on Chisel and are using sodor cores to test your changes
-to the Chisel repository, it is convienient to rebuild the Chisel package before
-the sodor cores. To do that, fetch the Chisel repo from github and pass the
-path to the local Chisel source directory to the configure script.
+If you are a developer of Chisel and are using sodor cores to test your changes
+to the Chisel repository, it is convenient to rebuild the Chisel package before
+building the sodor cores. To do that, fetch the Chisel repo from github and pass 
+the path to the local Chisel source directory to the configure script.
 
     $ git clone https://github.com/ucb-bar/chisel.git
     $ cd riscv-sodor
