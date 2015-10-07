@@ -94,7 +94,7 @@ This repository packages [SBT](http://github.com/harrah/xsbt/wiki/Getting-Starte
 package specified in project/build.scala.
 
 If you are a developer on Chisel and are using sodor cores to test your changes
-to the Chisel repository, it is convienient to rebuild the Chisel package before
+to the Chisel repository, it is convenient to rebuild the Chisel package before
 the sodor cores. To do that, fetch the Chisel repo from github and pass the
 path to the local Chisel source directory to the configure script.
 
