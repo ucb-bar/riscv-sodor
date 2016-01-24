@@ -106,28 +106,28 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_b_sext = Cat(Fill(imm_b(11), 19), imm_b, UInt(0))
    val imm_u_sext = Cat(imm_u, Fill(UInt(0), 12))
    val imm_j_sext = Cat(Fill(imm_j(19), 11), imm_j, UInt(0))
-   
-   
+
+
    val alu_op1 = MuxCase(UInt(0), Array(
                (io.ctl.op1_sel === OP1_RS1) -> rs1_data,
                (io.ctl.op1_sel === OP1_IMU) -> imm_u_sext,
                (io.ctl.op1_sel === OP1_IMZ) -> imm_z
                )).toUInt
-   
+
    val alu_op2 = MuxCase(UInt(0), Array(
                (io.ctl.op2_sel === OP2_RS2) -> rs2_data,
                (io.ctl.op2_sel === OP2_PC)  -> pc_reg,
                (io.ctl.op2_sel === OP2_IMI) -> imm_i_sext,
                (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext
                )).toUInt
- 
- 
+
+
 
    // ALU
    val alu_out   = UInt(width = conf.xprlen)
-   
+
    val alu_shamt = alu_op2(4,0).toUInt
-   
+
    alu_out := MuxCase(UInt(0), Array(
                   (io.ctl.alu_fun === ALU_ADD)  -> (alu_op1 + alu_op2).toUInt,
                   (io.ctl.alu_fun === ALU_SUB)  -> (alu_op1 - alu_op2).toUInt,
@@ -146,7 +146,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    br_target       := pc_reg + imm_b_sext
    jmp_target      := pc_reg + imm_j_sext
    jump_reg_target := (rs1_data.toUInt + imm_i_sext.toUInt)
-                                  
+
    // Control Status Registers
    val csr = Module(new CSRFile())
    csr.io.host <> io.host
