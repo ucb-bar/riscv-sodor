@@ -3,6 +3,7 @@
 #include "emulator.h"
 //#include "disasm.h"
 #include "Top.h" // chisel-generated code...
+#include "tracer.h"
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -60,12 +61,16 @@ int main(int argc, char** argv)
       fprintf(vcdfile, "$var reg 64 NCYCLE cycle $end\n");
       fprintf(vcdfile, "$upscope $end\n");
    }
- 
+
    // The chisel generated code
    Top_t dut; // design under test, aka, your chisel code
    srand(random_seed);
    dut.init(random_seed != 0);
-  
+
+   Tracer_t tracer(&dut.Top_tile_core_d__exe_reg_inst,
+                   &dut.Top_tile_core_d_csr__reg_stats,
+                   stderr);
+
    if (loadmem)
    {
       //  mem_t<32,32768> Top_tile_memory__data_bank1;
@@ -76,7 +81,7 @@ int main(int argc, char** argv)
          std::cerr << "could not open " << loadmem<< std::endl;
          exit(-1);
       }
- 
+
 
       std::string line;
       uint64_t mem_idx = 0; // unit is 4-byte words
@@ -91,9 +96,9 @@ int main(int argc, char** argv)
          #define parse_nibble(c) ((c) >= 'a' ? (c)-'a'+10 : (c)-'0')
          for (ssize_t i = line.length()-2, j = 0; i >= 0; i -= 2, j++)
          {
-            uint8_t byte = (parse_nibble(line[i]) << 4) | parse_nibble(line[i+1]); 
+            uint8_t byte = (parse_nibble(line[i]) << 4) | parse_nibble(line[i+1]);
             m[j>>2] = (byte << ((j%4)*8)) | m[j>>2];
-            
+
 //            fprintf(stderr,"byte: j=%d, byte=0x%x, m[j>>2=%d]=0x%x\n", j, byte, (j>>2), m[j>>2]);
          }
 
@@ -133,6 +138,8 @@ int main(int argc, char** argv)
       dut.clock_hi(LIT<1>(1));
    }
 
+   tracer.start();
+
    while (!htif->done())
    {
       dut.clock_lo(LIT<1>(0));
@@ -164,7 +171,9 @@ int main(int argc, char** argv)
       dut.Top__io_htif_mem_req_bits_rw = htif->mem_req_bits_rw;
 
       dut.Top__io_htif_reset = htif->reset;
-         
+
+      tracer.tick(true);
+
       if (log || vcd)
       {
          if (log)
@@ -195,6 +204,9 @@ int main(int argc, char** argv)
          break;
       }
    }
+
+   tracer.stop();
+   tracer.print();
 
    if (vcd)
       fclose(vcdfile);
