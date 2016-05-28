@@ -154,7 +154,7 @@ The 1-stage and 3-stage can run the bmarks using the proxy-kernel (pk),
 which allows it to trap and emulate illegal instructions (e.g., div/rem), and
 allows the use of printf from within the bmark application! (This assumes the
 benchmarks have been compiled for use on a proxy kernel. For example, bare
-metal programs begin at PC=0x2000, whereas the proxy kernel expects the
+metal programs begin at PC=0x200, whereas the proxy kernel expects the
 benchmark's main to be located at 0x10000. This is controlled by the
 tests/riscv-bmarks/Makefile SUPERVISOR\_MODE variable).
 
@@ -285,6 +285,7 @@ TODO
 Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
+* Update to the Privileged Spec v1.9
 * Update the 3-stage to optionally use Princeton mode (instruction fetch
   and load/stores share a single port to memory).
 * Reduce the port count on the scratchpad memory by having the HTIF port
