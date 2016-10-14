@@ -72,12 +72,12 @@ void Tracer_t::tick(bool increment_inst_count)
       uint32_t opc_lo = getBits(inst,4,2); 
 
       // don't increment on machine-generated bubbles
-      if (increment_inst_count && inst != 0x5033)
+      if (increment_inst_count && inst != 0x4033)
          trace_data.inst_count++;
       
       if (inst == 0x13) 
          trace_data.nop_count++;
-      else if (inst == 0x5033) 
+      else if (inst == 0x4033) 
          trace_data.bubble_count++;
       else if (opcode == 0x37) //lui
          trace_data.misc_count++;
