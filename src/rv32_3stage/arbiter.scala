@@ -10,7 +10,7 @@ package Sodor
 import Chisel._
 import Node._
 import Common._
-
+import Constants._
 
 // arbitrates memory access
 class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
@@ -25,56 +25,58 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    }
 
    //***************************
-   // Figure out who gets to go
-   val req_fire_dmem = Bool()
-   val req_fire_imem = Bool()
-
-   // default
-   req_fire_dmem := Bool(false) 
-   req_fire_imem := Bool(false) 
-
-   when (io.dmem.req.valid)
+   val i1reg = Reg(Bits(width=conf.xprlen))
+   val d1reg = Reg(Bits(width=conf.xprlen))
+   val nextdmem = Reg(init=Bool(true))
+   io.dmem.req.ready := Bool(true)
+   val d_or_i = new Bool()
+   io.imem.req.ready := d_or_i
+   //***************************
+   // hook up requests
+   // 3 cycle FSM on LW , SW , FENCE in exe stage
+   // HAZ since contention for MEM PORT so next cycle STALL
+   // CYC 1 : Store inst in reg requested in prev CYC 
+   //         make data addr available on MEM PORT
+   // CYC 2 : Store data in reg to be used in next CYC
+   // CYC 3 : Default State with data addr on MEM PORT
+   when (io.dmem.req.valid && nextdmem)
    {
-      req_fire_dmem := Bool(true)
+        d_or_i := Bool(true)
+        nextdmem := Bool(false)
+        io.imem.resp.valid := io.mem.resp.valid
+   }
+   .elsewhen(io.dmem.req.valid && !nextdmem)
+   {
+        d_or_i := Bool(false)
+        nextdmem := Bool(true)
+        io.imem.resp.valid := Bool(false)
    }
    .otherwise
    {
-      req_fire_imem := Bool(true)
+        d_or_i := Bool(false)
+        io.imem.resp.valid := io.mem.resp.valid
    }
- 
-
-   //***************************
-   // apply back pressure as needed
-   // let dmem always go through, hold up instruction fetch as necessary
-   io.imem.req.ready := !req_fire_dmem
-   io.dmem.req.ready := Bool(true)
-                
-
-   //***************************
-   // hook up requests
-
-   io.mem.req.valid     := io.imem.req.valid
-   io.mem.req.bits.addr := io.imem.req.bits.addr
-   io.mem.req.bits.fcn  := io.imem.req.bits.fcn
-   io.mem.req.bits.typ  := io.imem.req.bits.typ
-
-   when (req_fire_dmem)
+   // SwITCH BET DATA AND INST
+   when (d_or_i)
    {
       io.mem.req.valid     := io.dmem.req.valid
       io.mem.req.bits.addr := io.dmem.req.bits.addr
       io.mem.req.bits.fcn  := io.dmem.req.bits.fcn
       io.mem.req.bits.typ  := io.dmem.req.bits.typ
    }
+   .otherwise
+   {
+      io.mem.req.valid     := io.imem.req.valid
+      io.mem.req.bits.addr := io.imem.req.bits.addr
+      io.mem.req.bits.fcn  := io.imem.req.bits.fcn
+      io.mem.req.bits.typ  := io.imem.req.bits.typ
+   }
    io.mem.req.bits.data := io.dmem.req.bits.data
-
-
-   //***************************
-   // hook up responses
-
-   io.imem.resp.valid := req_fire_imem
-   io.dmem.resp.valid := req_fire_dmem
-   io.imem.resp.bits.data := io.mem.resp.bits.data
-   io.dmem.resp.bits.data := io.mem.resp.bits.data
+   d1reg := Mux(!nextdmem , io.mem.resp.bits.data , d1reg)
+   io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid 
+   i1reg := Mux( io.imem.resp.valid && io.dmem.req.valid && nextdmem , io.mem.resp.bits.data , i1reg )
+   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdmem , i1reg , io.mem.resp.bits.data )
+   io.dmem.resp.bits.data := d1reg
 
 }
  
