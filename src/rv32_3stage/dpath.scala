@@ -88,12 +88,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_wbaddr   = exe_inst(RD_MSB,  RD_LSB)
                        
    val wb_wbdata    = Bits(width = conf.xprlen)
- 
 
+   if(NUM_MEMORY_PORTS == 1) {
+      wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
+                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
+                         (io.ctl.dmem_val && !RegNext(wb_hazard_stall))
+   }
+   else{
+      wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
+                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)  
+   }
+   
    // Hazard Stall Logic 
-   wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
-                      ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != UInt(0)) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
-                      (io.ctl.dmem_val && !RegNext(wb_hazard_stall))
 
 
    // Register File

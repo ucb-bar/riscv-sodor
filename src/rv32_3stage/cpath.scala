@@ -163,7 +163,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.csr_cmd    := Mux(exe_exception || !ctrl_valid, CSR.N, csr_cmd)
    
    // Memory Requests
-   io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
+   if(NUM_MEMORY_PORTS == 1)
+      io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
+   else 
+      io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid
    io.ctl.dmem_fcn   := cs_mem_fcn
    io.ctl.dmem_typ   := cs_msk_sel
 

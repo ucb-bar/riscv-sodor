@@ -126,7 +126,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    io.imem.req.bits.typ  := MT_WU
 
 
-   io.imem.resp.ready := Bool(false)
    //**********************************
    // Inst Fetch/Return Stage
 
@@ -135,11 +134,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
       exe_reg_valid :=  if_reg_valid && !io.cpu.req.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.resp.bits.data
-      io.imem.resp.ready := Bool(true)
-   }
-   .otherwise
-   {
-      io.imem.resp.ready := Bool(false)
    }
 
    //**********************************
