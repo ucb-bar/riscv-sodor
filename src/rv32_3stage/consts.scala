@@ -17,7 +17,7 @@ trait SodorProcConstants
    //************************************
    // Machine Parameters
 
-   val NUM_MEMORY_PORTS = 1; //require(NUM_MEMORY_PORTS==2) // princeton mode not yet supported
+   val NUM_MEMORY_PORTS = 2;
 
    // if the front-end ONLY predicts PC+4, this simplifies quite a bit of logic.
    // First, the PC select mux never needs to compute ExePC + 4 on a branch

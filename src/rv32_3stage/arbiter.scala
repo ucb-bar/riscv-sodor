@@ -10,7 +10,6 @@ package Sodor
 import Chisel._
 import Node._
 import Common._
-import Constants._
 
 // arbitrates memory access
 class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
