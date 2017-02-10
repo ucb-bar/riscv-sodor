@@ -131,11 +131,11 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid := io.imem.resp.valid && if_reg_valid && !io.cpu.req.valid
+      exe_reg_valid :=  if_reg_valid && !io.cpu.req.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.resp.bits.data
    }
-   
+
    //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
