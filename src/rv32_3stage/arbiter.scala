@@ -28,8 +28,9 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    val d1reg = Reg(Bits(width=conf.xprlen))
    val nextdmem = Reg(init=Bool(true))
    io.dmem.req.ready := Bool(true)
-   val d_or_i = new Bool()
-   io.imem.req.ready := d_or_i
+   //d_fire : when true data request will be put on bus
+   val d_fire = new Bool() 
+   io.imem.req.ready := d_fire
    //***************************
    // hook up requests
    // 3 cycle FSM on LW , SW , FENCE in exe stage
@@ -38,25 +39,28 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    //         make data addr available on MEM PORT
    // CYC 2 : Store data in reg to be used in next CYC
    // CYC 3 : Default State with data addr on MEM PORT
+   // nextdmem ensures that data req gets access to bus only
+   // for one cycle 
+   // alternate between data and instr to avoid starvation
    when (io.dmem.req.valid && nextdmem)
    {
-        d_or_i := Bool(true)
-        nextdmem := Bool(false)
+        d_fire := Bool(true)
+        nextdmem := Bool(false) // allow only instr in next cycle
         io.imem.resp.valid := io.mem.resp.valid
    }
    .elsewhen(io.dmem.req.valid && !nextdmem)
    {
-        d_or_i := Bool(false)
-        nextdmem := Bool(true)
+        d_fire := Bool(false)
+        nextdmem := Bool(true)  // allow any future data request
         io.imem.resp.valid := Bool(false)
    }
    .otherwise
    {
-        d_or_i := Bool(false)
+        d_fire := Bool(false)
         io.imem.resp.valid := io.mem.resp.valid
    }
-   // SwITCH BET DATA AND INST
-   when (d_or_i)
+   // SwITCH BET DATA AND INST REQ FOR SINGLE PORT
+   when (d_fire)
    {
       io.mem.req.valid     := io.dmem.req.valid
       io.mem.req.bits.addr := io.dmem.req.bits.addr
