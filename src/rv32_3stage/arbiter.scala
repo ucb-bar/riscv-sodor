@@ -26,7 +26,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    //***************************
    val i1reg = Reg(Bits(width=conf.xprlen))
    val d1reg = Reg(Bits(width=conf.xprlen))
-   val nextdmem = Reg(init=Bool(true))
+   val nextdreq = Reg(init=Bool(true))
    io.dmem.req.ready := Bool(true)
    //d_fire : when true data request will be put on bus
    val d_fire = new Bool() 
@@ -39,19 +39,19 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    //         make data addr available on MEM PORT
    // CYC 2 : Store data in reg to be used in next CYC
    // CYC 3 : Default State with data addr on MEM PORT
-   // nextdmem ensures that data req gets access to bus only
+   // nextdreq ensures that data req gets access to bus only
    // for one cycle 
    // alternate between data and instr to avoid starvation
-   when (io.dmem.req.valid && nextdmem)
+   when (io.dmem.req.valid && nextdreq)
    {
         d_fire := Bool(true)
-        nextdmem := Bool(false) // allow only instr in next cycle
+        nextdreq := Bool(false) // allow only instr in next cycle
         io.imem.resp.valid := io.mem.resp.valid
    }
-   .elsewhen(io.dmem.req.valid && !nextdmem)
+   .elsewhen(io.dmem.req.valid && !nextdreq)
    {
         d_fire := Bool(false)
-        nextdmem := Bool(true)  // allow any future data request
+        nextdreq := Bool(true)  // allow any future data request
         io.imem.resp.valid := Bool(false)
    }
    .otherwise
@@ -75,10 +75,10 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       io.mem.req.bits.typ  := io.imem.req.bits.typ
    }
    io.mem.req.bits.data := io.dmem.req.bits.data
-   d1reg := Mux(!nextdmem , io.mem.resp.bits.data , d1reg)
+   d1reg := Mux(!nextdreq , io.mem.resp.bits.data , d1reg)
    io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid 
-   i1reg := Mux( io.imem.resp.valid && io.dmem.req.valid && nextdmem , io.mem.resp.bits.data , i1reg )
-   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdmem , i1reg , io.mem.resp.bits.data )
+   i1reg := Mux( io.imem.resp.valid && io.dmem.req.valid && nextdreq , io.mem.resp.bits.data , i1reg )
+   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
    io.dmem.resp.bits.data := d1reg
 
 }
