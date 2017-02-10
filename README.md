@@ -15,7 +15,7 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 
 * 1-stage (essentially an ISA simulator)
 * 2-stage (demonstrates pipelining in Chisel)
-* 3-stage (uses sequential memory)
+* 3-stage (uses sequential memory; supports both Harvard and Princeton versions)
 * 5-stage (can toggle between fully bypassed or fully interlocked)
 * "bus"-based micro-coded implementation
 
@@ -286,8 +286,7 @@ Here is an informal list of things that would be nice to get done. Feel free to
 contribute!
 
 * Update to the Privileged Spec v1.9
-* Update the 3-stage to optionally use Princeton mode (instruction fetch
-  and load/stores share a single port to memory).
+* Update to Chisel3/FIRRTL
 * Reduce the port count on the scratchpad memory by having the HTIF port
   share one of the cpu ports.
 * Provide a Verilog test harness, and put the 3-stage on a FPGA.
