@@ -5,7 +5,7 @@ import Node._
 
 import Constants._
    
-case class SodorConfiguration
+case class SodorConfiguration()
 {
    val xprlen = 32
    val nxpr = 32
