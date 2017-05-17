@@ -7,8 +7,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Common._
 import Common.Instructions._
@@ -16,19 +17,19 @@ import Constants._
 
 class CtlToDatIo extends Bundle() 
 {
-   val stall     = Bool(OUTPUT)
-   val pc_sel    = UInt(OUTPUT, 3) 
-   val op1_sel   = UInt(OUTPUT, 2) 
-   val op2_sel   = UInt(OUTPUT, 2) 
-   val alu_fun   = UInt(OUTPUT, 4) 
-   val wb_sel    = UInt(OUTPUT, 3) 
-   val rf_wen    = Bool(OUTPUT) 
-   val csr_cmd   = UInt(OUTPUT, CSR.SZ) 
-   val exception = Bool(OUTPUT)
-   val exc_cause = UInt(OUTPUT, 32)
+   val stall     = Output(Bool())
+   val pc_sel    = Output(UInt(3)) 
+   val op1_sel   = Output(UInt(2)) 
+   val op2_sel   = Output(UInt(2)) 
+   val alu_fun   = Output(UInt(4)) 
+   val wb_sel    = Output(UInt(3)) 
+   val rf_wen    = Output(Bool()) 
+   val csr_cmd   = Output(UInt(CSR.SZ)) 
+   val exception = Output(Bool())
+   val exc_cause = Output(UInt(32))
 
-   val debug_dmem_val = Bool(OUTPUT)
-   val debug_dmem_typ = Bits(OUTPUT, MT_X.getWidth)
+   val debug_dmem_val = Output(Bool())
+   val debug_dmem_typ = Output(UInt(MT_X.getWidth))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -37,7 +38,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = new DatToCtlIo().flip()
    val ctl  = new CtlToDatIo()
-   val resetSignal = Bool(INPUT)
+   val resetSignal = Input(Bool())
    override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
 

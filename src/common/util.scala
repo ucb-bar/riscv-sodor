@@ -5,8 +5,8 @@
 package Common
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
 import scala.math._
 import scala.collection.mutable.ArrayBuffer
 
@@ -26,7 +26,7 @@ object Util
 //do two masks have at least 1 bit match?
 object maskMatch
 {
-   def apply(msk1: Bits, msk2: Bits): Bool =
+   def apply(msk1: UInt, msk2: UInt): Bool =
    {
       val br_match = (msk1 & msk2) != Bits(0)
       return br_match
@@ -36,9 +36,9 @@ object maskMatch
 //clear one-bit in the Mask as specified by the idx
 object clearMaskBit
 {
-   def apply(msk: Bits, idx: UInt): Bits =
+   def apply(msk: UInt, idx: UInt): UInt =
    {
-      return (msk & ~(Bits(1) << idx))(msk.getWidth-1, 0)
+      return (msk & ~(1.U << idx))(msk.getWidth-1, 0)
    }
 }
   
@@ -83,7 +83,7 @@ object Split
 case class WideCounter(width: Int, inc: Bool = Bool(true))
 {
    private val isWide = width >= 4
-   private val smallWidth = if (isWide) log2Up(width) else width
+   private val smallWidth = if (isWide) log2Ceil(width) else width
    private val small = Reg(init=UInt(0, smallWidth))
    private val nextSmall = small + UInt(1, smallWidth+1)
    when (inc) { small := nextSmall(smallWidth-1,0) }
@@ -123,12 +123,12 @@ object RegEn
  
 object Str
 {
-  def apply(s: String): Bits = {
+  def apply(s: String): UInt = {
     var i = BigInt(0)
     require(s.forall(validChar _))
     for (c <- s)
       i = (i << 8) | c
-    Lit(i, s.length*8){Bits()}
+    i.asUInt((s.length*8).W)
   }
   def apply(x: Char): Bits = {
     require(validChar(x))

@@ -8,8 +8,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Constants._
 import Common._
@@ -17,16 +18,16 @@ import Common.Constants._
 
 class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val inst   = Bits(OUTPUT, 32)
-   val br_eq  = Bool(OUTPUT)
-   val br_lt  = Bool(OUTPUT)
-   val br_ltu = Bool(OUTPUT)
+   val inst   = Output(UInt(32.W))
+   val br_eq  = Output(Bool())
+   val br_lt  = Output(Bool())
+   val br_ltu = Output(Bool())
 //   val csr    = new CSRFileIO()
 //   val status = new MStatus().asOutput()
-   val csr_eret = Bool(OUTPUT)
-   val csr_interrupt = Bool(OUTPUT)
-   val csr_xcpt = Bool(OUTPUT)
-   val csr_interrupt_cause = UInt(OUTPUT, conf.xprlen)
+   val csr_eret = Output(Bool())
+   val csr_interrupt = Output(Bool())
+   val csr_xcpt = Output(Bool())
+   val csr_interrupt_cause = Output(UInt(conf.xprlen))
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -98,14 +99,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val imm_b = Cat(inst(31), inst(7), inst(30,25), inst(11,8))
    val imm_u = inst(31, 12)
    val imm_j = Cat(inst(31), inst(19,12), inst(20), inst(30,21))
-   val imm_z = Cat(Fill(UInt(0), 27), inst(19,15))
+   val imm_z = Cat(Fill(27,UInt(0)), inst(19,15))
 
    // sign-extend immediates
-   val imm_i_sext = Cat(Fill(imm_i(11), 20), imm_i)
-   val imm_s_sext = Cat(Fill(imm_s(11), 20), imm_s)
-   val imm_b_sext = Cat(Fill(imm_b(11), 19), imm_b, UInt(0))
-   val imm_u_sext = Cat(imm_u, Fill(UInt(0), 12))
-   val imm_j_sext = Cat(Fill(imm_j(19), 11), imm_j, UInt(0))
+   val imm_i_sext = Cat(Fill(20,imm_i(11)), imm_i)
+   val imm_s_sext = Cat(Fill(20,imm_s(11)), imm_s)
+   val imm_b_sext = Cat(Fill(19,imm_b(11)), imm_b, UInt(0))
+   val imm_u_sext = Cat(imm_u, Fill(12,UInt(0)))
+   val imm_j_sext = Cat(Fill(11,imm_j(19)), imm_j, UInt(0))
 
 
    val alu_op1 = MuxCase(UInt(0), Array(
@@ -124,7 +125,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
 
    // ALU
-   val alu_out   = UInt(width = conf.xprlen)
+   val alu_out   = Wire(UInt(conf.xprlen))
 
    val alu_shamt = alu_op2(4,0).toUInt
 
@@ -177,7 +178,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
                   (io.ctl.wb_sel === WB_PC4) -> pc_plus4,
                   (io.ctl.wb_sel === WB_CSR) -> csr.io.rw.rdata
-                  )).toSInt()
+                  ))
                                   
 
    // datapath to controlpath outputs
@@ -224,7 +225,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          val rd = inst(RD_MSB,RD_LSB)
          when (io.ctl.rf_wen && rd != UInt(0))
          {
-            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", pc_reg, inst, rd, Cat(Fill(wb_data(31),32),wb_data))
+            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", pc_reg, inst, rd, Cat(Fill(32,wb_data(31)),wb_data))
          }
          .otherwise
          {

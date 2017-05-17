@@ -1,7 +1,9 @@
 package Sodor
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
+
 import Constants._
 import Common._
 import Common.Util._
@@ -15,13 +17,13 @@ object ReferenceChipBackend {
 }
 
 class TopIO() extends Bundle  {
-  val debug_stats_csr = Bool(OUTPUT)
+  val debug_stats_csr = Output(Bool())
   val htif  = new Common.HTIFIO()
 }
 
 class Top extends Module 
 {
-   val io = new TopIO()
+   val io = IO(new TopIO())
 
    implicit val sodor_conf = SodorConfiguration()
 
@@ -41,8 +43,13 @@ class Top extends Module
    io.debug_stats_csr := Reg(next=tile.io.host.debug_stats_csr)
 }
 
-object elaborate {
+object elaborate extends ChiselFlatSpec{
   def main(args: Array[String]): Unit = {
-    chiselMain(args, () => Module(new Top()))
+    //chiselMain(args, () => Module(new Top()))
+    chisel3.Driver.execute(args, () => new Top)
+   // private val backendNames = Array[String]("firrtl", "verilator")
+    /*for ( backendName <- Array[String]("firrtl", "verilator") ) {
+      Driver(() => new Top, backendName) _
+    }*/
   }
 }

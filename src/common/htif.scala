@@ -1,7 +1,8 @@
 package Common
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Constants._
 import Util._
 
@@ -9,33 +10,33 @@ import Util._
 class CSRReq(addr_width: Int) extends Bundle
 {
    val rw = Bool()
-   val addr = Bits(width = addr_width)
-   val data = Bits(width = 64)
-   override def clone = { new CSRReq(addr_width).asInstanceOf[this.type] }
+   val addr = Wire(UInt(addr_width))
+   val data = Wire(UInt(64))
+   override def cloneType = { new CSRReq(addr_width).asInstanceOf[this.type] }
 }
 
 
 class HTIFIO() extends Bundle
 {
-   val reset = Bool(INPUT)
-   val debug_stats_csr = Bool(OUTPUT)
-   val id = UInt(INPUT, 1)
-   val csr_req = Decoupled(new CSRReq(addr_width = 12)).flip
-   val csr_rep = Decoupled(Bits(width = 64))
+   val reset = Input(Bool())
+   val debug_stats_csr = Output(Bool())
+   val id = Input(UInt(1.W))
+   val csr_req = Flipped(Decoupled(new CSRReq(addr_width = 12)))
+   val csr_rep = Decoupled(Wire(UInt(64)))
    // inter-processor interrupts. Not really necessary for Sodor.
-   val ipi_req = Decoupled(Bits(width = 1))
-   val ipi_rep = Decoupled(Bool()).flip
+   val ipi_req = Decoupled(Wire(UInt(1)))
+   val ipi_rep = Flipped(Decoupled(Bool()))
    
-   val mem_req = Decoupled(new CSRReq(addr_width = 64)).flip
-   val mem_rep = new ValidIO(Bits(width = 64))
+   val mem_req = Flipped(Decoupled(new CSRReq(addr_width = 64)))
+   val mem_rep = new ValidIO(Wire(UInt(64)))
 }
 
 
 class SCRIO extends Bundle
 {
    val n = 64
-   val rdata = Vec.fill(n) { Bits(INPUT, 64) }
-   val wen = Bool(OUTPUT)
-   val waddr = UInt(OUTPUT, log2Up(n))
-   val wdata = Bits(OUTPUT, 64)
+   val rdata = Vec.fill(n) { Input(UInt(64)) }
+   val wen = Output(Bool())
+   val waddr = Output(UInt(log2Ceil(n)))
+   val wdata = Output(UInt(64))
 }

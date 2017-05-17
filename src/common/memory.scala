@@ -17,48 +17,50 @@
 package Common
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
 import Constants._
 
 trait MemoryOpConstants 
 {
-   val MT_X  = Bits(0, 3)
-   val MT_B  = Bits(1, 3)
-   val MT_H  = Bits(2, 3)
-   val MT_W  = Bits(3, 3)
-   val MT_D  = Bits(4, 3)
-   val MT_BU = Bits(5, 3)
-   val MT_HU = Bits(6, 3)
-   val MT_WU = Bits(7, 3)
+   val MT_X  = 0.asUInt(3.W)
+   val MT_B  = 1.asUInt(3.W)
+   val MT_H  = 2.asUInt(3.W)
+   val MT_W  = 3.asUInt(3.W)
+   val MT_D  = 4.asUInt(3.W)
+   val MT_BU = 5.asUInt(3.W)
+   val MT_HU = 6.asUInt(3.W)
+   val MT_WU = 7.asUInt(3.W)
 
-   val M_X   = Bits("b0", 1)
-   val M_XRD = Bits("b0", 1) // int load
-   val M_XWR = Bits("b1", 1) // int store
+   val M_X   = "b0".U
+   val M_XRD = "b0".U // int load
+   val M_XWR = "b1".U // int store
 }
 
 // from the pov of the datapath
 class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
 {
    val req    = Decoupled(new MemReq(data_width))
-   val resp   = (new ValidIO(new MemResp(data_width))).flip
-  override def clone = { new MemPortIo(data_width).asInstanceOf[this.type] }
+   println("hello")
+   val resp   = Flipped(new ValidIO(new MemResp(data_width)))
+  override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
 class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
 {
-   val addr = UInt(width = conf.xprlen)
-   val data = Bits(width = data_width)
-   val fcn  = Bits(width = M_X.getWidth)  // memory function code
-   val typ  = Bits(width = MT_X.getWidth) // memory type
-  override def clone = { new MemReq(data_width).asInstanceOf[this.type] }
+   val addr = Wire(UInt(conf.xprlen))
+   val data = Wire(UInt(data_width))
+   val fcn  = Wire(UInt(M_X.getWidth))  // memory function code
+   val typ  = Wire(UInt(MT_X.getWidth)) // memory type
+  override def cloneType = { new MemReq(data_width).asInstanceOf[this.type] }
 }
 
 class MemResp(data_width: Int) extends Bundle
 {
-   val data = Bits(width = data_width)
-  override def clone = { new MemResp(data_width).asInstanceOf[this.type] }
+   val data = Wire(UInt(data_width))
+  override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
 // NOTE: the default is enormous (and may crash your computer), but is bound by
@@ -66,11 +68,11 @@ class MemResp(data_width: Int) extends Bundle
 // be to modify the fesvr to expect smaller sizes.
 class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit conf: SodorConfiguration) extends Module
 {
-   val io = new Bundle
+   val io = IO(new Bundle
    {
       val core_ports = Vec.fill(num_core_ports) { (new MemPortIo(data_width = conf.xprlen)).flip }
       val htif_port = (new MemPortIo(data_width = 64)).flip
-   }
+   })
 
 
    // HTIF min packet size is 8 bytes 
@@ -83,13 +85,13 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
    else
       println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val data_bank0 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines, seqRead = seq_read)
-   val data_bank1 = Mem(Bits(width = 8*num_bytes_per_line/num_banks), num_lines, seqRead = seq_read)
+   val data_bank0 = SeqMem(num_lines, UInt(8*num_bytes_per_line/num_banks))
+   val data_bank1 = SeqMem(num_lines, UInt(8*num_bytes_per_line/num_banks))
 
 
    // constants
-   val idx_lsb = log2Up(num_bytes_per_line) 
-   val bank_bit = log2Up(num_bytes_per_line/num_banks) 
+   val idx_lsb = log2Ceil(num_bytes_per_line) 
+   val bank_bit = log2Ceil(num_bytes_per_line/num_banks) 
 
    for (i <- 0 until num_core_ports)
    {
@@ -109,8 +111,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       val bit_shift_amt  = Cat(byte_shift_amt, UInt(0,3))
 
       // read access
-      val r_data_idx = Reg(outType=UInt())
-      val r_bank_idx = Reg(outType=Bool())
+      val r_data_idx = Reg(UInt())
+      val r_bank_idx = Reg(Bool())
 
       val data_idx = req_addr >> UInt(idx_lsb)
       val bank_idx = req_addr(bank_bit)
@@ -140,11 +142,11 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
 
          when (bank_idx)
          {
-            data_bank1.write(data_idx, wdata, wmask)
+            data_bank1.write(data_idx, wdata)
          }
          .otherwise
          {
-            data_bank0.write(data_idx, wdata, wmask)
+            data_bank0.write(data_idx, wdata)
          }
       }
       .elsewhen (req_valid && req_fcn === M_XRD)
@@ -177,7 +179,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
 
 object StoreDataGen
 {
-   def apply(din: Bits, typ: Bits): UInt =
+   def apply(din: Bits, typ: UInt): UInt =
    {
       val word = (typ === MT_W) || (typ === MT_WU)
       val half = (typ === MT_H) || (typ === MT_HU)
@@ -206,7 +208,7 @@ object StoreMask
 //appropriately mask and sign-extend data for the core
 object LoadDataGen
 {
-   def apply(data: Bits, typ: Bits) : Bits =
+   def apply(data: Bits, typ: UInt) : Bits =
    {
       val out = Mux(typ === MT_H,  Cat(Fill(16, data(15)),  data(15,0)),
                 Mux(typ === MT_HU, Cat(Fill(16, UInt(0x0)), data(15,0)),

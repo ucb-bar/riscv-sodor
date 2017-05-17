@@ -17,20 +17,22 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
 {
   val host = new HTIFIO()
   val imem = new MemPortIo(conf.xprlen)
+  println("hello")
   val dmem = new MemPortIo(conf.xprlen)
 }
 
 class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
-  val io = new CoreIo()
+  val io = IO(new CoreIo())
   val c  = Module(new CtlPath())
   val d  = Module(new DatPath())
   

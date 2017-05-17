@@ -7,30 +7,31 @@
 package Common
 
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import Util._
 import Instructions._
-import Node._
+
 
 import Common.Constants._
 import scala.math._
 
 class MStatus extends Bundle {
   val sd = Bool()
-  val zero2 = UInt(width = 31)
-  val sd_rv32 = UInt(width = 1)
-  val zero1 = UInt(width = 9)
-  val vm = UInt(width = 5)
+  val zero2 = Wire(UInt(31.W))
+  val sd_rv32 = Wire(UInt(1.W))
+  val zero1 = Wire(UInt(9.W))
+  val vm = Wire(UInt(5.W))
   val mprv = Bool()
-  val xs = UInt(width = 2)
-  val fs = UInt(width = 2)
-  val prv3 = UInt(width = 2)
+  val xs = Wire(UInt(2.W))
+  val fs = Wire(UInt(2.W))
+  val prv3 = Wire(UInt(2.W))
   val ie3 = Bool()
-  val prv2 = UInt(width = 2)
+  val prv2 = Wire(UInt(2.W))
   val ie2 = Bool()
-  val prv1 = UInt(width = 2)
+  val prv1 = Wire(UInt(2.W))
   val ie1 = Bool()
-  val prv = UInt(width = 2)
+  val prv = Wire(UInt(2.W))
   val ie = Bool()
 }
 
@@ -48,43 +49,43 @@ class MIP extends Bundle {
 object CSR
 {
   // commands
-  val SZ = 3
+  val SZ = 3.W
 //  val X = UInt.DC(SZ)
-  val X = UInt(0,SZ)
-  val N = UInt(0,SZ)
-  val W = UInt(1,SZ)
-  val S = UInt(2,SZ)
-  val C = UInt(3,SZ)
-  val I = UInt(4,SZ)
-  val R = UInt(5,SZ)
+  val X = 0.asUInt(SZ)
+  val N = 0.asUInt(SZ)
+  val W = 1.asUInt(SZ)
+  val S = 2.asUInt(SZ)
+  val C = 3.asUInt(SZ)
+  val I = 4.asUInt(SZ)
+  val R = 5.asUInt(SZ)
 }
 
 class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val host = new HTIFIO
   val rw = new Bundle {
-    val addr = UInt(INPUT, 12)
-    val cmd = Bits(INPUT, CSR.SZ)
-    val rdata = Bits(OUTPUT, conf.xprlen)
-    val wdata = Bits(INPUT, conf.xprlen)
+    val addr = Input(UInt(12.W))
+    val cmd = Input(UInt(CSR.SZ))
+    val rdata = Output(UInt(conf.xprlen))
+    val wdata = Input(UInt(conf.xprlen))
   }
 
-  val csr_replay = Bool(OUTPUT)
-  val csr_stall = Bool(OUTPUT)
-  val csr_xcpt = Bool(OUTPUT)
-  val eret = Bool(OUTPUT)
+  val csr_replay = Output(Bool())
+  val csr_stall = Output(Bool())
+  val csr_xcpt = Output(Bool())
+  val eret = Output(Bool())
 
   val status = new MStatus().asOutput
-  val ptbr = UInt(OUTPUT, PADDR_BITS)
-  val evec = UInt(OUTPUT, VADDR_BITS)
-  val exception = Bool(INPUT)
-  val retire = Bool(INPUT)
-  val uarch_counters = Vec.fill(16)(Bool(INPUT))
-  val cause = UInt(INPUT, conf.xprlen)
-  val pc = UInt(INPUT, VADDR_BITS)
-  val fatc = Bool(OUTPUT)
-  val time = UInt(OUTPUT, conf.xprlen)
-  val interrupt = Bool(OUTPUT)
-  val interrupt_cause = UInt(OUTPUT, conf.xprlen)
+  val ptbr = Output(UInt(PADDR_BITS))
+  val evec = Output(UInt(VADDR_BITS))
+  val exception = Input(Bool())
+  val retire = Input(Bool())
+  val uarch_counters = Vec.fill(16)(Input(Bool()))
+  val cause = Input(UInt(conf.xprlen))
+  val pc = Input(UInt(VADDR_BITS))
+  val fatc = Output(Bool())
+  val time = Output(UInt(conf.xprlen))
+  val interrupt = Output(Bool())
+  val interrupt_cause = Output(UInt(conf.xprlen))
 }
 
 class CSRFile(implicit conf: SodorConfiguration) extends Module
@@ -94,11 +95,11 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mstatus = Reg(new MStatus)
   val reg_mie = Reg(init=new MIP().fromBits(0))
   val reg_mip = Reg(init=new MIP().fromBits(0))
-  val reg_mepc = Reg(UInt(width = VADDR_BITS))
-  val reg_mcause = Reg(Bits(width = conf.xprlen))
-  val reg_mbadaddr = Reg(UInt(width = VADDR_BITS))
-  val reg_mscratch = Reg(Bits(width = conf.xprlen))
-  val reg_mtimecmp = Reg(Bits(width = conf.xprlen))
+  val reg_mepc = Reg(Wire(UInt(VADDR_BITS)))
+  val reg_mcause = Reg(Wire(UInt(conf.xprlen)))
+  val reg_mbadaddr = Reg(Wire(UInt(VADDR_BITS)))
+  val reg_mscratch = Reg(Wire(UInt(conf.xprlen)))
+  val reg_mtimecmp = Reg(Wire(UInt(conf.xprlen)))
   val reg_wfi = Reg(init=Bool(false))
 
   val reg_tohost = Reg(init=Bits(0, conf.xprlen))
@@ -237,7 +238,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     reg_mstatus.prv2 := reg_mstatus.prv1
     reg_mstatus.ie2 := reg_mstatus.ie1
 
-    reg_mepc := io.pc & SInt(-4) // clear low-2 bits
+    reg_mepc := (io.pc >> 2.U) << 2 // clear low-2 bits
     reg_mcause := io.cause
     when (csr_xcpt) {
       reg_mcause := Causes.illegal_instruction
