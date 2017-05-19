@@ -148,19 +148,51 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    io.htif_port.req.ready := Bool(true) // for now, no back pressure
    // synchronous read
    val htif_idx = Reg(UInt())
-   htif_idx := io.htif_port.req.bits.addr >> UInt(idx_lsb)
+   htif_idx := io.htif_port.req.bits.addr >> idx_lsb.U
    
    io.htif_port.resp.valid     := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   io.htif_port.resp.bits.data := data_bank(htif_idx)
+   io.htif_port.resp.bits.data := GenUInt(data_bank.read(htif_idx))
 
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {
-      data_bank(htif_idx) := io.htif_port.req.bits.data
+      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools) 
    }
 
 }
 
+object GenVec
+{
+   def apply(din: UInt): Vec[UInt] = 
+   {
+      val dout = Wire(Vec(8, UInt(8.W)))
+      dout(0) := din(7,0)
+      dout(1) := din(15,8)
+      dout(2) := din(23,16)
+      dout(3) := din(31,24)
+      dout(4) := din(39,32)
+      dout(5) := din(47,40)
+      dout(6) := din(53,48)
+      dout(7) := din(64,54)
+      return dout
+   }
+}
 
+object GenUInt
+{
+   def apply(din: Vec[UInt]): UInt = 
+   {
+      val dout = Wire(UInt(64.W))
+      dout(7,0) := din(0)
+      dout(15,8) := din(1)
+      dout(23,16) := din(2)
+      dout(31,24) := din(3)
+      dout(39,32) := din(4)
+      dout(47,40) := din(5)
+      dout(53,48) := din(6)
+      dout(64,54) := din(7)
+      return dout
+   }
+}
 
 object StoreDataGen
 {
@@ -168,12 +200,11 @@ object StoreDataGen
    {
       val word = (typ === MT_W) || (typ === MT_WU)
       val half = (typ === MT_H) || (typ === MT_HU)
-      val byte_ = (typ === MT_B) || (typ === MT_BU)
       val dout = Wire(Vec(8, UInt(8.W)))
-      dout := 0.U
-      dout := Mux(!(word || half || byte_), din, 0.U)
       dout(idx) := din(7,0)
       dout(idx + 1.U) := Mux(half, din(15,8), 0.U)
+      dout(idx + 2.U) := Mux(word, din(23,16), 0.U)
+      dout(idx + 3.U) := Mux(word, din(31,24), 0.U)
       return dout
    }
 }
@@ -185,12 +216,10 @@ object StoreMask
    {
       val word = (sel === MT_W) || (sel === MT_WU)
       val half = (sel === MT_H) || (sel === MT_HU)
-      val byte = (sel === MT_B) || (sel === MT_BU)
       val wmask = Wire(UInt(8.W))
-      wmask := Mux(!(word || byte || half), "b11111111".U, wmask)
-      wmask(idx + 1.U) := Mux(half, 1.U, 0.U)
       wmask(idx) :=  1.U //for byte access
-      wmask := Mux(word, 15.U << (idx(2) << 1.U) , wmask)
+      wmask(idx + 1.U) := Mux(half, 1.U, 0.U)
+      wmask := Mux(word, 15.U << (idx(2) << 2.U) , wmask)
       return wmask.toBools
    }
 }
