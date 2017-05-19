@@ -28,6 +28,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val csr_interrupt = Output(Bool())
    val csr_xcpt = Output(Bool())
    val csr_interrupt_cause = Output(UInt(conf.xprlen))
+   override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -35,25 +36,34 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val host  = new HTIFIO()
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
-   val ctl  = new CtlToDatIo().flip()
+   val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
 }
 
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
-   val io = new DpathIo()
+   val io = IO(new DpathIo())
    
    
    // Instruction Fetch
-   val pc_next          = UInt()
-   val pc_plus4         = UInt()
-   val br_target        = UInt()
-   val jmp_target       = UInt()
-   val jump_reg_target  = UInt()
-   val exception_target = UInt()
+   val pc_next          = Wire(UInt(32.W))
+   val pc_plus4         = Wire(UInt(32.W))
+   val br_target        = Wire(UInt(32.W))
+   val jmp_target       = Wire(UInt(32.W))
+   val jump_reg_target  = Wire(UInt(32.W))
+   val exception_target = Wire(UInt(32.W))
  
    // PC Register
+   pc_next := MuxCase(pc_plus4, Array(
+                  (io.ctl.pc_sel === PC_4)   -> pc_plus4,
+                  (io.ctl.pc_sel === PC_BR)  -> br_target,
+                  (io.ctl.pc_sel === PC_J )  -> jmp_target,
+                  (io.ctl.pc_sel === PC_JR)  -> jump_reg_target,
+                  (io.ctl.pc_sel === PC_EXC) -> exception_target
+                  ))
+
    val pc_reg = Reg(init=UInt(START_ADDR, conf.xprlen))
+
 
    when (!io.ctl.stall) 
    {
@@ -62,13 +72,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    pc_plus4 := (pc_reg + UInt(4, conf.xprlen))               
 
-   pc_next := MuxCase(pc_plus4, Array(
-                  (io.ctl.pc_sel === PC_4)   -> pc_plus4,
-                  (io.ctl.pc_sel === PC_BR)  -> br_target,
-                  (io.ctl.pc_sel === PC_J )  -> jmp_target,
-                  (io.ctl.pc_sel === PC_JR)  -> jump_reg_target,
-                  (io.ctl.pc_sel === PC_EXC) -> exception_target
-                  ))
    
    io.imem.req.bits.addr := pc_reg
    val inst = Mux(io.imem.resp.valid, io.imem.resp.bits.data, BUBBLE) 
@@ -79,7 +82,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val rs2_addr = inst(RS2_MSB, RS2_LSB)
    val wb_addr  = inst(RD_MSB,  RD_LSB)
    
-   val wb_data = Bits(width = conf.xprlen)
+   val wb_data = Wire(UInt(conf.xprlen))
  
    // Register File
    val regfile = Mem(Bits(width = conf.xprlen), 32)
@@ -192,11 +195,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.bits.addr  := alu_out
    io.dmem.req.bits.data := rs2_data.toUInt 
    
-   
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
-   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] %s Mem[%s %d: 0x%x] PC= 0x%x %s%s DASM(%x)\n"
+/*   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%s,%d= 0x%x] %s Mem[%s %d: 0x%x] PC= 0x%x %s%s DASM(%x)\n"
       , csr.io.time(31,0)
       , alu_op1
       , alu_op2
@@ -232,7 +234,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
             printf("@@@ 0x%x (0x%x)\n", pc_reg, inst)
          }
       }
-   }   
+   }*/   
 }
 
  

@@ -26,10 +26,8 @@ class Top extends Module
    val io = IO(new TopIO())
 
    implicit val sodor_conf = SodorConfiguration()
-
    val reset_signal = Reg(next=Reg(next=io.htif.reset))
    val tile = Module(new SodorTile)
-  
    tile.io.host.reset := reset_signal
    tile.io.host.id := UInt(0,1)
    tile.io.host.csr_req <> Queue(io.htif.csr_req)

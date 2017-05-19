@@ -19,26 +19,25 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 import Common._
 
-class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
+class CoreIo(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Bundle 
 {
   val host = new HTIFIO()
   val imem = new MemPortIo(conf.xprlen)
-  println("hello")
   val dmem = new MemPortIo(conf.xprlen)
+  val resets = resetSignal
 }
 
 class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
-  val io = IO(new CoreIo())
+  val io = IO(new CoreIo(resetSignal))
   val c  = Module(new CtlPath())
   val d  = Module(new DatPath())
-  
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat
-  c.io.resetSignal := resetSignal
+  c.io.resetSignal := io.resets
   
   c.io.imem <> io.imem
   d.io.imem <> io.imem

@@ -18,20 +18,20 @@ import scala.math._
 
 class MStatus extends Bundle {
   val sd = Bool()
-  val zero2 = Wire(UInt(31.W))
-  val sd_rv32 = Wire(UInt(1.W))
-  val zero1 = Wire(UInt(9.W))
-  val vm = Wire(UInt(5.W))
+  val zero2 = UInt(31.W)
+  val sd_rv32 = UInt(1.W)
+  val zero1 = UInt(9.W)
+  val vm = UInt(5.W)
   val mprv = Bool()
-  val xs = Wire(UInt(2.W))
-  val fs = Wire(UInt(2.W))
-  val prv3 = Wire(UInt(2.W))
+  val xs = UInt(2.W)
+  val fs = UInt(2.W)
+  val prv3 = UInt(2.W)
   val ie3 = Bool()
-  val prv2 = Wire(UInt(2.W))
+  val prv2 = UInt(2.W)
   val ie2 = Bool()
-  val prv1 = Wire(UInt(2.W))
+  val prv1 = UInt(2.W)
   val ie1 = Bool()
-  val prv = Wire(UInt(2.W))
+  val prv = UInt(2.W)
   val ie = Bool()
 }
 
@@ -74,12 +74,12 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val csr_xcpt = Output(Bool())
   val eret = Output(Bool())
 
-  val status = new MStatus().asOutput
+  val status = Output(new MStatus())
   val ptbr = Output(UInt(PADDR_BITS))
   val evec = Output(UInt(VADDR_BITS))
   val exception = Input(Bool())
   val retire = Input(Bool())
-  val uarch_counters = Vec.fill(16)(Input(Bool()))
+  val uarch_counters = Input(Vec.fill(16)(Bool(false)))
   val cause = Input(UInt(conf.xprlen))
   val pc = Input(UInt(VADDR_BITS))
   val fatc = Output(Bool())
@@ -90,16 +90,16 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
 
 class CSRFile(implicit conf: SodorConfiguration) extends Module
 {
-  val io = new CSRFileIO
+  val io = IO(new CSRFileIO)
 
   val reg_mstatus = Reg(new MStatus)
   val reg_mie = Reg(init=new MIP().fromBits(0))
   val reg_mip = Reg(init=new MIP().fromBits(0))
-  val reg_mepc = Reg(Wire(UInt(VADDR_BITS)))
-  val reg_mcause = Reg(Wire(UInt(conf.xprlen)))
-  val reg_mbadaddr = Reg(Wire(UInt(VADDR_BITS)))
-  val reg_mscratch = Reg(Wire(UInt(conf.xprlen)))
-  val reg_mtimecmp = Reg(Wire(UInt(conf.xprlen)))
+  val reg_mepc = Reg(UInt(VADDR_BITS.W))
+  val reg_mcause = Reg(UInt(conf.xprlen.W))
+  val reg_mbadaddr = Reg(UInt(VADDR_BITS.W))
+  val reg_mscratch = Reg(UInt(conf.xprlen.W))
+  val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
   val reg_wfi = Reg(init=Bool(false))
 
   val reg_tohost = Reg(init=Bits(0, conf.xprlen))
@@ -111,7 +111,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
 
   io.interrupt_cause := 0
   io.interrupt := io.interrupt_cause(conf.xprlen-1)
-  val some_interrupt_pending = Bool(); some_interrupt_pending := false
+  val some_interrupt_pending = Reg(Bool()); some_interrupt_pending := false
   def checkInterrupt(max_priv: UInt, cond: Bool, num: Int) = {
     when (cond && (reg_mstatus.prv < max_priv || reg_mstatus.prv === max_priv && reg_mstatus.ie)) {
       io.interrupt_cause := UInt((BigInt(1) << (conf.xprlen-1)) + num)
@@ -131,13 +131,13 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val host_pcr_req_valid = Reg(Bool()) // don't reset
   val host_pcr_req_fire = host_pcr_req_valid && !cpu_ren
   val host_pcr_rep_valid = Reg(Bool()) // don't reset
-  val host_pcr_bits = Reg(io.host.csr_req.bits)
+  val host_pcr_bits = Reg(next = io.host.csr_req.bits)
   io.host.csr_req.ready := !host_pcr_req_valid && !host_pcr_rep_valid
   io.host.csr_rep.valid := host_pcr_rep_valid
   io.host.csr_rep.bits := host_pcr_bits.data
   when (io.host.csr_req.fire()) {
-    host_pcr_req_valid := true
-    host_pcr_bits := io.host.csr_req.bits
+    host_pcr_req_valid := true //shouldn't ready set to be true
+    host_pcr_bits := io.host.csr_req.bits //isn't it initialized capture value of csr_req
   }
   when (host_pcr_req_fire) {
     host_pcr_req_valid := false

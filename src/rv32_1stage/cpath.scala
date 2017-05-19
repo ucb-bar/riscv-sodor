@@ -36,16 +36,16 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 {
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
-   val dat  = new DatToCtlIo().flip()
+   val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    val resetSignal = Input(Bool())
-   override def clone = { new CpathIo().asInstanceOf[this.type] }
+   override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {                                                                                                                   
-  val io = new CpathIo()                                                                                            
+  val io = IO(new CpathIo())                                                                                            
                                                                                                                     
    val csignals =                                                                                                   
       ListLookup(io.dat.inst,                                                                                       

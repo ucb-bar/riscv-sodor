@@ -34,32 +34,31 @@ trait MemoryOpConstants
    val MT_HU = 6.asUInt(3.W)
    val MT_WU = 7.asUInt(3.W)
 
-   val M_X   = "b0".U
-   val M_XRD = "b0".U // int load
-   val M_XWR = "b1".U // int store
+   val M_X   = "b0".asUInt(1.W)
+   val M_XRD = "b0".asUInt(1.W) // int load
+   val M_XWR = "b1".asUInt(1.W) // int store
 }
 
 // from the pov of the datapath
 class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
 {
    val req    = Decoupled(new MemReq(data_width))
-   println("hello")
    val resp   = Flipped(new ValidIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
 class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
 {
-   val addr = Wire(UInt(conf.xprlen))
-   val data = Wire(UInt(data_width))
-   val fcn  = Wire(UInt(M_X.getWidth))  // memory function code
-   val typ  = Wire(UInt(MT_X.getWidth)) // memory type
+   val addr = Output(UInt(conf.xprlen.W))
+   val data = Output(UInt(data_width.W))
+   val fcn  = Output(UInt(M_X.getWidth.W))  // memory function code
+   val typ  = Output(UInt(MT_X.getWidth.W)) // memory type
   override def cloneType = { new MemReq(data_width).asInstanceOf[this.type] }
 }
 
 class MemResp(data_width: Int) extends Bundle
 {
-   val data = Wire(UInt(data_width))
+   val data = Input(UInt(data_width.W))
   override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
@@ -70,8 +69,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
 {
    val io = IO(new Bundle
    {
-      val core_ports = Vec.fill(num_core_ports) { (new MemPortIo(data_width = conf.xprlen)).flip }
-      val htif_port = (new MemPortIo(data_width = 64)).flip
+      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
+      val htif_port = Flipped(new MemPortIo(data_width = 64))
    })
 
 

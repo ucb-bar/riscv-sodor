@@ -2,7 +2,7 @@ package Common
 
 import chisel3._
 import chisel3.util._
-
+import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 import Constants._
 import Util._
 
@@ -10,8 +10,8 @@ import Util._
 class CSRReq(addr_width: Int) extends Bundle
 {
    val rw = Bool()
-   val addr = Wire(UInt(addr_width))
-   val data = Wire(UInt(64))
+   val addr = UInt(addr_width.W)
+   val data = UInt(64.W)
    override def cloneType = { new CSRReq(addr_width).asInstanceOf[this.type] }
 }
 
