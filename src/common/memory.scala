@@ -110,20 +110,21 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       val bit_shift_amt  = Cat(byte_shift_amt, UInt(0,3))
 
       // read access
-      val data_idx = req_addr >> idx_lsb.U
+      val data_idx = Wire(UInt())
+      data_idx := req_addr >> idx_lsb.U
       val r_data_idx = Reg(next = data_idx)
-      val read_data_out = UInt(64.W)
-      val rdata_out = Bits()
+      val read_data_out = Wire(Vec(num_bytes_per_line, UInt(8.W)))
+      val rdata_out = Wire(UInt(32.W))
 
       if (seq_read)
       {
          read_data_out := data_bank.read(r_data_idx)
-         rdata_out     := LoadDataGen((read_data_out >> Reg(next=bit_shift_amt)), Reg(next=req_typ))
+         rdata_out     := LoadDataGen(read_data_out, Reg(next=req_typ), Reg(next = req_addr(2,0)))
       }
       else
       {
          read_data_out := data_bank.read(data_idx)
-         rdata_out     := LoadDataGen((read_data_out >> bit_shift_amt), req_typ)
+         rdata_out     := LoadDataGen(read_data_out, req_typ, req_addr(2,0))
       }
 
       io.core_ports(i).resp.bits.data := rdata_out
@@ -133,8 +134,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       when (req_valid && req_fcn === M_XWR)
       {
          // move the wdata into position on the sub-line
-         val wdata = StoreDataGen(req_data, req_typ, idx_lsb.U) 
-         data_bank.write(data_idx, wdata, StoreMask(req_typ, idx_lsb.U))
+         val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0)) 
+         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)))
       }
       .elsewhen (req_valid && req_fcn === M_XRD){
          r_data_idx := data_idx
@@ -168,7 +169,7 @@ object StoreDataGen
       val word = (typ === MT_W) || (typ === MT_WU)
       val half = (typ === MT_H) || (typ === MT_HU)
       val byte_ = (typ === MT_B) || (typ === MT_BU)
-      val dout = Vec(8, UInt(8.W))
+      val dout = Wire(Vec(8, UInt(8.W)))
       dout := 0.U
       dout := Mux(!(word || half || byte_), din, 0.U)
       dout(idx) := din(7,0)
@@ -185,11 +186,11 @@ object StoreMask
       val word = (sel === MT_W) || (sel === MT_WU)
       val half = (sel === MT_H) || (sel === MT_HU)
       val byte = (sel === MT_B) || (sel === MT_BU)
-      val wmask = UInt(8.W)
-      wmask(idx) :=  1.U //for byte access
-      wmask(idx + 1.U) := Mux(half, 1.U, 0.U)
-      wmask := Mux(word, 15.U << (idx(2) << 1.U) , wmask)
+      val wmask = Wire(UInt(8.W))
       wmask := Mux(!(word || byte || half), "b11111111".U, wmask)
+      wmask(idx + 1.U) := Mux(half, 1.U, 0.U)
+      wmask(idx) :=  1.U //for byte access
+      wmask := Mux(word, 15.U << (idx(2) << 1.U) , wmask)
       return wmask.toBools
    }
 }
@@ -197,15 +198,16 @@ object StoreMask
 //appropriately mask and sign-extend data for the core
 object LoadDataGen
 {
-   def apply(data: Bits, typ: UInt) : Bits =
+   def apply(data: Vec[UInt], typ: UInt, idx: UInt) : UInt =
    {
-      val out = Mux(typ === MT_H,  Cat(Fill(16, data(15)),  data(15,0)),
-                Mux(typ === MT_HU, Cat(Fill(16, UInt(0x0)), data(15,0)),
-                Mux(typ === MT_B,  Cat(Fill(24, data(7)),    data(7,0)),
-                Mux(typ === MT_BU, Cat(Fill(24, UInt(0x0)), data(7,0)), 
-                                    data(31,0)))))
-      
-      return out
+      val word = (typ === MT_W) || (typ === MT_WU)
+      val half = (typ === MT_H) || (typ === MT_HU)
+      val byte_ = (typ === MT_B) || (typ === MT_BU)
+      val dout = Wire(UInt(32.W))
+      dout(7,0) := data(idx)
+      dout(15,8) := Mux(half, data(idx + 1.U), 0.U)
+      dout(31,16) := Mux(word, Cat(data(idx + 3.U),data(idx + 2.U)), 0.U)
+      return dout
    }
 }
 
