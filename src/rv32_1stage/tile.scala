@@ -21,13 +21,14 @@ class SodorTileIo extends Bundle
 
 class SodorTile(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = new SodorTileIo()
+   val io = IO(new SodorTileIo())
 
    // notice that while the core is put into reset, the scratchpad needs to be
    // alive so that the HTIF can load in the program.
-   val core   = Module(new Core(resetSignal = io.host.reset))
+   val core   = Module(new Core())
    val memory = Module(new ScratchPadMemory(num_core_ports = 2))
 
+   core.io.reset := io.host.reset
    core.io.imem <> memory.io.core_ports(0)
    core.io.dmem <> memory.io.core_ports(1)
 

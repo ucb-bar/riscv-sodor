@@ -23,8 +23,8 @@ class MStatus extends Bundle {
   val zero1 = UInt(9.W)
   val vm = UInt(5.W)
   val mprv = Bool()
-  val xs = UInt(2.W)
-  val fs = UInt(2.W)
+  val xs = Output(UInt(2.W))
+  val fs = Output(UInt(2.W))
   val prv3 = UInt(2.W)
   val ie3 = Bool()
   val prv2 = UInt(2.W)
@@ -65,8 +65,8 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val rw = new Bundle {
     val addr = Input(UInt(12.W))
     val cmd = Input(UInt(CSR.SZ))
-    val rdata = Output(UInt(conf.xprlen))
-    val wdata = Input(UInt(conf.xprlen))
+    val rdata = Output(UInt(conf.xprlen.W))
+    val wdata = Input(UInt(conf.xprlen.W))
   }
 
   val csr_replay = Output(Bool())
@@ -80,12 +80,12 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val exception = Input(Bool())
   val retire = Input(Bool())
   val uarch_counters = Input(Vec.fill(16)(Bool(false)))
-  val cause = Input(UInt(conf.xprlen))
+  val cause = Input(UInt(conf.xprlen.W))
   val pc = Input(UInt(VADDR_BITS))
   val fatc = Output(Bool())
   val time = Output(UInt(conf.xprlen))
   val interrupt = Output(Bool())
-  val interrupt_cause = Output(UInt(conf.xprlen))
+  val interrupt_cause = Output(UInt(conf.xprlen.W))
 }
 
 class CSRFile(implicit conf: SodorConfiguration) extends Module
@@ -223,8 +223,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.csr_xcpt := csr_xcpt
   io.eret := insn_ret
   io.status := reg_mstatus
-  io.status.fs := reg_mstatus.fs.orR.toSInt // either off or dirty (no clean/initial support yet)
-  io.status.xs := reg_mstatus.xs.orR.toSInt // either off or dirty (no clean/initial support yet)
+  io.status.fs := reg_mstatus.fs.orR.toUInt // either off or dirty (no clean/initial support yet)
+  io.status.xs := reg_mstatus.xs.orR.toUInt // either off or dirty (no clean/initial support yet)
   io.status.sd := reg_mstatus.xs.orR || reg_mstatus.fs.orR
   if (conf.xprlen == 32)
     io.status.sd_rv32 := io.status.sd
@@ -300,7 +300,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
       reg_mie.msip := new_mie.msip
       reg_mie.mtip := new_mie.mtip
     }
-    when (decoded_addr(CSRs.mepc))     { reg_mepc := wdata(VADDR_BITS-1,0).toSInt & SInt(-4) }
+    when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(VADDR_BITS-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
     when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & UInt((BigInt(1) << (conf.xprlen-1)) + 31) /* only implement 5 LSBs and MSB */ }
     when (decoded_addr(CSRs.mbadaddr)) { reg_mbadaddr := wdata(VADDR_BITS-1,0) }
