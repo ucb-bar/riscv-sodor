@@ -116,7 +116,6 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
 
       val req_valid      = io.core_ports(i).req.valid
       val req_addr       = io.core_ports(i).req.bits.addr
-      val req_data       = io.core_ports(i).req.bits.data
       val req_fcn        = io.core_ports(i).req.bits.fcn
       val req_typ        = io.core_ports(i).req.bits.typ
       val byte_shift_amt = io.core_ports(i).req.bits.addr(2,0)
