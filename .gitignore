@@ -7,6 +7,7 @@ emulator/*/generated-src-debug
 emulator/*/*.o
 emulator/*/*.a
 emulator/*/output/
+project/build.scala
 install/share
 *.pyc
 *.swp
