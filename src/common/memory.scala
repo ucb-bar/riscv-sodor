@@ -20,6 +20,7 @@ package Common
 import chisel3._
 import chisel3.util._
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
+import chisel3.experimental._
 
 import Constants._
 
@@ -37,6 +38,32 @@ trait MemoryOpConstants
    val M_X   = "b0".asUInt(1.W)
    val M_XRD = "b0".asUInt(1.W) // int load
    val M_XWR = "b1".asUInt(1.W) // int store
+}
+
+class rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
+   val addr = Input(UInt(addrWidth.W))
+   val data = Output(UInt(dataWidth.W))
+}
+
+class wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
+   val addr = Input(UInt(addrWidth.W))
+   val data = Input(UInt(dataWidth.W))
+   val mask = Input(UInt(8.W))  // default bit for each byte since max 8B
+   val en = Input(Bool())
+}
+
+class d2h2i1(val addrWidth : Int) extends Bundle{
+   val dataInstr = Vec(2,new  rport(addrWidth,32))
+   val dw = new  wport(addrWidth,32)
+   val hr = new  rport(addrWidth,64)
+   val hw = new  wport(addrWidth,64)
+   
+}
+
+class AsyncReadMem(val addrWidth : Int) extends BlackBox{
+   val io = IO(new d2h2i1(addrWidth))
+
+
 }
 
 // from the pov of the datapath
@@ -83,10 +110,10 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
    else
       println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   var data_bank = if(seq_read)
+   val data_bank = if(seq_read)
       SyncReadMem(num_lines, Vec(num_bytes_per_line, UInt(8.W)))
    else 
-      Mem(num_lines, Vec(num_bytes_per_line, UInt(8.W))) //for 1 stage and 2 stage need for combinational reads 
+      AsyncReadMem(log2Ceil(num_bytes),32) //for 1 stage and 2 stage need for combinational reads 
 
 
    // constants
@@ -123,19 +150,31 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       }
       else
       {
-         read_data_out := data_bank.read(data_idx)
-         rdata_out     := LoadDataGen(read_data_out, req_typ, req_addr(2,0))
+         //read_data_out := data_bank.read(data_idx)
+         //rdata_out     := LoadDataGen(read_data_out, req_typ, req_addr(2,0))
+         data_bank.io.dataInstr(i).addr := req_addr
+         rdata_out := data_bank.io.dataInstr(i).data
       }
-
       io.core_ports(i).resp.bits.data := rdata_out
+
 
 
       // write access
       when (req_valid && req_fcn === M_XWR)
       {
+         if(seq_read)
+         {
+            val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0)) 
+            data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).toBools)  
+         }
+         else
+         {
+            data_bank.io.dw.addr := io.htif_port.req.bits.addr
+            data_bank.io.dw.data := io.htif_port.req.bits.data
+            data_bank.io.dw.en := Bool(true)
+            data_bank.io.dw.mask := StoreMask(req_typ, req_addr(2,0))
+         }
          // move the wdata into position on the sub-line
-         val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0)) 
-         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)))
       }
       .elsewhen (req_valid && req_fcn === M_XRD){
          r_data_idx := data_idx
@@ -144,20 +183,32 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
 
 
    // HTIF -------
-   
-   io.htif_port.req.ready := Bool(true) // for now, no back pressure
-   // synchronous read
    val htif_idx = Reg(UInt())
    htif_idx := io.htif_port.req.bits.addr >> idx_lsb.U
+   io.htif_port.req.ready := Bool(true) // for now, no back pressure
+   io.htif_port.resp.valid := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
    
-   io.htif_port.resp.valid     := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   io.htif_port.resp.bits.data := data_bank.read(htif_idx).asUInt
-
-   when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
-   {
-      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools) 
+   // synchronous read
+   
+   if(seq_read){
+      io.htif_port.resp.bits.data := data_bank.read(htif_idx).asUInt
+      when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
+      {
+         data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools) 
+      }
    }
-
+   else 
+   {
+      data_bank.io.hr.addr = io.htif_port.req.bits.addr
+      io.htif_port.resp.bits.data := data_bank.io.hr.data
+      when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
+      {
+         data_bank.io.hw.addr := io.htif_port.req.bits.addr
+         data_bank.io.hw.data := io.htif_port.req.bits.data
+         data_bank.io.hw.en := Bool(true)
+         data_bank.io.hw.mask := "b11111111".U
+      }   
+   }
 }
 
 object GenVec
@@ -195,7 +246,7 @@ object StoreDataGen
 
 object StoreMask
 {
-   def apply(sel: UInt, idx: UInt): Seq[Bool] = 
+   def apply(sel: UInt, idx: UInt): UInt = 
    {
       val word = (sel === MT_W) || (sel === MT_WU)
       val half = (sel === MT_H) || (sel === MT_HU)
@@ -208,7 +259,7 @@ object StoreMask
       temp_word := 15.U << idx
       wmask := Mux(word, temp_word,
                Mux(half, temp_half, temp_byte))
-      return wmask.toBools
+      return wmask
    }
 }
 

@@ -29,8 +29,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    val memory = Module(new ScratchPadMemory(num_core_ports = 2))
 
    core.io.reset := io.host.reset
-   core.io.imem <> memory.io.core_ports(0)
-   core.io.dmem <> memory.io.core_ports(1)
+   core.io.dmem <> memory.io.core_ports(0)
+   core.io.imem <> memory.io.core_ports(1)
 
    // HTIF/memory request
    memory.io.htif_port.req.valid     := io.host.mem_req.valid
