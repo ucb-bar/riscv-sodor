@@ -38,66 +38,83 @@ BPPATH?=$(common)
 
 CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11  -g
 
-CXXSRCS := disasm htif_emulator
+CXXSRCS := htif_emulator
 CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
 CXXDEBUGFLAGS := -DDEBUG
 
 LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lpthread
 
-OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
-DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
+OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL))
+DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL))
 
-CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --compileInitializationUnoptimized --W0W --targetDir emulator/${MK_TARGET_PROC}/generated-src
-CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
+CHISEL_ARGS := -td emulator/${MK_TARGET_PROC}/generated-src
+CHISEL_ARGS_DEBUG := 
 
 # To find emulator.cpp
 vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC)
 vpath %.a    $(buildLibDir)
 
-generated-src/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
+generated-src/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS)"
 
-generated-src-debug/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
-	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
+# generated-src-debug/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
+# 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
 
-$(MODEL).o: %.o: generated-src/%.cpp
-	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
-	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp)) -o $@
+# Run Verilator to produce a fast binary to emulate this circuit.
+VERILATOR := verilator --cc --exe
+VERILATOR_FLAGS := --top-module Top \
+  +define+PRINTF_COND=1 \
+  +define+STOP_COND=\$$c\(\"done_reset\"\) --assert \
+  --output-split 20000 \
+	--x-assign unique \
+  -I$(srcDir)/vsrc \
+  -O3 -CFLAGS "$(CXXFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
+cppfiles = $(addprefix $(srcDir)/emulator/common/, $(addsuffix .cc, $(CXXSRCS)))
+headers = $(wildcard $(srcDir)/emulator/common/*.h)
+generated_dir = $(srcDir)/emulator/${MK_TARGET_PROC}
+verilog = $(wildcard ${generated_dir}/generated-src/*.v)
+emulator: $(verilog) $(cppfiles) $(headers) emulator.cpp
+	$(VERILATOR) $(VERILATOR_FLAGS) \
+	-o $(generated_dir)/emulator $< $(cppfiles) -LDFLAGS "$(LDFLAGS)" 
+	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
+# $(MODEL).o: %.o: generated-src/%.cpp
+# 	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
+# 	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp)) -o $@
 
-$(MODEL)-debug.o: %-debug.o: generated-src-debug/%.cpp
-	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp))
-	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp)) -o $@
+# $(MODEL)-debug.o: %-debug.o: generated-src-debug/%.cpp
+# 	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp))
+# 	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp)) -o $@
 
-$(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src/$(MODEL).cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
+# $(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src/$(MODEL).cpp
+# 	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
 
-$(addsuffix -debug.o,$(CXXSRCS)): %-debug.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src-debug/$(MODEL).cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
+# $(addsuffix -debug.o,$(CXXSRCS)): %-debug.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src-debug/$(MODEL).cpp
+# 	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
  
-$(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src -o $(TRACER).o
+# $(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src -o $(TRACER).o
  
-$(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
+# $(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
 
-$(BP).o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src -o $(BP).o
+# $(BP).o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src -o $(BP).o
  
-$(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
+# $(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
 
 
-emulator.o: emulator.cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $< -I$(common) -I./generated-src -o $@
+# emulator.o: emulator.cpp generated-src/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $< -I$(common) -I./generated-src -o $@
 
-emulator-debug.o: emulator.cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(CXXDEBUGFLAGS) $< -I$(common) -I./generated-src-debug -o $@
+# emulator-debug.o: emulator.cpp generated-src-debug/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(CXXDEBUGFLAGS) $< -I$(common) -I./generated-src-debug -o $@
 
-emulator: $(OBJS) emulator.o
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) emulator.o $(LDFLAGS)
+# emulator: $(OBJS) emulator.o
+# 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) emulator.o $(LDFLAGS)
 
-emulator-debug: $(DEBUG_OBJS) emulator-debug.o
-	$(CXX) $(CXXFLAGS) -o $@ $(DEBUG_OBJS) emulator-debug.o $(LDFLAGS)
+# emulator-debug: $(DEBUG_OBJS) emulator-debug.o
+# 	$(CXX) $(CXXFLAGS) -o $@ $(DEBUG_OBJS) emulator-debug.o $(LDFLAGS)
  
 clean:
 	rm -rf *.o *.a emulator emulator-debug generated-src generated-src-debug DVEfiles output

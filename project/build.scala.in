@@ -4,8 +4,8 @@ import Keys._
 object BuildSettings extends Build {
   val buildOrganization = "berkeley"
   val buildVersion = "2.0"
-  val buildScalaVersion = "2.10.2"
-  val chiselVersion = System.getProperty("chiselVersion", "@chisel_version@")
+  val buildScalaVersion = "2.11.7"
+  val chiselVersion = System.getProperty("chiselVersion", "latest.release")
   val defaultVersions = Map(
     "chisel3" -> "latest.release",//3.0-SNAPSHOT",
     "chisel-iotesters" -> "latest.release"//"1.1-SNAPSHOT"
