@@ -61,7 +61,7 @@ class d2h2i1(val addrWidth : Int) extends Bundle{
    val dw = new  Wport(addrWidth,32)
    val hr = new  Rport(addrWidth,64)
    val hw = new  Wport(addrWidth,64)
-   
+   val clk = Input(Clock()) 
 }
 
 class AsyncReadMem(val addrWidth : Int) extends BlackBox{
@@ -108,6 +108,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    val num_lines = num_bytes / num_bytes_per_line
    println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
    val async_data = Module(new AsyncReadMem(log2Ceil(num_bytes)))
+   async_data.io.clk := clock
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := io.core_ports(i).req.valid
