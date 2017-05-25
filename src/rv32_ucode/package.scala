@@ -1,7 +1,8 @@
 package Sodor
 import Sodor.constants._
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import scala.math._
 
 //TODO: When compiler bug SI-5604 is fixed in 2.10, change object Constants to 

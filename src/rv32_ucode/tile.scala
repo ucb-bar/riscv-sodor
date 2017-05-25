@@ -6,8 +6,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Constants._
 import Common._   
 import Common.Util._   
@@ -20,7 +21,7 @@ class SodorTileIo extends Bundle
 
 class SodorTile(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = new SodorTileIo()
+   val io = IO(new SodorTileIo())
    
    val core   = Module(new Core(resetSignal = io.host.reset))
    val memory = Module(new ScratchPadMemory(num_core_ports = 1))

@@ -7,8 +7,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Common._
 import Common.Instructions._
@@ -16,32 +17,33 @@ import Constants._
 
 class CtlToDatIo extends Bundle()
 {
-   val stall    = Bool(OUTPUT)
-   val if_kill  = Bool(OUTPUT)
-   val pc_sel   = UInt(OUTPUT, 3)
-   val op1_sel  = UInt(OUTPUT, 2)
-   val op2_sel  = UInt(OUTPUT, 3)
-   val alu_fun  = UInt(OUTPUT, 5)
-   val wb_sel   = UInt(OUTPUT, 2)
-   val rf_wen   = Bool(OUTPUT)
-   val csr_cmd  = UInt(OUTPUT, CSR.SZ)
+   val stall    = Output(Bool())
+   val if_kill  = Output(Bool())
+   val pc_sel   = Output(UInt(3.W))
+   val op1_sel  = Output(UInt(2.W))
+   val op2_sel  = Output(UInt(3.W))
+   val alu_fun  = Output(UInt(5.W))
+   val wb_sel   = Output(UInt(2.W))
+   val rf_wen   = Output(Bool())
+   val csr_cmd  = Output(UInt(CSR.SZ))
 
-   val exception = Bool(OUTPUT)
-   val exc_cause = UInt(OUTPUT, 32)
+   val exception = Output(Bool())
+   val exc_cause = Output(UInt(32.W))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 {
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
-   val dat  = new DatToCtlIo().flip()
+   val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
+   override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
 
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
-  val io = new CpathIo();
+  val io = IO(new CpathIo())
 
    val csignals =
       ListLookup(io.dat.inst,
@@ -146,7 +148,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
-   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
 
    io.ctl.csr_cmd    := Mux(stall, CSR.N, csr_cmd)

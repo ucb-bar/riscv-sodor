@@ -8,8 +8,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Common._
 import Common.Instructions._
@@ -19,29 +20,29 @@ import scala.collection.mutable.ArrayBuffer
 
 class CtlToDatIo extends Bundle() 
 {
-   val msk_sel = UInt(OUTPUT, MSK_SZ)
-   val csr_cmd = UInt(OUTPUT, CSR.SZ)
-   val ld_ir   = Bool(OUTPUT)
-   val reg_sel = UInt(OUTPUT, RS_X.getWidth())
-   val reg_wr  = Bool(OUTPUT)
-   val en_reg  = Bool(OUTPUT)
-   val ld_a    = Bool(OUTPUT)
-   val ld_b    = Bool(OUTPUT)
-   val alu_op  = UInt(OUTPUT, ALU_X.getWidth())
-   val en_alu  = Bool(OUTPUT)
-   val ld_ma   = Bool(OUTPUT)
-   val mem_wr  = Bool(OUTPUT)
-   val en_mem  = Bool(OUTPUT)
-   val is_sel  = UInt(OUTPUT, IS_X.getWidth())
-   val en_imm  = Bool(OUTPUT)
-   val upc     = UInt(OUTPUT) // for debugging purposes 
-   val upc_is_fetch = Bool(OUTPUT) // for debugging purposes 
+   val msk_sel = Output(UInt(MSK_SZ))
+   val csr_cmd = Output(UInt(CSR.SZ))
+   val ld_ir   = Output(Bool())
+   val reg_sel = Output(UInt(RS_X.getWidth))
+   val reg_wr  = Output(Bool())
+   val en_reg  = Output(Bool())
+   val ld_a    = Output(Bool())
+   val ld_b    = Output(Bool())
+   val alu_op  = Output(UInt(ALU_X.getWidth))
+   val en_alu  = Output(Bool())
+   val ld_ma   = Output(Bool())
+   val mem_wr  = Output(Bool())
+   val en_mem  = Output(Bool())
+   val is_sel  = Output(UInt(IS_X.getWidth))
+   val en_imm  = Output(Bool())
+   val upc     = Output(UInt()) // for debugging purposes 
+   val upc_is_fetch = Output(Bool()) // for debugging purposes 
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
    val mem  = new MemPortIo(conf.xprlen)
-   val dat  = new DatToCtlIo().flip()
+   val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
@@ -50,7 +51,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
-   val io = new CpathIo()
+   val io = IO(new CpathIo())
 
    // Compile the Micro-code down into a ROM 
    val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)
@@ -71,27 +72,27 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val uop = micro_code(upc_state)
     
    // Extract Control Signals from UOP
-   val cs = new Bundle()
-            {
-               val msk_sel        = UInt(width = MSK_SZ)
-               val csr_cmd        = UInt(width = CSR.SZ)
-               val ld_ir          = Bool()  
-               val reg_sel        = UInt(width = RS_X.getWidth())  
-               val reg_wr         = Bool()  
-               val en_reg         = Bool()  
-               val ld_a           = Bool()  
-               val ld_b           = Bool()  
-               val alu_op         = UInt(width = ALU_X.getWidth())  
-               val en_alu         = Bool()  
-               val ld_ma          = Bool()  
-               val mem_wr         = Bool()  
-               val en_mem         = Bool()  
-               val is_sel         = UInt(width = IS_X.getWidth())  
-               val en_imm         = Bool()  
-               val ubr            = UInt(width = UBR_N.getWidth())  
-               val upc_rom_target = UInt(width = label_sz)  
-               override def clone = this.asInstanceOf[this.type]
-            }.fromNode(uop)
+   val cs = IO(new Bundle()
+               {
+                  val msk_sel        = Wire(UInt(MSK_SZ))
+                  val csr_cmd        = Wire(UInt(CSR.SZ))
+                  val ld_ir          = Bool()  
+                  val reg_sel        = Wire(UInt(RS_X.getWidth))
+                  val reg_wr         = Bool()  
+                  val en_reg         = Bool()  
+                  val ld_a           = Bool()  
+                  val ld_b           = Bool()  
+                  val alu_op         = Wire(UInt(ALU_X.getWidth))  
+                  val en_alu         = Bool()  
+                  val ld_ma          = Bool()  
+                  val mem_wr         = Bool()  
+                  val en_mem         = Bool()  
+                  val is_sel         = Wire(UInt(IS_X.getWidth))  
+                  val en_imm         = Bool()  
+                  val ubr            = Wire(UInt(UBR_N.getWidth))  
+                  val upc_rom_target = Wire(UInt(label_sz.W))  
+                  override def cloneType = this.asInstanceOf[this.type]
+               }.fromNode(uop))
    require(label_sz == 8, "Label size must be 8")
 
    val mem_is_busy = !(io.mem.resp.valid)
@@ -110,7 +111,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    upc_state_next := MuxCase(upc_state, Array(
                       (upc_sel === UPC_DISPATCH) -> upc_opgroup_target,
                       (upc_sel === UPC_ABSOLUTE) -> cs.upc_rom_target,
-                      (upc_sel === UPC_NEXT)     -> (upc_state + UInt(1)),
+                      (upc_sel === UPC_NEXT)     -> (upc_state + 1.U),
 		                (upc_sel === UPC_CURRENT)  -> upc_state
                     ))
 
@@ -144,7 +145,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
-   val csr_ren = (cs.csr_cmd === CSR.S || cs.csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_ren = (cs.csr_cmd === CSR.S || cs.csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs.csr_cmd)
    io.ctl.csr_cmd := csr_cmd
 

@@ -19,8 +19,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Constants._
 import Common._   
 import Common.Util._   
@@ -33,7 +34,7 @@ class SodorTileIo extends Bundle
 
 class SodorTile(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = new SodorTileIo()
+   val io = IO(new SodorTileIo())
 
    // notice that while the core is put into reset, the scratchpad needs to be
    // alive so that the HTIF can load in the program.

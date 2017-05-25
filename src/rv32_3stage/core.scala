@@ -5,8 +5,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
@@ -18,7 +19,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
 
 class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
-   val io = new CoreIo()
+   val io = IO(new CoreIo())
 
    val frontend = Module(new FrontEnd())
    val cpath  = Module(new CtlPath())

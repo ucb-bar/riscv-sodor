@@ -1,7 +1,8 @@
 package Sodor
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Constants._
 import Common._
 import Common.Util._
@@ -15,13 +16,13 @@ object ReferenceChipBackend {
 }
 
 class TopIO() extends Bundle  {
-  val debug_stats_csr = Bool(OUTPUT)
+  val debug_stats_csr = Output(Bool())
   val htif  = new Common.HTIFIO()
 }
 
 class Top extends Module 
 {
-   val io = new TopIO()
+   val io = IO(new TopIO())
 
    implicit val sodor_conf = SodorConfiguration()
 
@@ -29,7 +30,7 @@ class Top extends Module
    val tile = Module(new SodorTile)
   
    tile.io.host.reset := reset_signal
-   tile.io.host.id := UInt(0,1)
+   tile.io.host.id := 0.U
    tile.io.host.csr_req <> Queue(io.htif.csr_req)
    io.htif.csr_rep <> Queue(tile.io.host.csr_rep)
 
@@ -41,6 +42,6 @@ class Top extends Module
 
 object elaborate {
   def main(args: Array[String]): Unit = {
-    chiselMain(args, () => Module(new Top()))
+    chisel3.Driver.execute(args, () => new Top)
   }
 }

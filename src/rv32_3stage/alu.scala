@@ -4,8 +4,9 @@
 // consider the function encodings. - Chris
 package Sodor
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Common._
 import Constants._
 
@@ -14,22 +15,22 @@ object ALU
   // TODO is this the optimal encoding?
   val SZ_ALU_FN = 4
 //  val ALU_X    = Bits("b????")
-  val ALU_X    = Bits(0) // TODO use a more optimal decode table, which uses "???" format
-  val ALU_ADD  = Bits(0)
-  val ALU_SLL  = Bits(1)
-  val ALU_XOR  = Bits(4)
-  val ALU_OR   = Bits(6)
-  val ALU_AND  = Bits(7)
-  val ALU_SRL  = Bits(5)
-//  val FN_SEQ  = Bits(8)
-//  val FN_SNE  = Bits(9)
-  val ALU_SUB  = Bits(10)
-  val ALU_SRA  = Bits(11)
-  val ALU_SLT  = Bits(12)
-//  val FN_SGE  = Bits(13)
-  val ALU_SLTU = Bits(14)
-//  val FN_SGEU = Bits(15)
-  val ALU_COPY1= Bits(8)   
+  val ALU_X    = 0.U // TODO use a more optimal decode table, which uses "???" format
+  val ALU_ADD  = 0.U
+  val ALU_SLL  = 1.U
+  val ALU_XOR  = 4.U
+  val ALU_OR   = 6.U
+  val ALU_AND  = 7.U
+  val ALU_SRL  = 5.U
+//  val FN_SEQ  = 8.U
+//  val FN_SNE  = 9.U
+  val ALU_SUB  = 10.U
+  val ALU_SRA  = 11.U
+  val ALU_SLT  = 12.U
+//  val FN_SGE  = 13.U
+  val ALU_SLTU = 14.U
+//  val FN_SGEU = 15.U
+  val ALU_COPY1= 8.U   
     
 
 
@@ -43,24 +44,24 @@ object ALU
   val ALU_MULHSU = ALU_SLT
   val ALU_MULHU  = ALU_SLTU
 
-  def isMulFN(fn: Bits, cmp: Bits) = fn(1,0) === cmp(1,0)
-  def isSub(cmd: Bits) = cmd(3)
-  def isSLTU(cmd: Bits) = cmd(0)
+  def isMulFN(fn: UInt, cmp: UInt) = fn(1,0) === cmp(1,0)
+  def isSub(cmd: UInt) = cmd(3)
+  def isSLTU(cmd: UInt) = cmd(0)
 }
 import ALU._
 
 class ALUIO(implicit conf: SodorConfiguration) extends Bundle {
-//  val dw = Bits(INPUT, SZ_DW)
-  val fn = Bits(INPUT, SZ_ALU_FN)
-  val in2 = UInt(INPUT, conf.xprlen)
-  val in1 = UInt(INPUT, conf.xprlen)
-  val out = UInt(OUTPUT, conf.xprlen)
-  val adder_out = UInt(OUTPUT, conf.xprlen)
+//  val dw = Input(UInt(SZ_DW))
+  val fn = Input(UInt(SZ_ALU_FN.W))
+  val in2 = Input(UInt(conf.xprlen.W))
+  val in1 = Input(UInt(conf.xprlen.W))
+  val out = Output(UInt(conf.xprlen.W))
+  val adder_out = Output(UInt(conf.xprlen.W))
 }
 
 class ALU(implicit conf: SodorConfiguration) extends Module
 {
-  val io = new ALUIO
+  val io = IO(new ALUIO)
 
   val msb = conf.xprlen-1
 

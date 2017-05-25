@@ -24,8 +24,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Common.Instructions._
 import scala.collection.mutable.ArrayBuffer
@@ -72,7 +73,7 @@ object MicrocodeCompiler
       {
          if (labelTargets.contains(inst_str))
          {
-            printf("  Inst: %5s Addr: %d\n", inst_str,  labelTargets(inst_str));
+            printf("  Inst: %5s Addr: %d\n", inst_str,  labelTargets(inst_str).U);
             dispatch_targets += ((inst_bits -> UInt(labelTargets(inst_str))));
          }
       }
@@ -110,14 +111,14 @@ object MicrocodeCompiler
          uop_inst match 
          {
             case Label(name)       => label_map += ((name, uaddr)); 
-                                      printf("  Label: %7s, @%d\n", name, uaddr);
+                                      printf(" Label: %d, %c\n", name(0) , uaddr.U);//printf("  Label: %7s, @%d\n", name, uaddr.U);
             case Signals(code,str) => uaddr += 1; 
          }
       }
       println("  MicroROM size    : " + (uaddr-1) + " lines");
-      println("  Bitwidth of uaddr: " + log2Up(uaddr-1) + " bits");
+      println("  Bitwidth of uaddr: " + log2Ceil(uaddr-1) + " bits");
       println("");
-      return (label_map, log2Up(uaddr-1));
+      return (label_map, log2Ceil(uaddr-1));
    }
 
    
