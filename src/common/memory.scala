@@ -49,9 +49,10 @@ class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
 }
 
 class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
+   val maskWidth = dataWidth/8
    val addr = Input(UInt(addrWidth.W))
    val data = Input(UInt(dataWidth.W))
-   val mask = Input(UInt(8.W))  // default bit for each byte since max 8B
+   val mask = Input(UInt(maskWidth.W))
    val en = Input(Bool())
    override def cloneType = { new Wport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
