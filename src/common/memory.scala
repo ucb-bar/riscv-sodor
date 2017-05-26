@@ -43,17 +43,17 @@ trait MemoryOpConstants
 }
 
 class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
-   val addr = Input(UInt(addrWidth.W))
-   val data = Output(UInt(dataWidth.W))
+   val addr = Output(UInt(addrWidth.W))
+   val data = Input(UInt(dataWidth.W))
    override def cloneType = { new Rport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
 class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
    val maskWidth = dataWidth/8
-   val addr = Input(UInt(addrWidth.W))
-   val data = Input(UInt(dataWidth.W))
-   val mask = Input(UInt(maskWidth.W))
-   val en = Input(Bool())
+   val addr = Output(UInt(addrWidth.W))
+   val data = Output(UInt(dataWidth.W))
+   val mask = Output(UInt(maskWidth.W))
+   val en = Output(Bool())
    override def cloneType = { new Wport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
@@ -90,7 +90,7 @@ class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
 
 class MemResp(data_width: Int) extends Bundle
 {
-   val data = Output(UInt(data_width.W))
+   val data = Input(UInt(data_width.W))
   override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
