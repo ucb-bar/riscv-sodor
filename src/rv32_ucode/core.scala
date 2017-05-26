@@ -25,7 +25,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
 
 class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
 {
-  val io = new CoreIo()
+  val io = IO(new CoreIo())
   val c  = Module(new CtlPath())
   val d  = Module(new DatPath())
   

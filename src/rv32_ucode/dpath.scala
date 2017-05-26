@@ -52,7 +52,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // The Bus 
    // (this is a bus-based RISCV implementation, so all data movement goes
    // across this wire)
-   val bus = MuxCase(Bits(0,conf.xprlen), Array(
+   val bus = MuxCase(0.asUInt(conf.xprlen.W), Array(
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0), 
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
@@ -112,7 +112,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    //note: I could be far more clever and save myself on wasted registers here...
    //32 x-registers, 1 pc-register
-   val regfile = Vec.fill(33){ Reg(init=Bits(0, conf.xprlen)) }
+   val regfile = Reg(Vec(33, UInt(32.W)))
 
    when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr != 0.U)
    {
@@ -122,7 +122,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // This is a hack to make it look like the CSRFile is part of the regfile
    reg_rdata :=  MuxCase(regfile(reg_addr), Array(
                     (io.ctl.reg_sel === RS_CR) -> csr_rdata,
-                    (reg_addr === 0.U)     -> Bits(0, conf.xprlen)))
+                    (reg_addr === 0.U)     -> 0.asUInt(conf.xprlen.W)))
                     
 
    // CSR addr Register
@@ -131,7 +131,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
      csr_addr := bus
    }
 
-   val csr_wdata = Reg(init=Bits(0, conf.xprlen))
+   val csr_wdata = Reg(init=0.asUInt(conf.xprlen.W))
    when(io.ctl.reg_wr & (io.ctl.reg_sel === RS_CR)) {
      csr_wdata := bus
    }
@@ -202,7 +202,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Printout
    printf("%cCyc= %d (MA=0x%x) %c RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
       , Mux(io.ctl.upc_is_fetch, Str(" "), Str(" "))
-      , csr.io.time(31,0)
+      , csr.io.time(5,0)
       , reg_ma
       , Mux(io.ctl.en_mem, Str("E"), Str(" ")) 
       , reg_addr

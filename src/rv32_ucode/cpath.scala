@@ -44,9 +44,29 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val mem  = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
-   override def clone = { new CpathIo().asInstanceOf[this.type] }
+   override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
+class CS() extends Bundle
+{
+  val msk_sel        = UInt(MSK_SZ)
+  val csr_cmd        = UInt(CSR.SZ)
+  val ld_ir          = Bool()  
+  val reg_sel        = UInt(RS_X.getWidth.W)
+  val reg_wr         = Bool()  
+  val en_reg         = Bool()  
+  val ld_a           = Bool()  
+  val ld_b           = Bool()  
+  val alu_op         = UInt(ALU_X.getWidth.W)  
+  val en_alu         = Bool()  
+  val ld_ma          = Bool()  
+  val mem_wr         = Bool()  
+  val en_mem         = Bool()  
+  val is_sel         = UInt(IS_X.getWidth.W)  
+  val en_imm         = Bool()  
+  val ubr            = UInt(UBR_N.getWidth.W)  
+  //override def cloneType = { new CS().asInstanceOf[this.type] }
+}
  
 
 class CtlPath(implicit conf: SodorConfiguration) extends Module
@@ -54,9 +74,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val io = IO(new CpathIo())
 
    // Compile the Micro-code down into a ROM 
-   val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)
-   val rombits                      = MicrocodeCompiler.emitRomBits(Microcode.codes, label_target_map, label_sz)
-   val opcode_dispatch_table        = MicrocodeCompiler.generateDispatchTable(label_target_map)
+  val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)
+  val rombits                      = MicrocodeCompiler.emitRomBits(Microcode.codes, label_target_map, label_sz)
+  val opcode_dispatch_table        = MicrocodeCompiler.generateDispatchTable(label_target_map)
+  val upc_rom_target = Wire(UInt(label_sz.W))  
         
    
    // Macro Instruction Opcode Dispatch Table
@@ -64,7 +85,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                                                     opcode_dispatch_table)
 
    // Micro-PC State Register
-   val upc_state_next = UInt()
+   val upc_state_next = Wire(UInt())
    val upc_state = Reg(UInt(), next = upc_state_next, init = UInt(label_target_map("INIT_PC"), label_sz))
 
    // Micro-code ROM
@@ -72,27 +93,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val uop = micro_code(upc_state)
     
    // Extract Control Signals from UOP
-   val cs = IO(new Bundle()
-               {
-                  val msk_sel        = Wire(UInt(MSK_SZ))
-                  val csr_cmd        = Wire(UInt(CSR.SZ))
-                  val ld_ir          = Bool()  
-                  val reg_sel        = Wire(UInt(RS_X.getWidth))
-                  val reg_wr         = Bool()  
-                  val en_reg         = Bool()  
-                  val ld_a           = Bool()  
-                  val ld_b           = Bool()  
-                  val alu_op         = Wire(UInt(ALU_X.getWidth))  
-                  val en_alu         = Bool()  
-                  val ld_ma          = Bool()  
-                  val mem_wr         = Bool()  
-                  val en_mem         = Bool()  
-                  val is_sel         = Wire(UInt(IS_X.getWidth))  
-                  val en_imm         = Bool()  
-                  val ubr            = Wire(UInt(UBR_N.getWidth))  
-                  val upc_rom_target = Wire(UInt(label_sz.W))  
-                  override def cloneType = this.asInstanceOf[this.type]
-               }.fromNode(uop))
+   val cs = Reg(new Sodor.CS())
    require(label_sz == 8, "Label size must be 8")
 
    val mem_is_busy = !(io.mem.resp.valid)
@@ -110,7 +111,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
     
    upc_state_next := MuxCase(upc_state, Array(
                       (upc_sel === UPC_DISPATCH) -> upc_opgroup_target,
-                      (upc_sel === UPC_ABSOLUTE) -> cs.upc_rom_target,
+                      (upc_sel === UPC_ABSOLUTE) -> upc_rom_target,
                       (upc_sel === UPC_NEXT)     -> (upc_state + 1.U),
 		                (upc_sel === UPC_CURRENT)  -> upc_state
                     ))
@@ -146,8 +147,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs.csr_cmd === CSR.S || cs.csr_cmd === CSR.C) && rs1_addr === 0.U
-   val csr_cmd = Mux(csr_ren, CSR.R, cs.csr_cmd)
-   io.ctl.csr_cmd := csr_cmd
+   val csr_cmd1 = Mux(csr_ren, CSR.R, cs.csr_cmd)
+   io.ctl.csr_cmd := csr_cmd1
 
 
 
