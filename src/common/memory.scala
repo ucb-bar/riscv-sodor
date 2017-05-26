@@ -43,17 +43,17 @@ trait MemoryOpConstants
 }
 
 class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
-   val addr = Output(UInt(addrWidth.W))
-   val data = Input(UInt(dataWidth.W))
+   val addr = Input(UInt(addrWidth.W))
+   val data = Output(UInt(dataWidth.W))
    override def cloneType = { new Rport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
 class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
    val maskWidth = dataWidth/8
-   val addr = Output(UInt(addrWidth.W))
-   val data = Output(UInt(dataWidth.W))
-   val mask = Output(UInt(maskWidth.W))
-   val en = Output(Bool())
+   val addr = Input(UInt(addrWidth.W))
+   val data = Input(UInt(dataWidth.W))
+   val mask = Input(UInt(maskWidth.W))
+   val en = Input(Bool())
    override def cloneType = { new Wport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
@@ -90,7 +90,7 @@ class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
 
 class MemResp(data_width: Int) extends Bundle
 {
-   val data = Input(UInt(data_width.W))
+   val data = Output(UInt(data_width.W))
   override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
@@ -121,20 +121,21 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       val req_fcn        = io.core_ports(i).req.bits.fcn
       val req_typ        = io.core_ports(i).req.bits.typ
       val byte_shift_amt = io.core_ports(i).req.bits.addr(2,0)
-      val bit_shift_amt  = Cat(byte_shift_amt, UInt(0,3))
+      val bit_shift_amt  = Cat(byte_shift_amt, 0.asUInt(3.W))
 
       // read access
       async_data.io.dataInstr(i).addr := req_addr
       io.core_ports(i).resp.bits.data := async_data.io.dataInstr(i).data
       //io.core_ports(i).resp.bits.data := rdata_out
-
+      val dmask = Wire(UInt(8.W))
       // write access
       when (req_valid && req_fcn === M_XWR)
       {
-         async_data.io.dw.addr := io.core_ports(i).req.bits.addr
          async_data.io.dw.data := io.core_ports(i).req.bits.data
+         async_data.io.dw.addr := req_addr
          async_data.io.dw.en := Bool(true)
-         async_data.io.dw.mask := StoreMask(req_typ, req_addr(2,0))
+         dmask := StoreMask(req_typ, req_addr(2,0))
+         async_data.io.dw.mask := Mux(req_addr(2),dmask(7,4),dmask(3,0))
          // move the wdata into position on the sub-line
       }
    }  
