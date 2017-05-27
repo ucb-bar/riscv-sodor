@@ -1,9 +1,7 @@
 #include "htif_emulator.h"
 #include "common.h"
-#include "emulator.h"
 //#include "disasm.h" // disabled for now... need to update to the current ISA/ABI in common/disasm.*
 #include "VTop.h" // chisel-generated code...
-#include "tracer.h"
 #include "verilator.h"
 #include "verilated.h"
 #include <fcntl.h>
@@ -12,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+uint64_t trace_count = 0;
 double sc_time_stamp ()
 {
   return double( trace_count );
@@ -23,7 +22,6 @@ void handle_sigterm(int sig)
    htif->stop();
 }
 
-uint64_t trace_count = 0;
 int main(int argc, char** argv)
 {
    unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
@@ -205,7 +203,7 @@ int main(int argc, char** argv)
 
    // tracer.stop();
    // tracer.print();
-   top.final();
+   dut.final();
    if (vcd)
       fclose(vcdfile);
 
