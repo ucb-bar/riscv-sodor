@@ -23,17 +23,17 @@ class CtlToDatIo extends Bundle()
    val msk_sel = Output(UInt(MSK_SZ))
    val csr_cmd = Output(UInt(CSR.SZ))
    val ld_ir   = Output(Bool())
-   val reg_sel = Output(UInt(RS_X.getWidth))
+   val reg_sel = Output(UInt(RS_X.getWidth.W))
    val reg_wr  = Output(Bool())
    val en_reg  = Output(Bool())
    val ld_a    = Output(Bool())
    val ld_b    = Output(Bool())
-   val alu_op  = Output(UInt(ALU_X.getWidth))
+   val alu_op  = Output(UInt(ALU_X.getWidth.W))
    val en_alu  = Output(Bool())
    val ld_ma   = Output(Bool())
    val mem_wr  = Output(Bool())
    val en_mem  = Output(Bool())
-   val is_sel  = Output(UInt(IS_X.getWidth))
+   val is_sel  = Output(UInt(IS_X.getWidth.W))
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes 
    val upc_is_fetch = Output(Bool()) // for debugging purposes 
@@ -47,28 +47,6 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
-class CS() extends Bundle
-{
-  val msk_sel        = UInt(MSK_SZ)
-  val csr_cmd        = UInt(CSR.SZ)
-  val ld_ir          = Bool()  
-  val reg_sel        = UInt(RS_X.getWidth.W)
-  val reg_wr         = Bool()  
-  val en_reg         = Bool()  
-  val ld_a           = Bool()  
-  val ld_b           = Bool()  
-  val alu_op         = UInt(ALU_X.getWidth.W)  
-  val en_alu         = Bool()  
-  val ld_ma          = Bool()  
-  val mem_wr         = Bool()  
-  val en_mem         = Bool()  
-  val is_sel         = UInt(IS_X.getWidth.W)  
-  val en_imm         = Bool()  
-  val ubr            = UInt(UBR_N.getWidth.W)  
-  //override def cloneType = { new CS().asInstanceOf[this.type] }
-}
- 
-
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
@@ -77,29 +55,48 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)
   val rombits                      = MicrocodeCompiler.emitRomBits(Microcode.codes, label_target_map, label_sz)
   val opcode_dispatch_table        = MicrocodeCompiler.generateDispatchTable(label_target_map)
-  val upc_rom_target = Wire(UInt(label_sz.W))  
         
    
    // Macro Instruction Opcode Dispatch Table
-   val upc_opgroup_target = MuxLookup (io.dat.inst, UInt(label_target_map("ILLEGAL"), label_sz),
+   val upc_opgroup_target = MuxLookup (io.dat.inst, label_target_map("ILLEGAL").asUInt(label_sz.W),
                                                     opcode_dispatch_table)
 
    // Micro-PC State Register
    val upc_state_next = Wire(UInt())
-   val upc_state = Reg(UInt(), next = upc_state_next, init = UInt(label_target_map("INIT_PC"), label_sz))
+   val upc_state = Reg(UInt(), next = upc_state_next, init = label_target_map("INIT_PC").asUInt(label_sz.W))
 
    // Micro-code ROM
    val micro_code = Vec(rombits)
    val uop = micro_code(upc_state)
     
    // Extract Control Signals from UOP
-   val cs = Reg(new Sodor.CS())
-   require(label_sz == 8, "Label size must be 8")
+  val cs = new Bundle()
+  {
+     val msk_sel        = UInt(MSK_SZ)
+     val csr_cmd        = UInt(CSR.SZ)
+     val ld_ir          = Bool()  
+     val reg_sel        = UInt(RS_X.getWidth.W)  
+     val reg_wr         = Bool()  
+     val en_reg         = Bool()  
+     val ld_a           = Bool()  
+     val ld_b           = Bool()  
+     val alu_op         = UInt(ALU_X.getWidth.W)  
+     val en_alu         = Bool()  
+     val ld_ma          = Bool()  
+     val mem_wr         = Bool()  
+     val en_mem         = Bool()  
+     val is_sel         = UInt(IS_X.getWidth.W)  
+     val en_imm         = Bool()  
+     val ubr            = UInt(UBR_N.getWidth.W)  
+     val upc_rom_target = UInt(label_sz.W)  
+     override def clone = this.asInstanceOf[this.type]
+  }.fromBits(uop)
+  require(label_sz == 8, "Label size must be 8")
 
-   val mem_is_busy = !(io.mem.resp.valid)
+  val mem_is_busy = !(io.mem.resp.valid)
 
    // Micro-PC State Logic
-   val upc_sel     = MuxCase(UPC_CURRENT, Array(
+  val upc_sel     = MuxCase(UPC_CURRENT, Array(
                       (cs.ubr === UBR_N) -> UPC_NEXT,
                       (cs.ubr === UBR_D) -> UPC_DISPATCH,
                       (cs.ubr === UBR_J) -> UPC_ABSOLUTE,
@@ -111,7 +108,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
     
    upc_state_next := MuxCase(upc_state, Array(
                       (upc_sel === UPC_DISPATCH) -> upc_opgroup_target,
-                      (upc_sel === UPC_ABSOLUTE) -> upc_rom_target,
+                      (upc_sel === UPC_ABSOLUTE) -> cs.upc_rom_target,
                       (upc_sel === UPC_NEXT)     -> (upc_state + 1.U),
 		                (upc_sel === UPC_CURRENT)  -> upc_state
                     ))

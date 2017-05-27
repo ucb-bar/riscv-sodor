@@ -47,17 +47,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val alu       = Wire(UInt(conf.xprlen.W))
    val reg_rdata = Wire(UInt(conf.xprlen.W))
    val csr_rdata = Wire(UInt(conf.xprlen.W))
-   val exception_target = Wire(UInt())
+   val exception_target = Wire(UInt(conf.xprlen.W))
 
    // The Bus 
    // (this is a bus-based RISCV implementation, so all data movement goes
    // across this wire)
-   val bus = MuxCase(0.asUInt(conf.xprlen.W), Array(
+   val bus = MuxCase(0.U, Array(
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0), 
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
                  (io.ctl.reg_sel != RS_CR))     -> reg_rdata(conf.xprlen-1,0),
-               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(31,0),
+               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(conf.xprlen-1,0),
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
                   (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
@@ -65,20 +65,20 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
 
    // IR Register
-   val ir    = Reg(init=Bits(0,32))
+   val ir    = Reg(init=0.asUInt(conf.xprlen.W))
    when (io.ctl.ld_ir) { ir := bus }
    io.dat.inst := ir
     
    // A Register
-   val reg_a = Reg(init=Bits(0xaaaa,conf.xprlen))
+   val reg_a = Reg(init="haaaa".asUInt(conf.xprlen.W))
    when (io.ctl.ld_a) { reg_a := bus }
      
    // B Register
-   val reg_b = Reg(init=Bits(0xbbbb,conf.xprlen))
+   val reg_b = Reg(init="hbbbb".asUInt(conf.xprlen.W))
    when (io.ctl.ld_b) { reg_b := bus }
     
    // MA Register
-   val reg_ma  = Reg(init=Bits(0xeeee,conf.xprlen))
+   val reg_ma  = Reg(init="heeee".asUInt(conf.xprlen.W))
    when (io.ctl.ld_ma) { reg_ma := bus }
 
    // IR Immediate
@@ -126,7 +126,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                     
 
    // CSR addr Register
-   val csr_addr = Reg(init=Bits(0, 12))
+   val csr_addr = Reg(init=0.asUInt(12.W))
    when(io.ctl.reg_wr & (io.ctl.reg_sel === RS_CA)) {
      csr_addr := bus
    }
@@ -148,7 +148,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // for now, the ucode does NOT support exceptions
    csr.io.exception := Bool(false)  
-   csr.io.cause     := UInt(Common.Causes.illegal_instruction)
+   csr.io.cause     := Common.Causes.illegal_instruction.U
    csr.io.pc        := regfile(PC_IDX) - 4.U 
    exception_target := csr.io.evec
 
@@ -201,7 +201,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Printout
    printf("%cCyc= %d (MA=0x%x) %c RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
-      , Mux(io.ctl.upc_is_fetch, Str(" "), Str(" "))
+      , Mux(io.ctl.upc_is_fetch, Str("F"), Str(" "))
       , csr.io.time(5,0)
       , reg_ma
       , Mux(io.ctl.en_mem, Str("E"), Str(" ")) 

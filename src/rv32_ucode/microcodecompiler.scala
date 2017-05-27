@@ -40,13 +40,13 @@ object MicrocodeCompiler
 {
 
    // run through instructions.scala, build mapping bewteen 
-   // Instruction Name (String) -> Bits
+   // Instruction Name (String) -> Bit Pattern
    // used for building opcodeDispatchTable
-   def generateInstructionList (): Map[String, UInt] =
+   def generateInstructionList (): Map[String, BitPat] =
    {
-      var inst_list = Map[String, UInt]();
+      var inst_list = Map[String, BitPat]();
       val instClass = Common.Instructions.getClass();
-      val b = UInt(0,32);
+      val b = BitPat("b?????????????????000?????1100011");
       val bitsClass = b.getClass();
       
       for (m <- instClass.getMethods()) 
@@ -56,24 +56,23 @@ object MicrocodeCompiler
          if (rtype == bitsClass) 
          {
             val i = m.invoke(Common.Instructions);
-            inst_list += ((name, i.asInstanceOf[UInt])); 
+            inst_list += ((name, i.asInstanceOf[BitPat]));
          }
       }
       
       return inst_list
    }
 
-   def generateDispatchTable (labelTargets: Map[String,Int]): Array[(UInt, UInt)]=
+   def generateDispatchTable (labelTargets: Map[String,Int]): Array[(BitPat, UInt)]=
    {
       println("Generating Opcode Dispatch Table...");
-      var dispatch_targets = ArrayBuffer[(UInt, UInt)]();
+      var dispatch_targets = ArrayBuffer[(BitPat, UInt)]();
       val inst_list        = generateInstructionList();
                                             
       for ((inst_str, inst_bits) <- inst_list)
       {
          if (labelTargets.contains(inst_str))
          {
-            printf("  Inst: %5s Addr: %d\n", inst_str,  labelTargets(inst_str).U);
             dispatch_targets += ((inst_bits -> UInt(labelTargets(inst_str))));
          }
       }
@@ -111,10 +110,10 @@ object MicrocodeCompiler
          uop_inst match 
          {
             case Label(name)       => label_map += ((name, uaddr)); 
-                                      printf(" Label: %d, %c\n", name(0) , uaddr.U);//printf("  Label: %7s, @%d\n", name, uaddr.U);
             case Signals(code,str) => uaddr += 1; 
          }
       }
+      println("Label Map " + label_map)
       println("  MicroROM size    : " + (uaddr-1) + " lines");
       println("  Bitwidth of uaddr: " + log2Ceil(uaddr-1) + " bits");
       println("");
