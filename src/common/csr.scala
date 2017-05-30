@@ -83,7 +83,7 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val cause = Input(UInt(conf.xprlen.W))
   val pc = Input(UInt(VADDR_BITS))
   val fatc = Output(Bool())
-  val time = Output(UInt(conf.xprlen))
+  val time = Output(UInt(conf.xprlen.W))
   val interrupt = Output(Bool())
   val interrupt_cause = Output(UInt(conf.xprlen.W))
 }
@@ -102,8 +102,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
   val reg_wfi = Reg(init=Bool(false))
 
-  val reg_tohost = Reg(init=Bits(0, conf.xprlen))
-  val reg_fromhost = Reg(init=Bits(0, conf.xprlen))
+  val reg_tohost = Reg(init=0.asUInt(conf.xprlen.W))
+  val reg_fromhost = Reg(init=0.asUInt(conf.xprlen.W))
   val reg_stats = Reg(init=Bool(false))
   val reg_time = WideCounter(conf.xprlen)
   val reg_instret = WideCounter(conf.xprlen, io.retire)

@@ -217,7 +217,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Time Stamp Counter & Retired Instruction Counter 
    val tsc_reg = Reg(init=0.asUInt(conf.xprlen.W))
-   tsc_reg := tsc_reg + 1.asUInt()
+   tsc_reg := tsc_reg + 1.U
 
    val irt_reg = Reg(init=0.asUInt(conf.xprlen.W))
    when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + 1.U }

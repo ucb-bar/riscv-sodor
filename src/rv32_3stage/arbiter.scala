@@ -15,22 +15,22 @@ import Common._
 // arbitrates memory access
 class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = new Bundle
-   {
-      // TODO I need to come up with better names... this is too confusing 
-      // from the point of view of the other modules
-      val imem = new MemPortIo(conf.xprlen).flip // instruction fetch
-      val dmem = new MemPortIo(conf.xprlen).flip // load/store 
-      val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
-   }
+   val io = IO(new Bundle
+      {
+         // TODO I need to come up with better names... this is too confusing 
+         // from the point of view of the other modules
+         val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
+         val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
+         val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
+      })
 
    //***************************
-   val i1reg = Reg(Bits(width=conf.xprlen))
-   val d1reg = Reg(Bits(width=conf.xprlen))
+   val i1reg = Reg(UInt(conf.xprlen.W))
+   val d1reg = Reg(UInt(conf.xprlen.W))
    val nextdreq = Reg(init=Bool(true))
    io.dmem.req.ready := Bool(true)
    //d_fire : when true data request will be put on bus
-   val d_fire = new Bool() 
+   val d_fire = Wire(Bool()) 
    io.imem.req.ready := d_fire
    //***************************
    // hook up requests

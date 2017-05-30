@@ -95,7 +95,7 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Next PC Stage (if we can call it that)
    val if_pc_next = Wire(UInt(conf.xprlen.W))
-   val if_val_next = Bool(true) // for now, always true. But instruction
+   val if_val_next = Wire(Bool(true)) // for now, always true. But instruction
                                 // buffers, etc., could make that not the case.
    
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
