@@ -54,6 +54,8 @@ vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC)
 vpath %.cc 	$(srcDir)/riscv-fesvr/fesvr $(srcDir)/emulator/common
 vpath %.h 	$(srcDir)/riscv-fesvr/fesvr $(srcDir)/emulator/common
 vpath %.a    $(buildLibDir) 
+vpath %.v 	$(srcDir)/vsrc
+vpath %.sv 	$(srcDir)/vsrc
 
 
 
@@ -78,7 +80,7 @@ VERILATOR_FLAGS := --top-module Top \
 	--x-assign unique \
   -I$(srcDir)/vsrc \
   -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
-emulator: generated-src/Top.v emulator.cpp htif_emulator.o 
+emulator: generated-src/Top.v emulator.cpp htif_emulator.o $(srcDir)/vsrc/*.sv
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 	-o $(generated_dir)/$@ $< $(cppfiles) -LDFLAGS "$(LDFLAGS)" emulator.cpp $(srcDir)/riscv-fesvr/libfesvr.so $(generated_dir)/htif_emulator.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk

@@ -59,9 +59,9 @@ class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
 
 class d2h2i1(val addrWidth : Int) extends Bundle{
    val dataInstr = Vec(2,new  Rport(addrWidth,32))
+   val hw = new  Wport(addrWidth,64)
    val dw = new  Wport(addrWidth,32)
    val hr = new  Rport(addrWidth,64)
-   val hw = new  Wport(addrWidth,64)
    val clk = Input(Clock()) 
 }
 
@@ -138,6 +138,10 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
          async_data.io.dw.mask := Mux(req_addr(2),dmask(7,4),dmask(3,0))
          // move the wdata into position on the sub-line
       }
+      .elsewhen (req_fcn =/= M_XWR)
+      {
+         async_data.io.dw.en := Bool(false)  
+      }
    }  
 
 
@@ -156,6 +160,10 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       async_data.io.hw.data := io.htif_port.req.bits.data
       async_data.io.hw.en := Bool(true)
       async_data.io.hw.mask := "b11111111".U
+   }
+   .elsewhen (io.htif_port.req.bits.fcn =/= M_XWR)
+   {
+      async_data.io.hw.en := Bool(false)
    }   
 }
 

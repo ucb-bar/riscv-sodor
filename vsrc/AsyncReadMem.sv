@@ -31,6 +31,54 @@ module AsyncReadMem
 
    // TODO: the actual accesses
 
+  generate
+    genvar i;
+    for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_writes
+      always @ (posedge clk) begin
+        if (hw_en) begin
+          if (hw_mask[i] == 1'b1) begin
+            mem[hw_addr + i] <= hw_data[i*8 +: 8];
+          end else begin
+            mem[hw_addr + i] <= mem[hw_addr + i];
+          end
+        end
+      end
+    end
+   endgenerate
+
+   generate
+    for (i = 0; i < MASK_WIDTH_CPU; i = i + 1) begin : gen_sel_writes1
+      always @ (posedge clk) begin
+        if (dw_en) begin
+          if (dw_mask[i] == 1'b1) begin
+            mem[dw_addr + i] <= dw_data[i*8 +: 8];
+          end else begin
+            mem[dw_addr + i] <= mem[dw_addr + i];
+          end
+        end
+      end
+    end
+   endgenerate  
+ //  dataInstr_0_data = {} 
+  generate
+    for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_read
+      always @* begin
+        hr_data[i*8 +: 8] = mem[hr_addr + i];
+      end
+    end 
+  endgenerate
+
+  generate
+    for (i = 0; i < MASK_WIDTH_CPU; i = i + 1) begin : gen_sel_read1
+      always @* begin
+        dataInstr_0_data[i*8 +: 8] = mem[dataInstr_0_addr + i];
+        dataInstr_1_data[i*8 +: 8] = mem[dataInstr_1_addr + i];
+      end
+    end 
+  endgenerate
+
+  
+
 `ifdef verilator
    export "DPI-C" task do_readmemh;
 
@@ -40,19 +88,19 @@ module AsyncReadMem
    endtask
 
     // Function to access RAM (for use by Verilator).
-   function [7:0] get_mem;
+    function [7:0] get_mem;
       // verilator public
       input [ADDR_WIDTH-1:0] addr; // word address
       get_mem = mem[addr];
-   endfunction
+    endfunction
 
    // Function to write RAM (for use by Verilator).
-   function set_mem;
+    function set_mem;
       // verilator public
       input [ADDR_WIDTH-1:0] addr; // word address
       input [7:0] 	     data; // data to write
       mem[addr] = data;
-   endfunction // set_mem
+    endfunction // set_mem
 `endif
    
 endmodule // AsyncReadMem

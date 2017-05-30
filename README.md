@@ -177,7 +177,7 @@ tools, and make sure that $RISCV/bin is in your path.
     $ git clone git@github.com:riscv/riscv-gnu-toolchain.git
     $ cd riscv-gnu-toolchain
     $ mkdir build; cd build
-    $ ../configure --prefix=$RISCV --disable-float --disable-atomic --with-xlen=32 --with-arch=I
+    $ ../configure --prefix=$RISCV --with-arch=rv32i
     $ make install
 
 This will install a compiler named riscv32-unknown-elf-gcc, complete with
