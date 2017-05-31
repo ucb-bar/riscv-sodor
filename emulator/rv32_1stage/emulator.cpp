@@ -1,5 +1,9 @@
 #include "htif_emulator.h"
+#include "VTop__Dpi.h"
 #include "common.h"
+#if VM_TRACE
+#include <verilated_vcd_c.h>
+#endif
 //#include "disasm.h" // disabled for now... need to update to the current ISA/ABI in common/disasm.*
 #include "VTop.h" // chisel-generated code...
 #include "verilator.h"
@@ -38,16 +42,16 @@ int main(int argc, char** argv)
    // for disassembly
    char inst_str[1024];
    uint64_t reg_inst = 0;
-
+   svScope scope;
    for (int i = 1; i < argc; i++)
    {
       std::string arg = argv[i];
       if (arg.substr(0, 2) == "-v")
-         vcd = argv[i]+2;
+         vcdfile = fopen(argv[i]+2,(const char*)'w');
       else if (arg.substr(0, 2) == "-s")
          random_seed = atoi(argv[i]+2);
-      else if (arg == "+verbose")
-         log = true;
+//      else if (arg == "+verbose")
+//         log = true;
       else if (arg.substr(0, 12) == "+max-cycles=")
          max_cycles = atoll(argv[i]+12);
       else if (arg.substr(0, 9) == "+loadmem=")
@@ -108,9 +112,11 @@ int main(int argc, char** argv)
          }
          mem_idx += 2;
       }
-   }
-
-   fprintf(stderr, "Loaded memory.\n");*/
+   }*/
+   scope = svGetScopeFromName((const char *)"TOP.Top.tile.memory.async_data");
+   svSetScope(scope);
+   do_readmemh((const char *)loadmem);
+   fprintf(stderr, "Loaded memory.\n");
 
    // Instantiate HTIF
    htif = new htif_emulator_t(memory_size, std::vector<std::string>(argv + 1, argv + argc));

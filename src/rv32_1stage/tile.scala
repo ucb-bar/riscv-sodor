@@ -31,7 +31,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    core.io.reset := io.host.reset
    core.io.dmem <> memory.io.core_ports(0)
    core.io.imem <> memory.io.core_ports(1)
-
+   
    // HTIF/memory request
    memory.io.htif_port.req.valid     := io.host.mem_req.valid
    memory.io.htif_port.req.bits.addr := io.host.mem_req.bits.addr.toUInt

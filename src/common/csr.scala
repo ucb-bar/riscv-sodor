@@ -75,15 +75,15 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val eret = Output(Bool())
 
   val status = Output(new MStatus())
-  val ptbr = Output(UInt(PADDR_BITS))
-  val evec = Output(UInt(VADDR_BITS))
+  val ptbr = Output(UInt(PADDR_BITS.W))
+  val evec = Output(UInt(VADDR_BITS.W))
   val exception = Input(Bool())
   val retire = Input(Bool())
   val uarch_counters = Input(Vec.fill(16)(Bool(false)))
   val cause = Input(UInt(conf.xprlen.W))
-  val pc = Input(UInt(VADDR_BITS))
+  val pc = Input(UInt(VADDR_BITS.W))
   val fatc = Output(Bool())
-  val time = Output(UInt(conf.xprlen))
+  val time = Output(UInt(conf.xprlen.W))
   val interrupt = Output(Bool())
   val interrupt_cause = Output(UInt(conf.xprlen.W))
 }
@@ -102,8 +102,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
   val reg_wfi = Reg(init=Bool(false))
 
-  val reg_tohost = Reg(init=Bits(0, conf.xprlen))
-  val reg_fromhost = Reg(init=Bits(0, conf.xprlen))
+  val reg_tohost = Reg(init=0.asUInt(conf.xprlen.W))
+  val reg_fromhost = Reg(init=0.asUInt(conf.xprlen.W))
   val reg_stats = Reg(init=Bool(false))
   val reg_time = WideCounter(conf.xprlen)
   val reg_instret = WideCounter(conf.xprlen, io.retire)
@@ -122,7 +122,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   }
 
   checkInterrupt(PRV_M, reg_mie.msip && reg_mip.msip, 0)
-  checkInterrupt(PRV_M, reg_fromhost != UInt(0), 2)
+  checkInterrupt(PRV_M, reg_fromhost != 0.U, 2)
   checkInterrupt(PRV_M, reg_mie.mtip && reg_mip.mtip, 1)
 
   val system_insn = io.rw.cmd === CSR.I
@@ -201,7 +201,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
               Mux(io.rw.cmd === CSR.C, io.rw.rdata & ~io.rw.wdata,
               Mux(io.rw.cmd === CSR.S, io.rw.rdata | io.rw.wdata,
               host_pcr_bits.data)))
-
   val opcode = io.rw.addr
   val insn_call = !opcode(8) && !opcode(0) && system_insn
   val insn_break = !opcode(8) && opcode(0) && system_insn
@@ -302,14 +301,14 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     }
     when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(VADDR_BITS-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
-    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & UInt((BigInt(1) << (conf.xprlen-1)) + 31) /* only implement 5 LSBs and MSB */ }
+    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
     when (decoded_addr(CSRs.mbadaddr)) { reg_mbadaddr := wdata(VADDR_BITS-1,0) }
     when (decoded_addr(CSRs.cyclew))   { reg_time := wdata }
     when (decoded_addr(CSRs.instretw)) { reg_instret := wdata }
     when (decoded_addr(CSRs.timew))    { reg_time := wdata }
     when (decoded_addr(CSRs.mtimecmp)) { reg_mtimecmp := wdata; reg_mip.mtip := false }
-    when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === UInt(0) || !host_pcr_req_fire) { reg_fromhost := wdata } }
-    when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === UInt(0) || host_pcr_req_fire) { reg_tohost := wdata } }
+    when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === 0.U || !host_pcr_req_fire) { reg_fromhost := wdata } }
+    when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === 0.U || host_pcr_req_fire) { reg_tohost := wdata } }
     when (decoded_addr(CSRs.stats))    { reg_stats := wdata(0) }
   }
 

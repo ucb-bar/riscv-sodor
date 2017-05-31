@@ -40,6 +40,9 @@ trait MemoryOpConstants
    val M_X   = "b0".asUInt(1.W)
    val M_XRD = "b0".asUInt(1.W) // int load
    val M_XWR = "b1".asUInt(1.W) // int store
+
+   val DPORT = 0
+   val IPORT = 1
 }
 
 class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
@@ -74,7 +77,7 @@ class AsyncReadMem(val addrWidth : Int) extends BlackBox{
 // from the pov of the datapath
 class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
 {
-   val req    = Decoupled(new MemReq(data_width))
+   val req    = new DecoupledIO(new MemReq(data_width))
    val resp   = Flipped(new ValidIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
@@ -113,58 +116,53 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := io.core_ports(i).req.valid
-      
       io.core_ports(i).req.ready := Bool(true) // for now, no back pressure 
+      async_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
+   }
 
-      val req_valid      = io.core_ports(i).req.valid
-      val req_addr       = io.core_ports(i).req.bits.addr
-      val req_fcn        = io.core_ports(i).req.bits.fcn
-      val req_typ        = io.core_ports(i).req.bits.typ
-      val byte_shift_amt = io.core_ports(i).req.bits.addr(2,0)
-      val bit_shift_amt  = Cat(byte_shift_amt, 0.asUInt(3.W))
+   /////////// DPORT 
+   val req_addri = io.core_ports(DPORT).req.bits.addr
+   val req_typi = io.core_ports(DPORT).req.bits.typ
+   val resp_datai = async_data.io.dataInstr(DPORT).data
+   io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
+      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)),
+      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
+      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
+      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
+   ))
+   async_data.io.dw.en := Mux((io.core_ports(DPORT).req.bits.fcn === M_XWR),Bool(true),Bool(false))
+   when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
+   {
+      async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
+      async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
+      val dmask = StoreMask(req_typi, req_addri(2,0))
+      async_data.io.dw.mask := Mux(req_addri(2),dmask(7,4),dmask(3,0))
+   }
+   /////////////////
 
-      // read access
-      async_data.io.dataInstr(i).addr := req_addr
-      io.core_ports(i).resp.bits.data := async_data.io.dataInstr(i).data
-      //io.core_ports(i).resp.bits.data := rdata_out
-      val dmask = Wire(UInt(8.W))
-      // write access
-      when (req_valid && req_fcn === M_XWR)
-      {
-         async_data.io.dw.data := io.core_ports(i).req.bits.data
-         async_data.io.dw.addr := req_addr
-         async_data.io.dw.en := Bool(true)
-         dmask := StoreMask(req_typ, req_addr(2,0))
-         async_data.io.dw.mask := Mux(req_addr(2),dmask(7,4),dmask(3,0))
-         // move the wdata into position on the sub-line
-      }
-      .elsewhen (req_fcn =/= M_XWR)
-      {
-         async_data.io.dw.en := Bool(false)  
-      }
-   }  
+   ///////////// IPORT
+   io.core_ports(IPORT).resp.bits.data := async_data.io.dataInstr(IPORT).data
+   ////////////
 
 
-   // HTIF -------
-   val htif_idx = Reg(UInt())
-   htif_idx := io.htif_port.req.bits.addr
+  // printf("daddr:0x%x drdata:0x%x dwdata:0x%x mask:%d typ:%d\n",io.core_ports(0).req.bits.addr,io.core_ports(0).resp.bits.data,io.core_ports(0).req.bits.data
+    //  ,StoreMask(req_typi, req_addri(2,0)),io.core_ports(0).req.bits.fcn)
+
+   // HTIF PORT-------
    io.htif_port.req.ready := Bool(true) // for now, no back pressure
    io.htif_port.resp.valid := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
    
-   // synchronous read
+   // asynchronous read
    async_data.io.hr.addr := io.htif_port.req.bits.addr
    io.htif_port.resp.bits.data := async_data.io.hr.data
+   async_data.io.hw.en := Mux((io.htif_port.req.bits.fcn === M_XWR),Bool(true),Bool(false))
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {
       async_data.io.hw.addr := io.htif_port.req.bits.addr
       async_data.io.hw.data := io.htif_port.req.bits.data
       async_data.io.hw.en := Bool(true)
       async_data.io.hw.mask := "b11111111".U
-   }
-   .elsewhen (io.htif_port.req.bits.fcn =/= M_XWR)
-   {
-      async_data.io.hw.en := Bool(false)
-   }   
+   } 
 }
 
 class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit conf: SodorConfiguration) extends Module
@@ -241,6 +239,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools) 
    }
 }
+
 
 object GenVec
 {

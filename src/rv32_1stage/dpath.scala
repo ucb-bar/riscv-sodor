@@ -74,6 +74,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    
    io.imem.req.bits.addr := pc_reg
+   io.imem.req.valid := Bool(true)
    val inst = Mux(io.imem.resp.valid, io.imem.resp.bits.data, BUBBLE) 
                  
    
@@ -198,17 +199,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
-   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%c %d: 0x%x] PC= 0x%x %c%c DASM(%x)\n"
-      , csr.io.time(5,0)
+   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
+      , csr.io.time(31,0)
       , alu_op1
       , alu_op2
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
       , wb_addr
       , wb_data
       , Mux(io.ctl.exception, Str("E"), Str(" ")) // EXC -> E
-      , Mux(io.ctl.debug_dmem_val, Str("V"), Str("_"))
-      , io.ctl.debug_dmem_typ
+      , io.ctl.wb_sel
       , io.dmem.resp.bits.data
+      , io.dmem.req.bits.data
       , pc_reg
       , Mux(io.ctl.stall, Str("s"), Str(" "))
       , Mux(io.ctl.pc_sel  === UInt(1), Str("B"),

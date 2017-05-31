@@ -29,37 +29,32 @@ module AsyncReadMem
 
    reg [7:0] 		mem [0:NUM_BYTES-1];
 
-   // TODO: the actual accesses
-
-  generate
     genvar i;
+  generate
     for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_writes
       always @ (posedge clk) begin
         if (hw_en) begin
+          $display("hw en");
           if (hw_mask[i] == 1'b1) begin
             mem[hw_addr + i] <= hw_data[i*8 +: 8];
-          end else begin
-            mem[hw_addr + i] <= mem[hw_addr + i];
           end
         end
       end
     end
-   endgenerate
+  endgenerate
 
-   generate
+  generate
     for (i = 0; i < MASK_WIDTH_CPU; i = i + 1) begin : gen_sel_writes1
       always @ (posedge clk) begin
         if (dw_en) begin
           if (dw_mask[i] == 1'b1) begin
             mem[dw_addr + i] <= dw_data[i*8 +: 8];
-          end else begin
-            mem[dw_addr + i] <= mem[dw_addr + i];
           end
         end
       end
     end
-   endgenerate  
- //  dataInstr_0_data = {} 
+  endgenerate 
+
   generate
     for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_read
       always @* begin
