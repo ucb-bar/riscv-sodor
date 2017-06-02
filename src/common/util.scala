@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Util
 {
-   implicit def intToUInt(x: Int): UInt = UInt(x)
+   implicit def intToUInt(x: Int): UInt = x.U
    implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
    implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
    implicit def booleanToBool(x: Boolean): Bool = Bool(x)
@@ -28,7 +28,7 @@ object maskMatch
 {
    def apply(msk1: UInt, msk2: UInt): Bool =
    {
-      val br_match = (msk1 & msk2) != Bits(0)
+      val br_match = (msk1 & msk2) != 0.U
       return br_match
    }
 }
@@ -84,13 +84,13 @@ case class WideCounter(width: Int, inc: Bool = Bool(true))
 {
    private val isWide = width >= 4
    private val smallWidth = if (isWide) log2Ceil(width) else width
-   private val small = Reg(init=UInt(0, smallWidth))
-   private val nextSmall = small + UInt(1, smallWidth+1)
+   private val small = Reg(init=0.asUInt(smallWidth.W))
+   private val nextSmall = small + 1.asUInt((smallWidth+1).W)
    when (inc) { small := nextSmall(smallWidth-1,0) }
                       
    private val large = if (isWide) {
-      val r = Reg(init=UInt(0, width - smallWidth))
-      when (inc && nextSmall(smallWidth)) { r := r + UInt(1) }
+      val r = Reg(init=0.asUInt((width - smallWidth).W))
+      when (inc && nextSmall(smallWidth)) { r := r + 1.U }
       r
    } else null
    
@@ -99,7 +99,7 @@ case class WideCounter(width: Int, inc: Bool = Bool(true))
    def := (x: UInt) = {
       val w = x.getWidth
       small := x(w.min(smallWidth)-1,0)
-      if (isWide) large := (if (w < smallWidth) UInt(0) else x(w.min(width)-1,smallWidth))
+      if (isWide) large := (if (w < smallWidth) 0.U else x(w.min(width)-1,smallWidth))
    }
 }
 
@@ -132,12 +132,12 @@ object Str
   }
   def apply(x: Char): Bits = {
     require(validChar(x))
-    val lit = UInt(x, 8)
+    val lit = x.asUInt(8.W)
     lit
   }
   def apply(x: UInt): Bits = apply(x, 10)
   def apply(x: UInt, radix: Int): Bits = {
-    val rad = UInt(radix)
+    val rad = radix.U
     val digs = digits(radix)
     val w = x.getWidth
     require(w > 0)
@@ -146,13 +146,13 @@ object Str
     var s = digs(q % rad)
     for (i <- 1 until ceil(log(2)/log(radix)*w).toInt) {
       q = q / rad
-      s = Cat(Mux(Bool(radix == 10) && q === UInt(0), Str(' '), digs(q % rad)), s)
+      s = Cat(Mux(Bool(radix == 10) && q === 0.U, Str(' '), digs(q % rad)), s)
     }
     s
   }
   def apply(x: SInt): Bits = apply(x, 10)
   def apply(x: SInt, radix: Int): Bits = {
-    val neg = x < SInt(0)
+    val neg = x < 0.S
     val abs = Mux(neg, -x, x).toUInt
     if (radix != 10) {
       Cat(Mux(neg, Str('-'), Str(' ')), Str(abs, radix))
@@ -167,7 +167,7 @@ object Str
       var needSign = neg
       for (i <- 1 until ceil(log(2)/log(radix)*w).toInt) {
         q = q / rad
-        val placeSpace = q === UInt(0)
+        val placeSpace = q === 0.U
         val space = Mux(needSign, Str('-'), Str(' '))
         needSign = needSign && !placeSpace
         s = Cat(Mux(placeSpace, space, digs(q % rad)), s)

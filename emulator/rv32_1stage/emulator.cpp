@@ -50,8 +50,8 @@ int main(int argc, char** argv)
          vcdfile = fopen(argv[i]+2,(const char*)'w');
       else if (arg.substr(0, 2) == "-s")
          random_seed = atoi(argv[i]+2);
-//      else if (arg == "+verbose")
-//         log = true;
+      else if (arg == "+verbose")
+         log = true;
       else if (arg.substr(0, 12) == "+max-cycles=")
          max_cycles = atoll(argv[i]+12);
       else if (arg.substr(0, 9) == "+loadmem=")

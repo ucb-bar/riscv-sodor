@@ -131,13 +131,13 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val host_pcr_req_valid = Reg(Bool()) // don't reset
   val host_pcr_req_fire = host_pcr_req_valid && !cpu_ren
   val host_pcr_rep_valid = Reg(Bool()) // don't reset
-  val host_pcr_bits = Reg(next = io.host.csr_req.bits)
+  val host_pcr_bits = Reg(new CSRReq(addr_width = 12))
   io.host.csr_req.ready := !host_pcr_req_valid && !host_pcr_rep_valid
   io.host.csr_rep.valid := host_pcr_rep_valid
   io.host.csr_rep.bits := host_pcr_bits.data
   when (io.host.csr_req.fire()) {
-    host_pcr_req_valid := true //shouldn't ready set to be true
-    host_pcr_bits := io.host.csr_req.bits //isn't it initialized capture value of csr_req
+    host_pcr_req_valid := true 
+    host_pcr_bits := io.host.csr_req.bits
   }
   when (host_pcr_req_fire) {
     host_pcr_req_valid := false
@@ -269,7 +269,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.csr_replay := io.host.ipi_req.valid && !io.host.ipi_req.ready
   io.csr_stall := reg_wfi
 
-  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.mtohost)) { reg_tohost := UInt(0) }
+  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.mtohost)) { reg_tohost := 0.U }
 
   io.rw.rdata := Mux1H(for ((k, v) <- read_mapping) yield decoded_addr(k) -> v)
 

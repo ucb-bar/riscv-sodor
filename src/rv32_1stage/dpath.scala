@@ -43,7 +43,7 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
-   
+
    
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
