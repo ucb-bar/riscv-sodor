@@ -18,18 +18,18 @@ import Constants._
 class CtlToDatIo extends Bundle() 
 {
    val stall     = Output(Bool())
-   val pc_sel    = Output(UInt(3)) 
-   val op1_sel   = Output(UInt(2)) 
-   val op2_sel   = Output(UInt(2)) 
-   val alu_fun   = Output(UInt(4)) 
-   val wb_sel    = Output(UInt(3)) 
+   val pc_sel    = Output(UInt(PC_4.getWidth.W)) 
+   val op1_sel   = Output(UInt(OP1_X.getWidth.W)) 
+   val op2_sel   = Output(UInt(OP2_X.getWidth.W)) 
+   val alu_fun   = Output(UInt(ALU_X.getWidth.W)) 
+   val wb_sel    = Output(UInt(WB_X.getWidth.W)) 
    val rf_wen    = Output(Bool()) 
    val csr_cmd   = Output(UInt(CSR.SZ)) 
    val exception = Output(Bool())
-   val exc_cause = Output(UInt(32))
+   val exc_cause = Output(UInt(32.W))
 
    val debug_dmem_val = Output(Bool())
-   val debug_dmem_typ = Output(UInt(MT_X.getWidth))
+   val debug_dmem_typ = Output(UInt(MT_X.getWidth.W))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -132,7 +132,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
                            
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) || io.resetSignal
+   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) //|| io.resetSignal
  
    // Set the data-path control signals
    io.ctl.stall    := stall
@@ -145,7 +145,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
-   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
 
    io.ctl.csr_cmd  := Mux(stall, CSR.N, csr_cmd)
@@ -158,7 +158,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.valid    := cs_mem_en
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
-
    // Exception Handling ---------------------
    
    // We only need to check if the instruction is illegal (or unsupported)

@@ -1,7 +1,7 @@
 #ifndef _HTIF_EMULATOR_H
 #define _HTIF_EMULATOR_H
 
-#include <fesvr/htif_pthread.h>
+#include "htif_pthread.h"
 
 
 class htif_emulator_t : public htif_pthread_t

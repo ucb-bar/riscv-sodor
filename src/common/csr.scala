@@ -75,13 +75,13 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val eret = Output(Bool())
 
   val status = Output(new MStatus())
-  val ptbr = Output(UInt(PADDR_BITS))
-  val evec = Output(UInt(VADDR_BITS))
+  val ptbr = Output(UInt(PADDR_BITS.W))
+  val evec = Output(UInt(VADDR_BITS.W))
   val exception = Input(Bool())
   val retire = Input(Bool())
   val uarch_counters = Input(Vec.fill(16)(Bool(false)))
   val cause = Input(UInt(conf.xprlen.W))
-  val pc = Input(UInt(VADDR_BITS))
+  val pc = Input(UInt(VADDR_BITS.W))
   val fatc = Output(Bool())
   val time = Output(UInt(conf.xprlen.W))
   val interrupt = Output(Bool())
@@ -122,7 +122,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   }
 
   checkInterrupt(PRV_M, reg_mie.msip && reg_mip.msip, 0)
-  checkInterrupt(PRV_M, reg_fromhost != UInt(0), 2)
+  checkInterrupt(PRV_M, reg_fromhost != 0.U, 2)
   checkInterrupt(PRV_M, reg_mie.mtip && reg_mip.mtip, 1)
 
   val system_insn = io.rw.cmd === CSR.I
@@ -131,13 +131,13 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val host_pcr_req_valid = Reg(Bool()) // don't reset
   val host_pcr_req_fire = host_pcr_req_valid && !cpu_ren
   val host_pcr_rep_valid = Reg(Bool()) // don't reset
-  val host_pcr_bits = Reg(next = io.host.csr_req.bits)
+  val host_pcr_bits = Reg(new CSRReq(addr_width = 12))
   io.host.csr_req.ready := !host_pcr_req_valid && !host_pcr_rep_valid
   io.host.csr_rep.valid := host_pcr_rep_valid
   io.host.csr_rep.bits := host_pcr_bits.data
   when (io.host.csr_req.fire()) {
-    host_pcr_req_valid := true //shouldn't ready set to be true
-    host_pcr_bits := io.host.csr_req.bits //isn't it initialized capture value of csr_req
+    host_pcr_req_valid := true 
+    host_pcr_bits := io.host.csr_req.bits
   }
   when (host_pcr_req_fire) {
     host_pcr_req_valid := false
@@ -201,7 +201,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
               Mux(io.rw.cmd === CSR.C, io.rw.rdata & ~io.rw.wdata,
               Mux(io.rw.cmd === CSR.S, io.rw.rdata | io.rw.wdata,
               host_pcr_bits.data)))
-
   val opcode = io.rw.addr
   val insn_call = !opcode(8) && !opcode(0) && system_insn
   val insn_break = !opcode(8) && opcode(0) && system_insn
@@ -270,7 +269,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.csr_replay := io.host.ipi_req.valid && !io.host.ipi_req.ready
   io.csr_stall := reg_wfi
 
-  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.mtohost)) { reg_tohost := UInt(0) }
+  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.mtohost)) { reg_tohost := 0.U }
 
   io.rw.rdata := Mux1H(for ((k, v) <- read_mapping) yield decoded_addr(k) -> v)
 
@@ -302,14 +301,14 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     }
     when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(VADDR_BITS-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
-    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & UInt((BigInt(1) << (conf.xprlen-1)) + 31) /* only implement 5 LSBs and MSB */ }
+    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
     when (decoded_addr(CSRs.mbadaddr)) { reg_mbadaddr := wdata(VADDR_BITS-1,0) }
     when (decoded_addr(CSRs.cyclew))   { reg_time := wdata }
     when (decoded_addr(CSRs.instretw)) { reg_instret := wdata }
     when (decoded_addr(CSRs.timew))    { reg_time := wdata }
     when (decoded_addr(CSRs.mtimecmp)) { reg_mtimecmp := wdata; reg_mip.mtip := false }
-    when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === UInt(0) || !host_pcr_req_fire) { reg_fromhost := wdata } }
-    when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === UInt(0) || host_pcr_req_fire) { reg_tohost := wdata } }
+    when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === 0.U || !host_pcr_req_fire) { reg_fromhost := wdata } }
+    when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === 0.U || host_pcr_req_fire) { reg_tohost := wdata } }
     when (decoded_addr(CSRs.stats))    { reg_stats := wdata(0) }
   }
 

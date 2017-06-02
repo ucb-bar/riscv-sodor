@@ -44,7 +44,9 @@ class Core(implicit conf: SodorConfiguration) extends Module
   
   io.dmem <> c.io.dmem
   io.dmem <> d.io.dmem
-  
+  io.dmem.req.valid := c.io.dmem.req.valid
+  io.dmem.req.bits.typ := c.io.dmem.req.bits.typ
+  io.dmem.req.bits.fcn := c.io.dmem.req.bits.fcn
   d.io.host <> io.host
 }
 
