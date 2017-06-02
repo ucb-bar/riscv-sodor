@@ -26,11 +26,12 @@ class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends 
    c.io.ctl  <> d.io.ctl
    c.io.dat  <> d.io.dat
    
-   c.io.imem <> io.imem
-   d.io.imem <> io.imem
-   
-   c.io.dmem <> io.dmem
-   d.io.dmem <> io.dmem
+   io.imem <> c.io.imem
+   io.imem <> d.io.imem
+   io.imem.req.valid := c.io.imem.req.valid
+
+   io.dmem <> c.io.dmem
+   io.dmem <> d.io.dmem
    
    d.io.host <> io.host
 }

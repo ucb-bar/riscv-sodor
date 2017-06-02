@@ -32,8 +32,7 @@ class Top extends Module
    tile.io.host.id := 0.U
    tile.io.host.csr_req <> Queue(io.htif.csr_req)
    io.htif.csr_rep <> tile.io.host.csr_rep
-   io.htif.ipi_req <> tile.io.host.ipi_req
-   io.htif.ipi_rep <> tile.io.host.ipi_rep
+
    tile.io.host.mem_req <> Queue(io.htif.mem_req)
    io.htif.mem_rep <> tile.io.host.mem_rep
 

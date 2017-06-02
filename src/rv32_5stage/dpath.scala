@@ -60,12 +60,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Execute State
    val exe_reg_inst          = Reg(init=BUBBLE)
    val exe_reg_pc            = Reg(init=0.asUInt(conf.xprlen.W))
-   val exe_reg_wbaddr        = Reg(UInt())
-   val exe_reg_rs1_addr      = Reg(UInt())
-   val exe_reg_rs2_addr      = Reg(UInt())
-   val exe_reg_op1_data      = Reg(Bits())
-   val exe_reg_op2_data      = Reg(Bits())
-   val exe_reg_rs2_data      = Reg(Bits())
+   val exe_reg_wbaddr        = Reg(UInt(5.W))
+   val exe_reg_rs1_addr      = Reg(UInt(5.W))
+   val exe_reg_rs2_addr      = Reg(UInt(5.W))
+   val exe_reg_op1_data      = Reg(UInt(conf.xprlen.W))
+   val exe_reg_op2_data      = Reg(UInt(conf.xprlen.W))
+   val exe_reg_rs2_data      = Reg(UInt(conf.xprlen.W))
    val exe_reg_ctrl_br_type  = Reg(init=BR_N)
    val exe_reg_ctrl_op2_sel  = Reg(UInt())
    val exe_reg_ctrl_alu_fun  = Reg(UInt())
@@ -77,15 +77,15 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
 
    // Memory State
-   val mem_reg_pc            = Reg(UInt())
-   val mem_reg_inst          = Reg(Bits())
+   val mem_reg_pc            = Reg(UInt(conf.xprlen.W))
+   val mem_reg_inst          = Reg(UInt(conf.xprlen.W))
    val mem_reg_alu_out       = Reg(Bits())
    val mem_reg_wbaddr        = Reg(UInt())
    val mem_reg_rs1_addr      = Reg(UInt())
    val mem_reg_rs2_addr      = Reg(UInt())
-   val mem_reg_op1_data      = Reg(Bits())
-   val mem_reg_op2_data      = Reg(Bits())
-   val mem_reg_rs2_data      = Reg(Bits())
+   val mem_reg_op1_data      = Reg(UInt(conf.xprlen.W))
+   val mem_reg_op2_data      = Reg(UInt(conf.xprlen.W))
+   val mem_reg_rs2_data      = Reg(UInt(conf.xprlen.W))
    val mem_reg_ctrl_rf_wen   = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_val  = Reg(init=Bool(false))
    val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
@@ -418,18 +418,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Printout
    printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%x, %x, %x, %x, %x] %c %c ExeInst: DASM(%x)\n"
-      , csr.io.time(5,0)
+      , csr.io.time(31,0)
       , if_reg_pc
       , dec_reg_pc
       , exe_reg_pc
       , Reg(next=exe_reg_pc)
       , Reg(next=Reg(next=exe_reg_pc))
       // TODO come up with a way to print out the opcode name, instead of just the number
-      , if_inst(6,0)
-      , dec_reg_inst(6,0)
-      , exe_reg_inst(6,0)
-      , Reg(next=exe_reg_inst(6,0))
-      , Reg(next=Reg(next=exe_reg_inst(6,0)))
+      , if_inst(31,0)
+      , dec_reg_inst(31,0)
+      , exe_reg_inst(31,0)
+      , Reg(next=exe_reg_inst(31,0))
+      , Reg(next=Reg(next=exe_reg_inst(31,0)))
       , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F 
         Mux(io.ctl.dec_stall, Str("S"), Str(" ")))  //STALL->S
       , Mux(io.ctl.exe_pc_sel === 1.U, Str("B"),  //BJ -> B

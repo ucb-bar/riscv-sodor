@@ -24,7 +24,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    val io = IO(new SodorTileIo())
    
    val core   = Module(new Core(resetSignal = io.host.reset))
-   val memory = Module(new ScratchPadMemory(num_core_ports = 2))
+   val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
 
    core.io.dmem <> memory.io.core_ports(0)
    core.io.imem <> memory.io.core_ports(1)
