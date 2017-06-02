@@ -1,13 +1,24 @@
 #include "htif_emulator.h"
+#include "VTop__Dpi.h"
 #include "common.h"
-#include "emulator.h"
-//#include "disasm.h"
-#include "Top.h" // chisel-generated code...
+#if VM_TRACE
+#include <verilated_vcd_c.h>
+#endif
+//#include "disasm.h" // disabled for now... need to update to the current ISA/ABI in common/disasm.*
+#include "VTop.h" // chisel-generated code...
+#include "verilator.h"
+#include "verilated.h"
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+uint64_t trace_count = 0;
+double sc_time_stamp ()
+{
+  return double( trace_count );
+}
 
 htif_emulator_t* htif;
 void handle_sigterm(int sig)
@@ -17,10 +28,8 @@ void handle_sigterm(int sig)
 
 int main(int argc, char** argv)
 {
-   fprintf(stderr, "In main().\n");
    unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
    uint64_t max_cycles = 0;
-   uint64_t trace_count = 0;
    int start = 0;
    bool log = false;
    const char* vcd = NULL;
@@ -33,13 +42,12 @@ int main(int argc, char** argv)
    // for disassembly
    char inst_str[1024];
    uint64_t reg_inst = 0;
-
-
+   svScope scope;
    for (int i = 1; i < argc; i++)
    {
       std::string arg = argv[i];
       if (arg.substr(0, 2) == "-v")
-         vcd = argv[i]+2;
+         vcdfile = fopen(argv[i]+2,(const char*)'w');
       else if (arg.substr(0, 2) == "-s")
          random_seed = atoi(argv[i]+2);
       else if (arg == "+verbose")
@@ -51,150 +59,92 @@ int main(int argc, char** argv)
    }
 
    const int disasm_len = 24;
-   if (vcd)
-   {
-      // Create a VCD file
-      vcdfile = strcmp(vcd, "-") == 0 ? stdout : fopen(vcd, "w");
-      assert(vcdfile);
-      fprintf(vcdfile, "$scope module Testbench $end\n");
-      //fprintf(vcdfile, "$var reg %d NDISASM instruction $end\n", disasm_len*8);
-      //fprintf(vcdfile, "$var reg 64 NCYCLE cycle $end\n");
-      fprintf(vcdfile, "$upscope $end\n");
-   }
- 
-   // The chisel generated code
-   Top_t dut; // design under test, aka, your chisel code
+
+   VTop dut; // design under test, aka, your chisel code
    srand(random_seed);
    dut.init(random_seed != 0);
- 
-   fprintf(stderr, "Initialized dut.\n");
-   if (loadmem)
-   {
-      //  mem_t<32,32768> Top_tile_memory__data_bank1;
-      // char* m = (char*)mem;
-      std::ifstream in(loadmem);
-      if (!in)
-      {
-         std::cerr << "could not open " << loadmem<< std::endl;
-         exit(-1);
-      }
- 
+/*   Tracer_t tracer(&dut.Top_tile_core_d__inst,
+                   &dut.Top_tile_core_d_csr__reg_stats,
+                   stderr);*/
 
-      std::string line;
-      uint64_t mem_idx = 0; // unit is 4-byte words
-      while (std::getline(in, line))
-      {
-         // this is damn hacky, and I am sorry for that
-         // lines are 32 bytes long. 
-         assert (line.length()/2/4 == 4); // 4 instructions per line
-         uint32_t m[4] = {0,0,0,0}; 
-//         std::cerr << "$" << line << " [length:" << line.length() << "]" << std::endl;
-
-         #define parse_nibble(c) ((c) >= 'a' ? (c)-'a'+10 : (c)-'0')
-         for (ssize_t i = line.length()-2, j = 0; i >= 0; i -= 2, j++)
-         {
-            uint8_t byte = (parse_nibble(line[i]) << 4) | parse_nibble(line[i+1]); 
-            m[j>>2] = (byte << ((j%4)*8)) | m[j>>2];
-            
-//            fprintf(stderr,"byte: j=%d, byte=0x%x, m[j>>2=%d]=0x%x\n", j, byte, (j>>2), m[j>>2]);
-         }
-
-         // hacky, need to keep from loading in way too much memory
-         if (mem_idx < (memory_size/4)) // translate to 4-byte words
-         {
-//            fprintf(stderr, "   bidx: %4d , 0x%x -- b1: 0x%08x_%08x_%08x_%08x\n"
-//               , mem_idx, mem_idx << 3, m[3], m[2], m[1], m[0]);
-            dut.Top_tile_memory__data_bank0.put(mem_idx, LIT<32>(m[0]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx, LIT<32>(m[1]));
-            dut.Top_tile_memory__data_bank0.put(mem_idx+1, LIT<32>(m[2]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx+1, LIT<32>(m[3]));
-         }
-         mem_idx += 2;
-      }
-   }
-
+   scope = svGetScopeFromName((const char *)"TOP.Top.tile.memory.async_data");
+   svSetScope(scope);
+   do_readmemh((const char *)loadmem);
    fprintf(stderr, "Loaded memory.\n");
 
    // Instantiate HTIF
    htif = new htif_emulator_t(memory_size, std::vector<std::string>(argv + 1, argv + argc));
    fprintf(stderr, "Instantiated HTIF.\n");
 
-   // i'm using uint64_t for these variables, so they shouldn't be larger
-   // (also consequences all the way to the Chisel memory)
-   assert (dut.Top__io_htif_csr_rep_bits.width() <= 64);
-   assert (dut.Top__io_htif_mem_rep_bits.width() <= 64);  
-
-//  int htif_bits = dut.Top__io_host_in_bits.width();
-//  assert(htif_bits % 8 == 0 && htif_bits <= val_n_bits());
+#if VM_TRACE
+   Verilated::traceEverOn(true); // Verilator must compute traced signals
+   std::unique_ptr<VerilatedVcdFILE> vcdfd(new VerilatedVcdFILE(vcdfile));
+   std::unique_ptr<VerilatedVcdC> tfp(new VerilatedVcdC(vcdfd.get()));
+   if (vcdfile) {
+      tile->trace(tfp.get(), 99);  // Trace 99 levels of hierarchy
+      tfp->open("");
+   }
+#endif
 
    signal(SIGTERM, handle_sigterm);
 
-  // reset for a few cycles to support pipelined reset
-   dut.Top__io_htif_reset= LIT<1>(1);
+   // reset for a few cycles to support pipelined reset
+   for (int i = 0; i < 10; i++) {
+    dut.reset = 1;
+    dut.clock = 0;
+    dut.eval();
+    dut.clock = 1;
+    dut.eval();
+    dut.reset = 0;
+  }
 
-   for (int i = 0; i < 10; i++)
-   {
-      dut.clock_lo(LIT<1>(1));
-      dut.clock_hi(LIT<1>(1));
-   }
 
-   while (!htif->done())
-   {
-      dut.clock_lo(LIT<1>(0));
 
+//   tracer.start();
+   while (!htif->done() && !Verilated::gotFinish()) {
+      dut.clock = 0;
       // perform all fesvr HostIO to HTIFIO transformations in software
       htif->tick(
          // from tile to me,the testharness
-           dut.Top__io_htif_csr_req_ready.lo_word()
-         , dut.Top__io_htif_mem_req_ready.lo_word()
+           dut.io_htif_csr_req_ready
+         , dut.io_htif_mem_req_ready
          
-         , dut.Top__io_htif_csr_rep_valid.lo_word()
-         , dut.Top__io_htif_csr_rep_bits.lo_word()
+         , dut.io_htif_csr_rep_valid
+         , dut.io_htif_csr_rep_bits
          
-         , dut.Top__io_htif_mem_rep_valid.lo_word()
-         , dut.Top__io_htif_mem_rep_bits.lo_word()
+         , dut.io_htif_mem_rep_valid
+         , dut.io_htif_mem_rep_bits
       );
 
-      // send HTIF signals to the chip
-      dut.Top__io_htif_csr_rep_ready = htif->csr_rep_ready;
+      dut.io_htif_csr_rep_ready = htif->csr_rep_ready;
 
-      dut.Top__io_htif_csr_req_valid = htif->csr_req_valid;
-      dut.Top__io_htif_csr_req_bits_data = htif->csr_req_bits_data;
-      dut.Top__io_htif_csr_req_bits_addr = htif->csr_req_bits_addr;
-      dut.Top__io_htif_csr_req_bits_rw = htif->csr_req_bits_rw;
+      dut.io_htif_csr_req_valid = htif->csr_req_valid;
+      dut.io_htif_csr_req_bits_data = htif->csr_req_bits_data;
+      dut.io_htif_csr_req_bits_addr = htif->csr_req_bits_addr;
+      dut.io_htif_csr_req_bits_rw = htif->csr_req_bits_rw;
+      dut.io_htif_ipi_req_valid = false;
 
-      dut.Top__io_htif_mem_req_valid = htif->mem_req_valid;
-      dut.Top__io_htif_mem_req_bits_addr = htif->mem_req_bits_addr;
-      dut.Top__io_htif_mem_req_bits_data = htif->mem_req_bits_data;
-      dut.Top__io_htif_mem_req_bits_rw = htif->mem_req_bits_rw;
+      dut.io_htif_mem_req_valid = htif->mem_req_valid;
+      dut.io_htif_mem_req_bits_addr = htif->mem_req_bits_addr;
+      dut.io_htif_mem_req_bits_data = htif->mem_req_bits_data;
+      dut.io_htif_mem_req_bits_rw = htif->mem_req_bits_rw;
 
-      dut.Top__io_htif_reset = htif->reset;
-         
-  
-      if (log || vcd)
-      {
-         if (log)
-         {
-            dut.print(logfile);
-         }
+      dut.io_htif_reset = htif->reset;
 
-         if (vcd)
-         {
-            //insn_t insn;
-            //insn.bits = dut.Top_tile_core_d__exe_reg_inst.lo_word();
-            //std::string inst_disasm = disasm.disassemble(insn); 
-            //inst_disasm.resize(disasm_len, ' ');
-            //dat_t<disasm_len*8> disasm_dat;
-            //for (int i = 0; i < disasm_len; i++)
-            //   disasm_dat = disasm_dat << 8 | LIT<8>(inst_disasm[i]);
+      dut.eval();
+#if VM_TRACE
+      bool dump = tfp && trace_count >= start;
+      if (dump)
+         tfp->dump(static_cast<vluint64_t>(trace_count * 2));
+#endif
 
-            dut.dump(vcdfile, trace_count);
-         }
-      }
-
-      dut.clock_hi(LIT<1>(0));
+      dut.clock = 1;
+      dut.eval();
+#if VM_TRACE
+      if (dump)
+         tfp->dump(static_cast<vluint64_t>(trace_count * 2 + 1));
+#endif
       trace_count++;
-
       if (max_cycles != 0 && trace_count == max_cycles)
       {
          failure = "timeout";
@@ -202,6 +152,9 @@ int main(int argc, char** argv)
       }
    }
 
+   // tracer.stop();
+   // tracer.print();
+   dut.final();
    if (vcd)
       fclose(vcdfile);
 

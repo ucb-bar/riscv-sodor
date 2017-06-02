@@ -60,59 +60,13 @@ int main(int argc, char** argv)
 
    const int disasm_len = 24;
 
-   // The chisel generated code
    VTop dut; // design under test, aka, your chisel code
-/*   srand(random_seed);
-  dut.init(random_seed != 0);
-   Tracer_t tracer(&dut.Top_tile_core_d__inst,
+   srand(random_seed);
+   dut.init(random_seed != 0);
+/*   Tracer_t tracer(&dut.Top_tile_core_d__inst,
                    &dut.Top_tile_core_d_csr__reg_stats,
-                   stderr);
+                   stderr);*/
 
-
-   if (loadmem)
-   {
-      //  mem_t<32,32768> Top_tile_memory__data_bank1;
-      // char* m = (char*)mem;
-      std::ifstream in(loadmem);
-      if (!in)
-      {
-         std::cerr << "could not open " << loadmem<< std::endl;
-         exit(-1);
-      }
-
-
-      std::string line;
-      uint64_t mem_idx = 0; // unit is 4-byte words
-      while (std::getline(in, line))
-      {
-         // this is damn hacky, and I am sorry for that
-         // lines are 32 bytes long. 
-         assert (line.length()/2/4 == 4); // 4 instructions per line
-         uint32_t m[4] = {0,0,0,0}; 
-//         std::cerr << "$" << line << " [length:" << line.length() << "]" << std::endl;
-
-         #define parse_nibble(c) ((c) >= 'a' ? (c)-'a'+10 : (c)-'0')
-         for (ssize_t i = line.length()-2, j = 0; i >= 0; i -= 2, j++)
-         {
-            uint8_t byte = (parse_nibble(line[i]) << 4) | parse_nibble(line[i+1]); 
-            m[j>>2] = (byte << ((j%4)*8)) | m[j>>2];
-            
-//            fprintf(stderr,"byte: j=%d, byte=0x%x, m[j>>2=%d]=0x%x\n", j, byte, (j>>2), m[j>>2]);
-         }
-
-         // hacky, need to keep from loading in way too much memory
-         if (mem_idx < (memory_size/4)) // translate to 4-byte words
-         {
-//            fprintf(stderr, "   bidx: %4d , 0x%x -- b1: 0x%08x_%08x_%08x_%08x\n"
-//               , mem_idx, mem_idx << 3, m[3], m[2], m[1], m[0]);
-            dut.Top_tile_memory__data_bank0.put(mem_idx, LIT<32>(m[0]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx, LIT<32>(m[1]));
-            dut.Top_tile_memory__data_bank0.put(mem_idx+1, LIT<32>(m[2]));
-            dut.Top_tile_memory__data_bank1.put(mem_idx+1, LIT<32>(m[3]));
-         }
-         mem_idx += 2;
-      }
-   }*/
    scope = svGetScopeFromName((const char *)"TOP.Top.tile.memory.async_data");
    svSetScope(scope);
    do_readmemh((const char *)loadmem);
@@ -121,14 +75,6 @@ int main(int argc, char** argv)
    // Instantiate HTIF
    htif = new htif_emulator_t(memory_size, std::vector<std::string>(argv + 1, argv + argc));
    fprintf(stderr, "Instantiated HTIF.\n");
-
-   // i'm using uint64_t for these variables, so they shouldn't be larger
-   // (also consequences all the way to the Chisel memory)
- //  assert (dut.Top__io_htif_csr_rep_bits.width() <= 64);
- //  assert (dut.Top__io_htif_mem_rep_bits.width() <= 64);  
-
-//  int htif_bits = dut.Top__io_host_in_bits.width();
-//  assert(htif_bits % 8 == 0 && htif_bits <= val_n_bits());
 
 #if VM_TRACE
    Verilated::traceEverOn(true); // Verilator must compute traced signals
@@ -141,7 +87,6 @@ int main(int argc, char** argv)
 #endif
 
    signal(SIGTERM, handle_sigterm);
-   //initialize memory here 
 
    // reset for a few cycles to support pipelined reset
    for (int i = 0; i < 10; i++) {
