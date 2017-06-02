@@ -61,8 +61,8 @@ int main(int argc, char** argv)
    const int disasm_len = 24;
 
    VTop dut; // design under test, aka, your chisel code
-   srand(random_seed);
-   dut.init(random_seed != 0);
+   //srand(random_seed);
+   //dut.init(random_seed != 0);
 /*   Tracer_t tracer(&dut.Top_tile_core_d__inst,
                    &dut.Top_tile_core_d_csr__reg_stats,
                    stderr);*/
