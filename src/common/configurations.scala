@@ -12,6 +12,7 @@ case class SodorConfiguration()
    val nxprbits = log2Ceil(nxpr)
    val rvc = false
    val vm = false
+   val usingUser = false
 }
 
 

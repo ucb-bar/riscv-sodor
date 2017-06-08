@@ -12,16 +12,43 @@ import scala.collection.mutable.ArrayBuffer
 
 object Util
 {
-   implicit def intToUInt(x: Int): UInt = x.U
-   implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
-   implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
-   implicit def booleanToBool(x: Boolean): Bool = Bool(x)
-   implicit def sextToConv(x: UInt) = new AnyRef {
-      def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
-   }
+  implicit def intToUInt(x: Int): UInt = x.U
+  implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
+  implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
+  implicit def booleanToBool(x: Boolean): Bool = Bool(x)
+  implicit def sextToConv(x: UInt) = new AnyRef {
+    def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
+  }
 
-   implicit def wcToUInt(c: WideCounter): UInt = c.value
+  implicit def wcToUInt(c: WideCounter): UInt = c.value
+  implicit class UIntIsOneOf(val x: UInt) extends AnyVal {
+    def isOneOf(s: Seq[UInt]): Bool = s.map(x === _).reduce(_||_)
+  
+    def isOneOf(u1: UInt, u2: UInt*): Bool = isOneOf(u1 +: u2.toSeq)
+  }
+
+  implicit class UIntToAugmentedUInt(val x: UInt) extends AnyVal {
+    def sextTo(n: Int): UInt = {
+      require(x.getWidth <= n)
+      if (x.getWidth == n) x
+      else Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
+    }
+
+    def padTo(n: Int): UInt = {
+      require(x.getWidth <= n)
+      if (x.getWidth == n) x
+      else Cat(UInt(0, n - x.getWidth), x)
+    }
+
+    def extract(hi: Int, lo: Int): UInt = {
+      if (hi == lo-1) UInt(0)
+      else x(hi, lo)
+    }
+
+    def inRange(base: UInt, bounds: UInt) = x >= base && x < bounds
+  }
 }
+
  
 //do two masks have at least 1 bit match?
 object maskMatch
@@ -80,29 +107,34 @@ object Split
  
 
 // a counter that clock gates most of its MSBs using the LSB carry-out
-case class WideCounter(width: Int, inc: Bool = Bool(true))
+case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
 {
-   private val isWide = width >= 4
-   private val smallWidth = if (isWide) log2Ceil(width) else width
-   private val small = Reg(init=0.asUInt(smallWidth.W))
-   private val nextSmall = small + 1.asUInt((smallWidth+1).W)
-   when (inc) { small := nextSmall(smallWidth-1,0) }
-                      
-   private val large = if (isWide) {
-      val r = Reg(init=0.asUInt((width - smallWidth).W))
-      when (inc && nextSmall(smallWidth)) { r := r + 1.U }
-      r
-   } else null
-   
-   val value = Cat(large, small)
-   
-   def := (x: UInt) = {
-      val w = x.getWidth
-      small := x(w.min(smallWidth)-1,0)
-      if (isWide) large := (if (w < smallWidth) 0.U else x(w.min(width)-1,smallWidth))
-   }
-}
+  private val isWide = width > 2*inc.getWidth
+  private val smallWidth = if (isWide) inc.getWidth max log2Ceil(width) else width
+  private val small = if (reset) Reg(init=0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
+  private val nextSmall = small +& inc
+  small := nextSmall
 
+  private val large = if (isWide) {
+    val r = if (reset) Reg(init=0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
+    when (nextSmall(smallWidth)) { r := r + 1.U }
+    r
+  } else null
+
+  val value = if (isWide) Cat(large, small) else small
+  lazy val carryOut = {
+    val lo = (small ^ nextSmall) >> 1
+    if (!isWide) lo else {
+      val hi = Mux(nextSmall(smallWidth), large ^ (large +& 1.U), 0.U) >> 1
+      Cat(hi, lo)
+    }
+  }
+
+  def := (x: UInt) = {
+    small := x
+    if (isWide) large := x >> smallWidth
+  }
+}
 
 // taken from rocket FPU
 object RegEn
