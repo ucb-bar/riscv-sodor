@@ -33,7 +33,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val host  = new HTIFIO()
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
@@ -154,8 +153,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
-   csr.io.host <> io.host
-//   csr.io <> io.dat.csr
    csr.io.rw.addr  := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := alu_out
@@ -168,13 +165,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_xcpt := csr.io.decode.write_illegal //temporary 
    io.dat.csr_interrupt := csr.io.interrupt
    io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
 
    // Add your own uarch counters here!
-   csr.io.uarch_counters.foreach(_ := Bool(false))
+   csr.io.counters.foreach(_.inc := Bool(false))
 
    // WB Mux
    wb_data := MuxCase(alu_out, Array(

@@ -101,6 +101,7 @@ class MIP extends Bundle {
 class PerfCounterIO(implicit conf: SodorConfiguration) extends Bundle{
   val eventSel = Output(UInt(conf.xprlen.W))
   val inc = Input(UInt(conf.xprlen.W))
+  override def cloneType = { new PerfCounterIO().asInstanceOf[this.type] }
 }
 
 object CSR
@@ -151,7 +152,7 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val singleStep = Output(Bool())
 
   val decode = new Bundle {
-    val csr = Input(UInt(CSR.ADDRSZ))
+    val csr = Input(UInt(CSR.ADDRSZ.W))
     val read_illegal = Output(Bool())
     val write_illegal = Output(Bool())
     val write_flush = Output(Bool())
@@ -168,7 +169,7 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   val time = Output(UInt(conf.xprlen.W))
   val interrupt = Output(Bool())
   val interrupt_cause = Output(UInt(conf.xprlen.W))
-  val counters = Vec(58, new PerfCounterIO)
+  val counters = Vec(60, new PerfCounterIO)
 
 }
 
@@ -191,8 +192,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_wfi = Reg(init=Bool(false))
   val reg_mtvec = Reg(UInt(conf.xprlen.W))
 
-  val reg_time = WideCounter(conf.xprlen)
-  val reg_instret = WideCounter(conf.xprlen, io.retire)
+  val reg_time = WideCounter(64)
+  val reg_instret = WideCounter(64, io.retire)
 
   val reg_mcounteren = Reg(UInt(32.W))
   val reg_hpmevent = io.counters.map(c => Reg(init = 0.asUInt(conf.xprlen.W)))
@@ -235,10 +236,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
                      // during development before a Source ID is allocated.
 
   val read_mapping = collection.mutable.LinkedHashMap[Int,Bits](
-    CSRs.cycle -> reg_time,
-    CSRs.cycleh -> reg_time,
-    CSRs.instret -> reg_instret,
-    CSRs.instreth -> reg_instret,
+    CSRs.mcycle -> reg_time,
+    CSRs.minstret -> reg_instret,
     CSRs.mimpid -> 0.U,
     CSRs.marchid -> 0.U,
     CSRs.mvendorid -> 0.U,
@@ -299,8 +298,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val insn_wfi = system_insn && opcode(5) && priv_sufficient
 
   private def decodeAny(m: LinkedHashMap[Int,Bits]): Bool = m.map { case(k: Int, _: Bits) => io.decode.csr === k }.reduce(_||_)
-  io.decode.read_illegal := reg_mstatus.prv < io.decode.csr(9,8) ||
-    !decodeAny(read_mapping) ||
+  io.decode.read_illegal := reg_mstatus.prv < io.decode.csr(9,8) || !decodeAny(read_mapping) ||
     (io.decode.csr.inRange(CSR.firstCtr, CSR.firstCtr + CSR.nCtr) || io.decode.csr.inRange(CSR.firstCtrH, CSR.firstCtrH + CSR.nCtr)) && reg_mstatus.prv <= PRV.S  ||
     !reg_debug
   io.decode.write_illegal := io.decode.csr(11,10).andR
@@ -417,8 +415,10 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
     when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
     when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(VADDR_BITS-1,0) }
-    when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
-    when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }
+    if(conf.usingUser){
+      when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
+      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  
+    }
   }
 
   if (!conf.usingUser) {
@@ -433,13 +433,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   }
 
   def writeCounter(lo: Int, ctr: WideCounter, wdata: UInt) = {
-    if (conf.xprlen == 32) {
-      val hi = lo + CSRs.mcycleh - CSRs.mcycle
-      when (decoded_addr(lo)) { ctr := Cat(ctr(ctr.getWidth-1, 32), wdata) }
-      when (decoded_addr(hi)) { ctr := Cat(wdata(ctr.getWidth-33, 0), ctr(31, 0)) }
-    } else {
-      when (decoded_addr(lo)) { ctr := wdata(ctr.getWidth-1, 0) }
-    }
+    val hi = lo + CSRs.mcycleh - CSRs.mcycle
+    when (decoded_addr(hi)) { ctr := Cat(wdata(ctr.getWidth-33, 0), ctr(31, 0)) }
+    when (decoded_addr(lo)) { ctr := Cat(ctr(ctr.getWidth-1, 32), wdata) }
   }
   def readModifyWriteCSR(cmd: UInt, rdata: UInt, wdata: UInt) =
     (Mux(cmd.isOneOf(CSR.S, CSR.C), rdata, UInt(0)) | wdata) & ~Mux(cmd === CSR.C, wdata, UInt(0))

@@ -24,7 +24,6 @@ import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
 {
-  val host = new HTIFIO()
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
   val reset = Input(Bool())
@@ -47,7 +46,6 @@ class Core(implicit conf: SodorConfiguration) extends Module
   io.dmem.req.valid := c.io.dmem.req.valid
   io.dmem.req.bits.typ := c.io.dmem.req.bits.typ
   io.dmem.req.bits.fcn := c.io.dmem.req.bits.fcn
-  d.io.host <> io.host
 }
 
 }
