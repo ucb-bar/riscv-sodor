@@ -21,5 +21,3 @@ install/share
 sbt/*/target
 */target
 *.log
-*.v
-*.fir
