@@ -14,24 +14,25 @@ import Common._
 import Common.Util._   
 
 
-class SodorTileIo extends Bundle  
-{
-   implicit val conf = SodorConfiguration()
-   val dmi = Flipped(new DMIIO())
-}
-
 class SodorTile(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = IO(new SodorTileIo())
+   val io = IO(new Bundle {
+      val dmi = Flipped(new DMIIO())
+   })
 
    // notice that while the core is put into reset, the scratchpad needs to be
    // alive so that the HTIF can load in the program.
+   val debug = Module(new DebugModule())
    val core   = Module(new Core())
    val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
-
    core.io.dmem <> memory.io.core_ports(0)
    core.io.imem <> memory.io.core_ports(1)
+   debug.io.debugmem <> memory.io.debug_port
    
+   debug.io.ddpath <> core.io.ddpath
+   debug.io.dcpath <> core.io.dcpath 
+   debug.io.dmi <> io.dmi
+//   debug.io.dmi.resp <> io.dmi.resp
 }
- 
+
 }

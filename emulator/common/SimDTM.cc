@@ -1,8 +1,8 @@
 // See LICENSE.SiFive for license details.
 
 #include <fesvr/dtm.h>
-#include <vpi_user.h>
-#include <svdpi.h>
+#include <vltstd/vpi_user.h>
+#include <vltstd/svdpi.h>
 
 dtm_t* dtm;
 
@@ -63,6 +63,9 @@ extern "C" int debug_tick
   *debug_req_bits_addr = dtm->req_bits().addr;
   *debug_req_bits_op = dtm->req_bits().op;
   *debug_req_bits_data = dtm->req_bits().data;
-
+  printf("DRADDR:0x%x DRDATA:0x%x DROP:0x%x DRESD:0x%x DRESR:0x%x REQV:%x REQR:%x RESPV:%x RESPR:%x\n", 
+    *debug_req_bits_addr,*debug_req_bits_data,*debug_req_bits_op,
+    debug_resp_bits_data,debug_resp_bits_resp,*debug_req_valid,debug_req_ready,
+    debug_resp_valid,*debug_resp_ready);
   return dtm->done() ? (dtm->exit_code() << 1 | 1) : 0;
 }

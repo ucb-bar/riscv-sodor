@@ -106,7 +106,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    val io = IO(new Bundle
    {
       val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
-      val htif_port = Flipped(new MemPortIo(data_width = 64))
+      val debug_port = Flipped(new MemPortIo(data_width = 32))
    })
    val num_bytes_per_line = 8
    val num_lines = num_bytes / num_bytes_per_line
@@ -135,8 +135,8 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    {
       async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
       async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-      val dmask = StoreMask(req_typi, req_addri(2,0))
-      async_data.io.dw.mask := Mux(req_addri(2),dmask(7,4),dmask(3,0))
+      async_data.io.dw.mask := Mux(req_typd === MT_B,1.U << req_addrd(1,0),
+                              Mux(req_typd === MT_H,3.U << req_addrd(1),15.U))
    }
    /////////////////
 
@@ -148,20 +148,18 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
   // printf("daddr:0x%x drdata:0x%x dwdata:0x%x mask:%d typ:%d\n",io.core_ports(0).req.bits.addr,io.core_ports(0).resp.bits.data,io.core_ports(0).req.bits.data
     //  ,StoreMask(req_typi, req_addri(2,0)),io.core_ports(0).req.bits.fcn)
 
-   // HTIF PORT-------
-   io.htif_port.req.ready := Bool(true) // for now, no back pressure
-   io.htif_port.resp.valid := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   
+   // DEBUG PORT-------
+   io.debug_port.req.ready := Bool(true) // for now, no back pressure
+   io.debug_port.resp.valid := Reg(next=io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
    // asynchronous read
-   async_data.io.hr.addr := io.htif_port.req.bits.addr
-   io.htif_port.resp.bits.data := async_data.io.hr.data
-   async_data.io.hw.en := Mux((io.htif_port.req.bits.fcn === M_XWR),Bool(true),Bool(false))
-   when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
+   async_data.io.hr.addr := io.debug_port.req.bits.addr
+   io.debug_port.resp.bits.data := async_data.io.hr.data
+   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),Bool(true),Bool(false))
+   when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
-      async_data.io.hw.addr := io.htif_port.req.bits.addr
-      async_data.io.hw.data := io.htif_port.req.bits.data
-      async_data.io.hw.en := Bool(true)
-      async_data.io.hw.mask := "b11111111".U
+      async_data.io.hw.addr := io.debug_port.req.bits.addr
+      async_data.io.hw.data := io.debug_port.req.bits.data 
+      async_data.io.hw.mask := 15.U
    } 
 }
 
@@ -262,8 +260,8 @@ object StoreDataGen
 {
    def apply(din: Bits, typ: UInt, idx: UInt): Vec[UInt] =
    {
-      val word = (typ === MT_W) || (typ === MT_WU)
-      val half = (typ === MT_H) || (typ === MT_HU)
+      val word = typ === MT_W
+      val half = typ === MT_H
       val dout = Wire(Vec(8, UInt(8.W)))
       dout(idx) := din(7,0)
       dout(idx + 1.U) := Mux(half, din(15,8), 0.U)
@@ -278,8 +276,8 @@ object StoreMask
 {
    def apply(sel: UInt, idx: UInt): UInt = 
    {
-      val word = (sel === MT_W) || (sel === MT_WU)
-      val half = (sel === MT_H) || (sel === MT_HU)
+      val word = sel === MT_W 
+      val half = sel === MT_H
       val wmask = Wire(UInt(8.W))
       val temp_byte = Wire(UInt(8.W))
       val temp_half = Wire(UInt(8.W))

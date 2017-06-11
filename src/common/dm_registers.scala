@@ -1,6 +1,7 @@
-package uncore.devices
-
-import Chisel._
+package Common
+{
+import chisel3._
+import chisel3.util._
 
 // This file was auto-generated from the repository at https://github.com/sifive/riscv-debug-spec.git,
 // 'make chisel'
@@ -123,7 +124,9 @@ object DMI_RegAddrs {
         program buffer.
   */
   def DMI_PROGBUF0 =  0x20
-
+  def DMI_PROGBUF1 =  0x21
+  def DMI_PROGBUF2 =  0x22
+  def DMI_PROGBUF3 =  0x23
   def DMI_PROGBUF15 =  0x2f
 
   /* This register serves as a 32-bit serial port to the authentication
@@ -857,3 +860,4 @@ class SBDATA3Fields extends Bundle {
 
 }
 
+}

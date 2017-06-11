@@ -33,6 +33,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
+   val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
@@ -91,6 +92,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       regfile(wb_addr) := wb_data
    }
+
+   //// DebugModule
+   io.ddpath.rdata := regfile(io.ddpath.addr)
+   when(io.ddpath.validreq){
+      regfile(io.ddpath.addr) := io.ddpath.wdata
+   }
+   ///
 
    val rs1_data = Mux((rs1_addr != 0.U), regfile(rs1_addr), 0.asUInt(conf.xprlen.W))
    val rs2_data = Mux((rs2_addr != 0.U), regfile(rs2_addr), 0.asUInt(conf.xprlen.W))
@@ -196,7 +204,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
-   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
+   /*printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
       , csr.io.time(31,0)
       , alu_op1
       , alu_op2
@@ -215,7 +223,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          Mux(io.ctl.pc_sel === UInt(4), Str("X"),// EX -> X
          Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
       , inst
-      )
+      )*/
  
    if (PRINT_COMMIT_LOG)
    {
