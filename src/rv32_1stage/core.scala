@@ -38,7 +38,6 @@ class Core(implicit conf: SodorConfiguration) extends Module
   val d  = Module(new DatPath())
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat
-  c.io.resetSignal := io.reset
   
   io.imem <> c.io.imem
   io.imem <> d.io.imem

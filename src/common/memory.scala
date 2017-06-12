@@ -62,9 +62,9 @@ class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
 
 class d2h2i1(val addrWidth : Int) extends Bundle{
    val dataInstr = Vec(2,new  Rport(addrWidth,32))
-   val hw = new  Wport(addrWidth,64)
+   val hw = new  Wport(addrWidth,32)
    val dw = new  Wport(addrWidth,32)
-   val hr = new  Rport(addrWidth,64)
+   val hr = new  Rport(addrWidth,32)
    val clk = Input(Clock()) 
 }
 
@@ -122,6 +122,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
 
    /////////// DPORT 
    val req_addri = io.core_ports(DPORT).req.bits.addr
+
    val req_typi = io.core_ports(DPORT).req.bits.typ
    val resp_datai = async_data.io.dataInstr(DPORT).data
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
@@ -135,22 +136,25 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    {
       async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
       async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-      async_data.io.dw.mask := Mux(req_typd === MT_B,1.U << req_addrd(1,0),
-                              Mux(req_typd === MT_H,3.U << req_addrd(1),15.U))
+      async_data.io.dw.mask := Mux(req_typi === MT_B,1.U << req_addri(1,0),
+                              Mux(req_typi === MT_H,3.U << req_addri(1,0),15.U))
    }
    /////////////////
 
    ///////////// IPORT
-   io.core_ports(IPORT).resp.bits.data := async_data.io.dataInstr(IPORT).data
+   io.core_ports(IPORT).resp.bits.data := Mux((io.core_ports(IPORT).req.bits.addr & "hffe00000".U) === "h80000000".U
+      ,async_data.io.dataInstr(IPORT).data,0.U)
    ////////////
 
 
-  // printf("daddr:0x%x drdata:0x%x dwdata:0x%x mask:%d typ:%d\n",io.core_ports(0).req.bits.addr,io.core_ports(0).resp.bits.data,io.core_ports(0).req.bits.data
-    //  ,StoreMask(req_typi, req_addri(2,0)),io.core_ports(0).req.bits.fcn)
+/*   printf("D:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.debug_port.req.bits.addr,io.debug_port.resp.bits.data,io.debug_port.req.bits.data
+      ,io.debug_port.req.bits.fcn,io.debug_port.resp.valid)
+   printf("C:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.core_ports(DPORT).req.bits.addr,io.core_ports(DPORT).resp.bits.data,io.core_ports(DPORT).req.bits.data
+      ,io.core_ports(DPORT).req.bits.fcn,io.core_ports(DPORT).resp.valid)*/
 
    // DEBUG PORT-------
    io.debug_port.req.ready := Bool(true) // for now, no back pressure
-   io.debug_port.resp.valid := Reg(next=io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.resp.valid := io.debug_port.req.valid
    // asynchronous read
    async_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := async_data.io.hr.data

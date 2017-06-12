@@ -20,15 +20,8 @@ import scala.math._
 class MStatus extends Bundle {
     // not truly part of mstatus, but convenient
   val debug = Bool()
-  val isa = UInt(32.W)
-
-  val dprv = UInt(PRV.SZ.W) // effective privilege for data accesses
   val prv = UInt(PRV.SZ.W) // not truly part of mstatus, but convenient
   val sd = Bool()
-  val zero2 = UInt(27.W)
-  val sxl = UInt(2.W)
-  val uxl = UInt(2.W)
-  val sd_rv32 = Bool()
   val zero1 = UInt(8.W)
   val tsr = Bool()
   val tw = Bool()
@@ -160,12 +153,12 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
   }
 
   val status = Output(new MStatus())
-  val evec = Output(UInt(VADDR_BITS.W))
+  val evec = Output(UInt(conf.xprlen.W))
   val exception = Input(Bool())
   val retire = Input(Bool())
   val cause = Input(UInt(conf.xprlen.W))
   val tval = Input(UInt(conf.xprlen.W))
-  val pc = Input(UInt(VADDR_BITS.W))
+  val pc = Input(UInt(conf.xprlen.W))
   val time = Output(UInt(conf.xprlen.W))
   val interrupt = Output(Bool())
   val interrupt_cause = Output(UInt(conf.xprlen.W))
@@ -181,9 +174,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   reset_mstatus.mpp := PRV.M
   reset_mstatus.prv := PRV.M
   val reg_mstatus = Reg(init=reset_mstatus)
-  val reg_mepc = Reg(UInt(VADDR_BITS.W))
+  val reg_mepc = Reg(UInt(conf.xprlen.W))
   val reg_mcause = Reg(UInt(conf.xprlen.W))
-  val reg_mtval = Reg(UInt(VADDR_BITS.W))
+  val reg_mtval = Reg(UInt(conf.xprlen.W))
   val reg_mscratch = Reg(UInt(conf.xprlen.W))
   val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
 
@@ -256,7 +249,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     CSRs.dpc -> reg_dpc,
     CSRs.dscratch -> reg_dscratch)
 
-  for (((e, c), i) <- (reg_hpmevent.padTo(CSR.nHPM, 0.U)
+/*  for (((e, c), i) <- (reg_hpmevent.padTo(CSR.nHPM, 0.U)
                        zip reg_hpmcounter.map(x => x: UInt).padTo(CSR.nHPM, 0.U)) zipWithIndex) {
     read_mapping += (i + CSR.firstHPE) -> e // mhpmeventN
     read_mapping += (i + CSR.firstMHPC) -> c // mhpmcounterN
@@ -266,7 +259,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
       if (conf.usingUser) read_mapping += (i + CSR.firstHPCH) -> c // hpmcounterNh
     }
   }
-
+*/
   if (conf.usingUser) {
     read_mapping += CSRs.mcounteren -> reg_mcounteren
     read_mapping += CSRs.cycle -> reg_time
@@ -274,11 +267,11 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   }
 
   if (conf.xprlen == 32) {
-    read_mapping += CSRs.mcycleh -> (reg_time >> 32)
-    read_mapping += CSRs.minstreth -> (reg_instret >> 32)
+    read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
+    read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
     if (conf.usingUser) {
-      read_mapping += CSRs.cycleh -> (reg_time >> 32)
-      read_mapping += CSRs.instreth -> (reg_instret >> 32)
+      read_mapping += CSRs.cycleh -> 0.U //(reg_time >> 32)
+      read_mapping += CSRs.instreth -> 0.U //(reg_instret >> 32)
     }
   }
 
@@ -323,7 +316,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     Mux(base(0) && cause(cause.getWidth-1), interruptVec, base)
   }
   val tvec = Mux(trapToDebug, debugTVec, notDebugTVec)
-  io.evec := tvec  
+  //io.evec := reg_mepc  
 
   when (insn_wfi) { reg_wfi := true }
   when (some_interrupt_pending) { reg_wfi := false }
@@ -333,13 +326,11 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.status.fs := reg_mstatus.fs.orR.toUInt // either off or dirty (no clean/initial support yet)
   io.status.xs := reg_mstatus.xs.orR.toUInt // either off or dirty (no clean/initial support yet)
   io.status.sd := reg_mstatus.xs.orR || reg_mstatus.fs.orR
-  if (conf.xprlen == 32)
-    io.status.sd_rv32 := io.status.sd
 
   when (io.exception) {
-    reg_mepc := (io.pc >> 2.U) << 2 // clear low-2 bits
-    reg_mcause := io.cause
-    reg_mtval := io.pc // misaligned memory exceptions not supported...
+    reg_mcause := Causes.illegal_instruction
+    io.evec := "h80000004".U
+    reg_mepc := io.pc // misaligned memory exceptions not supported...
   }
   
   // val write_badaddr = cause isOneOf (Causes.illegal_instruction, Causes.breakpoint,
@@ -359,17 +350,30 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
    when (reg_time >= reg_mtimecmp) {
       reg_mip.mtip := true
    }
-
+  //DRET
   when(insn_ret && io.rw.addr(10)){
     new_prv := reg_dcsr.prv
     reg_debug := false
     io.evec := reg_dpc
-  } .elsewhen (insn_ret) {
+  } 
+  //MRET
+  when (insn_ret && !io.rw.addr(10)) {
     reg_mstatus.mie := reg_mstatus.mpie
     reg_mstatus.mpie := true
     new_prv := reg_mstatus.mpp
     io.evec := reg_mepc
   }
+  //ECALL 
+  when(insn_call){
+    io.evec := "h80000004".U
+    reg_mcause := reg_mstatus.prv + Causes.user_ecall
+  }
+  //EBREAK
+  when(insn_break){
+    io.evec := "h80000004".U
+    reg_mcause := Causes.breakpoint
+  }
+
 
   io.time := reg_time
   io.csr_stall := reg_wfi
@@ -401,20 +405,20 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
       reg_mie.mtip := new_mie.mtip
     }
 
-    for (((e, c), i) <- (reg_hpmevent zip reg_hpmcounter) zipWithIndex) {
+/*    for (((e, c), i) <- (reg_hpmevent zip reg_hpmcounter) zipWithIndex) {
       writeCounter(i + CSR.firstMHPC, c, wdata)
       //when (decoded_addr(i + CSR.firstHPE)) { e := perfEventSets.maskEventSelector(wdata) }
-    }
+    }*/
     writeCounter(CSRs.mcycle, reg_time, wdata)
     writeCounter(CSRs.minstret, reg_instret, wdata)
 
     when (decoded_addr(CSRs.dpc))      { reg_dpc := wdata }
     when (decoded_addr(CSRs.dscratch)) { reg_dscratch := wdata }
 
-    when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(VADDR_BITS-1,0) >> 2.U) << 2.U }
+    when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(conf.xprlen-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
     when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
-    when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(VADDR_BITS-1,0) }
+    when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(conf.xprlen-1,0) }
     if(conf.usingUser){
       when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
       when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  

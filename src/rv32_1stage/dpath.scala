@@ -55,6 +55,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    // PC Register
    pc_next := MuxCase(pc_plus4, Array(
+                  (io.ddpath.resetpc === Bool(true)) -> "h80000000".U,
                   (io.ctl.pc_sel === PC_4)   -> pc_plus4,
                   (io.ctl.pc_sel === PC_BR)  -> br_target,
                   (io.ctl.pc_sel === PC_J )  -> jmp_target,
@@ -63,7 +64,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   ))
 
    val pc_reg = Reg(init=START_ADDR.asUInt(conf.xprlen.W))
-
 
    when (!io.ctl.stall) 
    {
@@ -74,7 +74,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    
    io.imem.req.bits.addr := pc_reg
-   io.imem.req.valid := Bool(true)
+   io.imem.req.valid := true.B 
    val inst = Mux(io.imem.resp.valid, io.imem.resp.bits.data, BUBBLE) 
                  
    
@@ -166,14 +166,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := alu_out
 
    csr.io.retire    := !io.ctl.stall
-   csr.io.exception := io.ctl.exception
+   csr.io.exception := io.ctl.exception && ((io.imem.req.bits.addr & "hffe00000".U) === "h80000000".U)
 //   io.dat.status    := csr.io.status
    csr.io.cause     := io.ctl.exc_cause
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.decode.write_illegal //temporary 
+   io.dat.csr_xcpt := csr.io.exception 
    io.dat.csr_interrupt := csr.io.interrupt
    io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
@@ -204,26 +204,26 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
-   /*printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
+   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
       , csr.io.time(31,0)
       , alu_op1
       , alu_op2
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
       , wb_addr
       , wb_data
-      , Mux(io.ctl.exception, Str("E"), Str(" ")) // EXC -> E
+      , Mux(csr.io.exception, Str("E"), Str(" ")) // EXC -> E
       , io.ctl.wb_sel
       , io.dmem.resp.bits.data
       , io.dmem.req.bits.data
       , pc_reg
       , Mux(io.ctl.stall, Str("s"), Str(" "))
-      , Mux(io.ctl.pc_sel  === UInt(1), Str("B"),
-         Mux(io.ctl.pc_sel === UInt(2), Str("J"),
-         Mux(io.ctl.pc_sel === UInt(3), Str("K"),// JR -> K
-         Mux(io.ctl.pc_sel === UInt(4), Str("X"),// EX -> X
+      , Mux(io.ctl.pc_sel  === 1.U, Str("B"),
+         Mux(io.ctl.pc_sel === 2.U, Str("J"),
+         Mux(io.ctl.pc_sel === 3.U, Str("K"),// JR -> K
+         Mux(io.ctl.pc_sel === 4.U, Str("X"),// EX -> X
          Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
       , inst
-      )*/
+      )
  
    if (PRINT_COMMIT_LOG)
    {

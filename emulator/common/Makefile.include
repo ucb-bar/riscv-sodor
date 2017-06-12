@@ -42,7 +42,7 @@ CXXSRCS := SimDTM
 CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
 CXXDEBUGFLAGS := -DDEBUG
 
-LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lpthread
+LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lpthread
 OBJS := $(addsuffix .o,$(CXXSRCS))
 DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS))
 
@@ -82,7 +82,7 @@ VERILATOR_FLAGS := --top-module Top \
   -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
 emulator: generated-src/Top.v emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SimDTM.v
 	$(VERILATOR) $(VERILATOR_FLAGS) \
-	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" emulator.cpp $(generated_dir)/SimDTM.o
+	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
 # $(MODEL).o: %.o: generated-src/%.cpp
 # 	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
@@ -262,10 +262,10 @@ $(addprefix output/, $(addsuffix .hex, $(global_bmarks))): output/%.hex: $(globa
 output:
 	mkdir -p $@
 
-output/%.run: output/%.hex emulator
+output/%.run: $(srcDir)/riscv-tests/isa/% emulator
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) /dev/null
 
-output/%.out: output/%.hex emulator
+output/%.out: $(srcDir)/riscv-tests/isa/% emulator
 	-./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)

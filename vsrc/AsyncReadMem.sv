@@ -1,6 +1,6 @@
 module AsyncReadMem
   #(parameter NUM_BYTES = (1 << 21),
-    parameter DATA_WIDTH_HTIF = 64,
+    parameter DATA_WIDTH_HTIF = 32,
     parameter DATA_WIDTH_CPU = 32)
    (input clk,
     
@@ -28,13 +28,12 @@ module AsyncReadMem
    localparam MASK_WIDTH_CPU = DATA_WIDTH_CPU >> 3;   
 
    reg [7:0] 		mem [0:NUM_BYTES-1];
-
+   
     genvar i;
   generate
     for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_writes
       always @ (posedge clk) begin
         if (hw_en) begin
-          $display("hw en");
           if (hw_mask[i] == 1'b1) begin
             mem[hw_addr + i] <= hw_data[i*8 +: 8];
           end

@@ -3,4 +3,4 @@
 	url = https://github.com/riscv/riscv-tests.git
 [submodule "riscv-fesvr"]
 	path = riscv-fesvr
-	url = https://github.com/riscv/riscv-fesvr.git
+	url = https://github.com/codelec/riscv-fesvr.git
