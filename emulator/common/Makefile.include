@@ -199,8 +199,7 @@ global_bmarks = \
 	multiply \
 	qsort \
 	towers \
-	vvadd \
-	dhrystone
+	vvadd 
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
@@ -283,7 +282,7 @@ output/%.vpd: output/%.hex emulator-debug
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: output/%.hex emulator 
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(srcDir)/riscv-tests/benchmarks/%.riscv emulator 
 	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@

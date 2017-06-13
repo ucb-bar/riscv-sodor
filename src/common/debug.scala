@@ -220,10 +220,10 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
 
   /// abstract cs command regfile access
   io.ddpath.addr := command.regno & "hfff".U
-  when(command.transfer){
+  when(command.transfer && abstractcs.cmderr =/= 0.U){
     when(command.write){
       io.ddpath.wdata := data0
-      io.ddpath.validreq := true.B    
+      io.ddpath.validreq := true.B     
     } .otherwise {
       data0 := io.ddpath.rdata
     }
