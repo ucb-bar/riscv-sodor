@@ -156,7 +156,6 @@ global_asm_tests += \
 	rv32ui-p-blt \
 	rv32ui-p-bltu \
 	rv32ui-p-bne \
-	rv32ui-p-j \
 	rv32ui-p-jal \
 	rv32ui-p-jalr \
 	rv32ui-p-lb \
@@ -262,9 +261,11 @@ output:
 	mkdir -p $@
 
 output/%.run: $(srcDir)/riscv-tests/isa/% emulator
+	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) /dev/null
 
 output/%.out: $(srcDir)/riscv-tests/isa/% emulator
+	mkdir -p output
 	-./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
@@ -282,7 +283,7 @@ output/%.vpd: output/%.hex emulator-debug
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(srcDir)/riscv-tests/benchmarks/%.riscv emulator 
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(srcDir)/riscv-tests/benchmarks/%.riscv emulator
 	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
 	./emulator +max-cycles=$(bmark_timeout) +verbose -v- $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@

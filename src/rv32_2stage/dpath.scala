@@ -31,7 +31,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val host = new HTIFIO()
+   val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
@@ -66,6 +66,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
 
    if_pc_next := MuxCase(if_pc_plus4, Array(
+                  (io.ddpath.resetpc === Bool(true)) -> "h80000000".U,
                   (io.ctl.pc_sel === PC_4)  -> if_pc_plus4,
                   (io.ctl.pc_sel === PC_BR) -> exe_br_target,
                   (io.ctl.pc_sel === PC_J ) -> exe_jmp_target,
@@ -105,6 +106,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    // Register File
    val regfile = Mem(UInt(conf.xprlen.W),32)
+
+   //// DebugModule
+   io.ddpath.rdata := regfile(io.ddpath.addr)
+   when(io.ddpath.validreq){
+      regfile(io.ddpath.addr) := io.ddpath.wdata
+   }
+   ///
+
 
    when (io.ctl.rf_wen && (exe_wbaddr != 0.U) && !io.dat.csr_xcpt)
    {
@@ -172,26 +181,25 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
-   csr.io.host <> io.host
    csr.io.rw.addr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
    csr.io.retire    := !io.ctl.stall // TODO verify this works properly
-   csr.io.exception := io.ctl.exception
+   csr.io.exception := io.ctl.exception && ((exe_reg_pc & "hffe00000".U) === "h80000000".U)
    csr.io.cause     := io.ctl.exc_cause
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
                     
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_xcpt := csr.io.exception
    io.dat.csr_interrupt := csr.io.interrupt
    io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
         
    // Add your own uarch counters here!
-   csr.io.uarch_counters.foreach(_ := Bool(false))
+   //csr.io.uarch_counters.foreach(_ := Bool(false))
 
  
    // WB Mux
