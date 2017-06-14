@@ -47,6 +47,7 @@ class CtlToDatIo extends Bundle()
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 {
+   val dcpath = Flipped(new DebugCPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
@@ -113,10 +114,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   CSRRC  -> List(Y, BR_N  , OP1_RS1, OP2_X     , OEN_1, OEN_1, ALU_COPY_1,WB_CSR,REN_1, MEN_0, M_X  , MT_X, CSR.C, N),
                   CSRRCI -> List(Y, BR_N  , OP1_IMZ, OP2_X     , OEN_1, OEN_1, ALU_COPY_1,WB_CSR,REN_1, MEN_0, M_X  , MT_X, CSR.C, N),
 
-                  SCALL  -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
-                  SRET   -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
-                  MRTS   -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
-                  SBREAK -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
+                  ECALL  -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
+                  MRET   -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
+                  DRET   -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
+                  EBREAK -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.I, N),
                   WFI    -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.N, N), // implemented as a NOP
 
                   FENCE_I-> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.N, Y),
@@ -149,11 +150,11 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Exception Handling ---------------------
 
-   io.ctl.pipeline_kill := io.ctl.mem_exception || io.dat.csr_eret || io.dat.csr_xcpt
+   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception) && io.dat.valid_addr // csr.io.exception
    
    val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
  
-   val dec_exception = exc_illegal || io.dat.csr_interrupt
+   val dec_exception = exc_illegal 
    val dec_exc_cause = Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
                                                  UInt(Common.Causes.illegal_instruction))
 
@@ -262,7 +263,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // we need to stall IF while fencei goes through DEC and EXE, as there may
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || Reg(next=cs_fencei) 
- 
+
    io.ctl.mem_exception := Reg(next=exe_reg_exception)
    io.ctl.mem_exc_cause := Reg(next=Reg(next=dec_exc_cause))
                                     

@@ -233,7 +233,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   when ((decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_READ)) || sbcs.sbautoread){
     io.debugmem.req.bits.addr :=  sbaddr
     io.debugmem.req.bits.fcn := M_XRD
-    io.debugmem.req.valid := true.B
+    io.debugmem.req.valid := io.dmi.req.valid
     memreadfire := true.B
   }
   
@@ -241,7 +241,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   {
     sbdata := io.debugmem.resp.bits.data
     memreadfire := false.B
-    when(sbcs.sbautoincrement && io.dmi.req.valid)
+    when(sbcs.sbautoincrement)
     {
       sbaddr := sbaddr + 4.U
     }

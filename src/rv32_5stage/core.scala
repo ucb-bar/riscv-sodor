@@ -12,7 +12,8 @@ import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
 {
-   val host = new HTIFIO()
+   val ddpath = Flipped(new DebugDPath())
+   val dcpath = Flipped(new DebugCPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
 }
@@ -33,7 +34,8 @@ class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends 
    io.dmem <> c.io.dmem
    io.dmem <> d.io.dmem
    
-   d.io.host <> io.host
+   d.io.ddpath <> io.ddpath
+   c.io.dcpath <> io.dcpath
 }
 
 }

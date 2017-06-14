@@ -31,12 +31,13 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val csr_xcpt = Output(Bool())
    val csr_interrupt = Output(Bool())
    val csr_interrupt_cause = Output(UInt(conf.xprlen.W))
+   val valid_addr = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 {
-   val host  = new HTIFIO()
+   val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
@@ -113,10 +114,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))
 
-   if_pc_next := Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
+   if_pc_next := Mux(io.ddpath.resetpc === Bool(true) , "h80000000".U,
+               Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
                  Mux(io.ctl.exe_pc_sel === PC_BRJMP,  exe_brjmp_target,
                  Mux(io.ctl.exe_pc_sel === PC_JALR,   exe_jump_reg_target,
-                 /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target)))
+                 /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target))))
 
    // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
    when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 && 
@@ -165,6 +167,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       regfile.io.wdata := wb_reg_wbdata
       regfile.io.wen   := wb_reg_ctrl_rf_wen
 
+   //// DebugModule
+   regfile.io.dm_addr := io.ddpath.addr
+   io.ddpath.rdata := regfile.io.dm_rdata 
+   regfile.io.dm_en := io.ddpath.validreq
+   regfile.io.dm_wdata := io.ddpath.wdata
+   ///
 
    // immediates
    val imm_itype  = dec_reg_inst(31,20)
@@ -351,7 +359,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Control Status Registers
    // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
    val csr = Module(new CSRFile())
-   csr.io.host <> io.host
    csr.io.rw.addr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
@@ -362,14 +369,15 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
 
+   io.dat.valid_addr := (mem_reg_pc & "hffe00000".U) === "h80000000".U  
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.csr_xcpt
+   io.dat.csr_xcpt := csr.io.exception
    io.dat.csr_interrupt := csr.io.interrupt
    io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
 
    // Add your own uarch counters here!
-   csr.io.uarch_counters.foreach(_ := Bool(false))
+   //csr.io.uarch_counters.foreach(_ := Bool(false))
 
 
    // WB Mux
@@ -388,7 +396,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       wb_reg_wbaddr        := mem_reg_wbaddr
       wb_reg_wbdata        := mem_wbdata
-      wb_reg_ctrl_rf_wen   := Mux(io.dat.csr_xcpt, Bool(false), mem_reg_ctrl_rf_wen)
+      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, Bool(false), mem_reg_ctrl_rf_wen)
    }
    .otherwise
    {
@@ -417,7 +425,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.bits.data := mem_reg_rs2_data
 
    // Printout
-   printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) [%x, %x, %x, %x, %x] %c %c ExeInst: DASM(%x)\n"
+   printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) WB[%c%c %x: 0x%x] %c %c %c ExeInst: DASM(%x)\n"
       , csr.io.time(31,0)
       , if_reg_pc
       , dec_reg_pc
@@ -425,17 +433,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Reg(next=exe_reg_pc)
       , Reg(next=Reg(next=exe_reg_pc))
       // TODO come up with a way to print out the opcode name, instead of just the number
-      , if_inst(31,0)
-      , dec_reg_inst(31,0)
-      , exe_reg_inst(31,0)
-      , Reg(next=exe_reg_inst(31,0))
-      , Reg(next=Reg(next=exe_reg_inst(31,0)))
+      , Mux(wb_reg_ctrl_rf_wen, Str("M"), Str(" ")) 
+      , Mux(mem_reg_ctrl_rf_wen, Str("Z"), Str(" "))
+      , wb_reg_wbaddr
+      , wb_reg_wbdata
       , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F 
         Mux(io.ctl.dec_stall, Str("S"), Str(" ")))  //STALL->S
       , Mux(io.ctl.exe_pc_sel === 1.U, Str("B"),  //BJ -> B
         Mux(io.ctl.exe_pc_sel === 2.U, Str("J"),   //JR -> J
         Mux(io.ctl.exe_pc_sel === 3.U, Str("E"),   //EX -> E
         Mux(io.ctl.exe_pc_sel === 0.U, Str(" "), Str("?")))))
+      , Mux(csr.io.exception, Str("X"), Str(" "))
       , Mux(io.ctl.pipeline_kill, BUBBLE, exe_reg_inst)
       )
 
