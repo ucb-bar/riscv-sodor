@@ -1,4 +1,4 @@
-module AsyncReadMem
+module SyncMem
   #(parameter NUM_BYTES = (1 << 21),
     parameter DATA_WIDTH_HTIF = 32,
     parameter DATA_WIDTH_CPU = 32)
@@ -28,7 +28,16 @@ module AsyncReadMem
    localparam MASK_WIDTH_CPU = DATA_WIDTH_CPU >> 3;   
 
    reg [7:0] 		mem [0:NUM_BYTES-1];
-   
+   reg [ADDR_WIDTH-1:0] regdataInstr_0_addr;
+   reg [ADDR_WIDTH-1:0] regdataInstr_1_addr;
+   reg [ADDR_WIDTH-1:0] reghr_addr;
+
+    always_ff @ (posedge clk) begin
+      reghr_addr <= hr_addr;
+      regdataInstr_0_addr <= dataInstr_0_addr;
+      regdataInstr_1_addr <= dataInstr_1_addr;
+    end
+
     genvar i;
   generate
     for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_writes
@@ -56,17 +65,17 @@ module AsyncReadMem
 
   generate
     for (i = 0; i < MASK_WIDTH_HTIF; i = i + 1) begin : gen_sel_read
-      always @* begin
-        hr_data[i*8 +: 8] = mem[hr_addr + i];
+      always @ (posedge clk) begin
+        hr_data[i*8 +: 8] = mem[reghr_addr + i];
       end
     end 
   endgenerate
 
   generate
     for (i = 0; i < MASK_WIDTH_CPU; i = i + 1) begin : gen_sel_read1
-      always @* begin
-        dataInstr_0_data[i*8 +: 8] = mem[dataInstr_0_addr + i];
-        dataInstr_1_data[i*8 +: 8] = mem[dataInstr_1_addr + i];
+      always @ (posedge clk) begin
+        dataInstr_0_data[i*8 +: 8] = mem[regdataInstr_0_addr + i];
+        dataInstr_1_data[i*8 +: 8] = mem[regdataInstr_1_addr + i];
       end
     end 
   endgenerate

@@ -18,7 +18,7 @@ trait SodorProcConstants
    //************************************
    // Machine Parameters
 
-   val NUM_MEMORY_PORTS = 2;
+   val NUM_MEMORY_PORTS = 1;
 
    // if the front-end ONLY predicts PC+4, this simplifies quite a bit of logic.
    // First, the PC select mux never needs to compute ExePC + 4 on a branch
@@ -37,8 +37,8 @@ trait ScalarOpConstants
    //************************************
    // Control Signals
 
-   val Y      = Bool(true)
-   val N      = Bool(false)
+   val Y      = true.B
+   val N      = false.B
 
    // PC Select Signal
    val PC_4   = 0.asUInt(3.W)  // PC + 4
@@ -72,9 +72,9 @@ trait ScalarOpConstants
    val OP2_X   = 0.asUInt(2.W)
 
    // Register File Write Enable Signal
-   val REN_0   = Bool(false)
-   val REN_1   = Bool(true)
-   val REN_X   = Bool(false)
+   val REN_0   = false.B
+   val REN_1   = true.B
+   val REN_X   = false.B
 
    // Writeback Select Signal
    val WB_ALU  = 0.asUInt(2.W)
@@ -90,9 +90,9 @@ trait ScalarOpConstants
    val MWR_X   = 0.asUInt(2.W)
 
    // Memory Enable Signal
-   val MEN_0   = Bool(false)
-   val MEN_1   = Bool(true)
-   val MEN_X   = Bool(false)
+   val MEN_0   = false.B
+   val MEN_1   = true.B
+   val MEN_X   = false.B
 
    // Memory Mask Type Signal
    val MSK_B   = 0.asUInt(3.W)

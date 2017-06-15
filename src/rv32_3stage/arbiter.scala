@@ -27,8 +27,8 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    //***************************
    val i1reg = Reg(UInt(conf.xprlen.W))
    val d1reg = Reg(UInt(conf.xprlen.W))
-   val nextdreq = Reg(init=Bool(true))
-   io.dmem.req.ready := Bool(true)
+   val nextdreq = Reg(init=true.B)
+   io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
    val d_fire = Wire(Bool()) 
    io.imem.req.ready := d_fire
@@ -45,19 +45,19 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    // alternate between data and instr to avoid starvation
    when (io.dmem.req.valid && nextdreq)
    {
-        d_fire := Bool(true)
-        nextdreq := Bool(false) // allow only instr in next cycle
+        d_fire := true.B
+        nextdreq := false.B // allow only instr in next cycle
         io.imem.resp.valid := io.mem.resp.valid
    }
    .elsewhen(io.dmem.req.valid && !nextdreq)
    {
-        d_fire := Bool(false)
-        nextdreq := Bool(true)  // allow any future data request
-        io.imem.resp.valid := Bool(false)
+        d_fire := false.B
+        nextdreq := true.B  // allow any future data request
+        io.imem.resp.valid := false.B
    }
    .otherwise
    {
-        d_fire := Bool(false)
+        d_fire := false.B
         io.imem.resp.valid := io.mem.resp.valid
    }
    // SwITCH BET DATA AND INST REQ FOR SINGLE PORT

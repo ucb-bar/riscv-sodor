@@ -85,17 +85,17 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_valid  = Reg(init=Bool(false))
+   val if_reg_valid  = Reg(init = false.B)
    val if_reg_pc     = Reg(init=(START_ADDR-4).asUInt(conf.xprlen.W))
     
-   val exe_reg_valid = Reg(init=Bool(false))
+   val exe_reg_valid = Reg(init = false.B)
    val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
    val exe_reg_inst  = Reg(UInt(conf.xprlen.W))
 
    //**********************************
    // Next PC Stage (if we can call it that)
    val if_pc_next = Wire(UInt(conf.xprlen.W))
-   val if_val_next = Wire(Bool(true)) // for now, always true. But instruction
+   val if_val_next = Wire(init = true.B) // for now, always true. But instruction
                                 // buffers, etc., could make that not the case.
    
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
@@ -104,9 +104,9 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    when (io.cpu.resp.ready)
    {
       if_pc_next := if_pc_plus4
-
       when (io.cpu.req.valid)
       {
+         // printf("here2\n")
          // datapath is redirecting the PC stream (misspeculation)
          if_pc_next := io.cpu.req.bits.pc
       }

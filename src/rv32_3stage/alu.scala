@@ -46,7 +46,7 @@ object ALU
 
   def isMulFN(fn: UInt, cmp: UInt) = fn(1,0) === cmp(1,0)
   def isSub(cmd: UInt) = cmd(3)
-  def isSLTU(cmd: UInt) = cmd(0)
+  def isSLTU(cmd: UInt) = cmd(1)
 }
 import ALU._
 
@@ -69,9 +69,8 @@ class ALU(implicit conf: SodorConfiguration) extends Module
   val sum = io.in1 + Mux(isSub(io.fn), -io.in2, io.in2)
 
   // SLT, SLTU
-  val less  = Mux(io.in1(msb) === io.in2(msb), sum(msb),
-              Mux(isSLTU(io.fn), io.in2(msb), io.in1(msb)))
-
+  val less  =  (io.in1.toSInt < io.in2.toSInt).toUInt             /*Mux(io.in1(msb) === io.in2(msb), sum(msb),
+              Mux(isSLTU(io.fn), io.in2(msb), io.in1(msb)))*/
   // SLL, SRL, SRA
   require(conf.xprlen == 32)
 //  val shamt = Cat(io.in2(5) & (io.dw === DW_64), io.in2(4,0)).toUInt
@@ -99,6 +98,7 @@ class ALU(implicit conf: SodorConfiguration) extends Module
     Mux(io.fn === ALU_SLL,                       shout_l,
         bitwise_logic))))
 
+ // printf("%x %x %x %x %x\n",less,out_xpr_length,io.in1,io.in2,io.fn)
 //  val out_hi = Mux(io.dw === DW_64, out64(63,32), Fill(32, out64(31)))
 //  io.out := Cat(out_hi, out64(31,0)).toUInt
   io.out := out_xpr_length(31,0).toUInt

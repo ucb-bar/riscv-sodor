@@ -20,19 +20,19 @@ import ALU._
 class CtrlSignals extends Bundle() 
 {
    val exe_kill  = Output(Bool())    // squash EX stage (exception/sret occurred)
-   val pc_sel    = Output(UInt(PC_4.getWidth)) 
+   val pc_sel    = Output(UInt(3.W)) 
    val brjmp_sel = Output(Bool())
-   val op1_sel   = Output(UInt(OP1_X.getWidth)) 
-   val op2_sel   = Output(UInt(OP2_X.getWidth)) 
-   val alu_fun   = Output(UInt(SZ_ALU_FN)) 
-   val wb_sel    = Output(UInt(WB_X.getWidth)) 
+   val op1_sel   = Output(UInt(2.W)) 
+   val op2_sel   = Output(UInt(2.W)) 
+   val alu_fun   = Output(UInt(SZ_ALU_FN.W)) 
+   val wb_sel    = Output(UInt(2.W)) 
    val rf_wen    = Output(Bool()) 
    val bypassable = Output(Bool())     // instruction's result can be bypassed
    val csr_cmd   = Output(UInt(CSR.SZ)) 
 
    val dmem_val  = Output(Bool())
    val dmem_fcn  = Output(UInt(M_X.getWidth))
-   val dmem_typ  = Output(UInt(MT_X.getWidth))
+   val dmem_typ  = Output(UInt(3.W))
  
    val exception = Output(Bool())   
    val exc_cause = Output(UInt(32.W))
@@ -40,6 +40,7 @@ class CtrlSignals extends Bundle()
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
+   val dcpath = Flipped(new DebugCPath())
    val imem = Flipped(new FrontEndCpuIO())
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
@@ -107,10 +108,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   CSRRC   -> List(Y, BR_N  , N, OP1_RS1, OP2_X   , ALU_COPY1,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.C, M_N),
                   CSRRCI  -> List(Y, BR_N  , N, OP1_IMZ, OP2_X   , ALU_COPY1,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.C, M_N),
                                                                                                                                   // TODO:
-                  SCALL   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // don't think I actually
-                  SRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // need to flush memory here
-                  MRTS    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
-                  SBREAK  -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
+                  ECALL   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // don't think I actually
+                  MRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // need to flush memory here
+                  DRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
+                  EBREAK  -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
                   WFI     -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
 
                   FENCE_I -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_SI), 
@@ -130,9 +131,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Branch Logic   
    val take_evec = Wire(Bool()) // jump to the csr.io.evec target 
                           // (for exceptions or sret, taken in the WB stage)
-   val exe_exception = Wire(Bool()  ) 
+   val exe_exception = Wire(Bool()) 
 
-   val ctrl_pc_sel = Mux(take_evec            ,  PC_EXC,
+   val ctrl_pc_sel = Mux(take_evec && io.dat.valid_addr        ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -146,7 +147,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      ))))))))))
                            
 
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid
+   // OR'ing with resetpc request from debug is temp hack
+   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid || io.dat.resetpc
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
@@ -155,11 +157,11 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
-   io.ctl.rf_wen     := Mux(exe_exception || !ctrl_valid, Bool(false), cs_rf_wen.toBool)
+   io.ctl.rf_wen     := Mux(exe_exception || !ctrl_valid, false.B, cs_rf_wen.toBool)
    io.ctl.bypassable := cs_bypassable.toBool 
 
    val rs1_addr = io.imem.resp.bits.inst(RS1_MSB, RS1_LSB)
-   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
    io.ctl.csr_cmd    := Mux(exe_exception || !ctrl_valid, CSR.N, csr_cmd)
    
@@ -176,8 +178,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Exception Handling
 
    val exc_illegal = (!cs_inst_val && io.imem.resp.valid) 
-   exe_exception := exc_illegal || io.dat.csr_interrupt
-
+   exe_exception := exc_illegal 
    io.ctl.exception := exe_exception
    io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
                                                  UInt(Common.Causes.illegal_instruction))
@@ -185,6 +186,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    take_evec        := Reg(next=io.ctl.exception) ||
                        io.dat.csr_eret || 
                        io.dat.csr_xcpt
+
+
 }
 
 }
