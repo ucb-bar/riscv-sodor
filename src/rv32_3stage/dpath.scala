@@ -95,9 +95,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val wb_wbdata    = Wire(UInt(conf.xprlen.W))
 
    if(NUM_MEMORY_PORTS == 1) {
+      // stall for more cycles incase of store after load with Writeback conflict
+      val count = Reg(init = 1.asUInt(2.W))
+      when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen)
+      {
+         count := 0.U
+      }
+      when(count =/= 2.U ){
+         count := count + 1.U
+      }
       wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
                          ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
-                         (io.ctl.dmem_val && !RegNext(wb_hazard_stall))
+                         (io.ctl.dmem_val && !RegNext(wb_hazard_stall)) || (io.ctl.dmem_val && (count =/= 2.U))
    }
    else{
       wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
@@ -184,7 +193,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
     
    // datapath to data memory outputs
    io.dmem.req.valid     := io.ctl.dmem_val
-   io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid //io.ctl.dmem_fcn
+   if(NUM_MEMORY_PORTS == 1) 
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen)
+   else   
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid //io.ctl.dmem_fcn
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
@@ -264,8 +276,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))
       , wb_reg_wbaddr
       , wb_wbdata
-      , Mux((io.ctl.dmem_fcn & !wb_hazard_stall).toBool, Str("E"), Str("_"))
-      , io.dmem.req.bits.data
+      , Mux(io.ctl.exception, Str("E"), Str("_"))
+      //, Mux(((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable),Str("A"), Str(" "))
+      , io.imem.resp.bits.inst
       , irt_reg(11,0)
       , Mux(wb_hazard_stall, Str("H"), Str(" "))  // HAZ -> H
       , Mux(io.ctl.pc_sel === 1.U, Str("B"),   // Br -> B

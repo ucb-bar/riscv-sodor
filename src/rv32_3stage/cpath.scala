@@ -50,10 +50,12 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 
                                                                                                                             
 class CtlPath(implicit conf: SodorConfiguration) extends Module
-{                            //                                     
+{
+   val io = IO(new CpathIo())
+                             //                                     
                              //   inst val?                                                                                mem flush/sync
                              //   |    br type                      alu fcn                 bypassable?                    |
-  val io = IO(new CpathIo())     //   |    |     is jmp?                |        wb sel         |  mem en               csr cmd|
+                             //   |    |     is jmp?                |        wb sel         |  mem en               csr cmd|
                              //   |    |     |  op1 sel  op2 sel    |        |       rf wen |  |      mem cmd       |      |
    val csignals =            //   |    |     |  |        |          |        |       |      |  |      |      mask type     |
       ListLookup(io.imem.resp.bits.inst,//   |  |        |          |        |       |      |  |      |      |      |      |

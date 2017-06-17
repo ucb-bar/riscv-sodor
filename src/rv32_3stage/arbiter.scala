@@ -22,12 +22,17 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
          val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
          val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
          val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
-      })
+         val hack = Input(UInt(conf.xprlen.W)) // HACK FOR PRINCETON
+      }) 
+
+   ///////// HACK FOR PRINCETON
+   val hack_typ = Wire(UInt(3.W))
+   //////////
 
    //***************************
    val i1reg = Reg(UInt(conf.xprlen.W))
    val d1reg = Reg(UInt(conf.xprlen.W))
-   val nextdreq = Reg(init=true.B)
+   val nextdreq = Reg(init = true.B)
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
    val d_fire = Wire(Bool()) 
@@ -66,6 +71,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       io.mem.req.valid     := io.dmem.req.valid
       io.mem.req.bits.addr := io.dmem.req.bits.addr
       io.mem.req.bits.fcn  := io.dmem.req.bits.fcn
+      hack_typ := io.dmem.req.bits.typ
       io.mem.req.bits.typ  := io.dmem.req.bits.typ
    }
    .otherwise
@@ -75,13 +81,29 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       io.mem.req.bits.fcn  := io.imem.req.bits.fcn
       io.mem.req.bits.typ  := io.imem.req.bits.typ
    }
+   
    io.mem.req.bits.data := io.dmem.req.bits.data
-   d1reg := Mux(!nextdreq , io.mem.resp.bits.data , d1reg)
-   io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid 
-   i1reg := Mux( io.imem.resp.valid && io.dmem.req.valid && nextdreq , io.mem.resp.bits.data , i1reg )
-   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
-   io.dmem.resp.bits.data := d1reg
+   io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid
+   
+   // 
+   val next_typ = Reg(UInt(3.W))
+   when (!nextdreq){
+      d1reg := io.hack//((Fill(24,io.hack(7))<<8.U)(31,0) + io.hack(7,0))
+      next_typ := hack_typ
+   }
 
+   when (io.imem.resp.valid && io.dmem.req.valid && nextdreq){
+      i1reg := io.hack
+   }
+
+   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
+   io.dmem.resp.bits.data := MuxCase(d1reg,Array(
+      (next_typ === 1.U) -> Cat(Fill(24,d1reg(7)),d1reg(7,0)),
+      (next_typ === 2.U) -> Cat(Fill(16,d1reg(15)),d1reg(15,0)),
+      (next_typ === 5.U) -> Cat(Fill(24,0.U),d1reg(7,0)),
+      (next_typ === 6.U) -> Cat(Fill(16,0.U),d1reg(15,0))
+   ))
+   //printf(" %x %x %x %x %x %x %x %x\n",next_typ,d1reg,d_fire,nextdreq,io.dmem.resp.bits.data,io.mem.resp.bits.data,!io.imem.resp.valid && io.dmem.req.valid && !nextdreq,io.imem.resp.valid && io.dmem.req.valid && nextdreq)
 }
  
 }

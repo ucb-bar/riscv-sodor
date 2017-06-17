@@ -46,13 +46,13 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
       core.io.imem <> arbiter.io.imem
       core.io.dmem <> arbiter.io.dmem
       arbiter.io.mem <> memory.io.core_ports(0)
+      arbiter.io.hack := memory.io.hack
    }
    else
    {
       core.io.imem <> memory.io.core_ports(1)
       core.io.dmem <> memory.io.core_ports(0)
    }
-
 
    // DTM memory request
    debug.io.debugmem <> memory.io.debug_port
