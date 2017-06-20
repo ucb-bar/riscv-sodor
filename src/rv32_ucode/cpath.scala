@@ -41,6 +41,7 @@ class CtlToDatIo extends Bundle()
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
+   val dcpath = Flipped(new DebugCPath())  
    val mem  = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
@@ -58,7 +59,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
         
    
    // Macro Instruction Opcode Dispatch Table
-   val upc_opgroup_target = MuxLookup (io.dat.inst, label_target_map("ILLEGAL").asUInt(label_sz.W),
+   val upc_opgroup_target = Lookup (io.dat.inst, label_target_map("ILLEGAL").asUInt(label_sz.W),
                                                     opcode_dispatch_table)
 
    // Micro-PC State Register
@@ -67,8 +68,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Micro-code ROM
    val micro_code = Vec(rombits)
-   val uop = micro_code(upc_state)
-    
+   val uop = Mux(Reg(next = io.dat.force_fetch),micro_code(label_target_map("FETCH")),micro_code(upc_state))
+   when(Reg(next = io.dat.force_fetch)){
+      upc_state := label_target_map("FETCH").U
+   }
    // Extract Control Signals from UOP
   val cs = new Bundle()
   {
@@ -93,7 +96,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   }.fromBits(uop)
   require(label_sz == 8, "Label size must be 8")
 
-  val mem_is_busy = !(io.mem.resp.valid)
+  val mem_is_busy = false.B //!(io.mem.resp.valid)
 
    // Micro-PC State Logic
   val upc_sel     = MuxCase(UPC_CURRENT, Array(
@@ -104,7 +107,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                       (cs.ubr === UBR_NZ)-> Mux (~io.dat.alu_zero, UPC_ABSOLUTE , UPC_NEXT),
                       (cs.ubr === UBR_S) -> Mux (mem_is_busy     , UPC_CURRENT  , UPC_NEXT)
                     ))
- 
+
     
    upc_state_next := MuxCase(upc_state, Array(
                       (upc_sel === UPC_DISPATCH) -> upc_opgroup_target,
@@ -151,10 +154,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
 
    io.ctl.upc := upc_state
-   io.ctl.upc_is_fetch := (upc_state === UInt(label_target_map("FETCH")))
+   io.ctl.upc_is_fetch := (upc_state === label_target_map("FETCH").U)
  
    // Memory Interface
-   io.mem.req.bits.fcn:= Mux(cs.en_mem && cs.mem_wr, M_XWR, M_XRD)
+   io.mem.req.bits.fcn:= Mux(cs.en_mem && cs.mem_wr && io.dat.valid_addr , M_XWR, M_XRD)
    io.mem.req.bits.typ:= cs.msk_sel
    io.mem.req.valid   := cs.en_mem.toBool 
 

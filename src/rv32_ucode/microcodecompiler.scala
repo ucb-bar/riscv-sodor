@@ -123,7 +123,7 @@ object MicrocodeCompiler
    
    def emitRomBits(uop_lines: Array[MicroOp], labelTargets: Map[String,Int], label_sz: Int): Array[Bits] =
    {
-      printf("Building Microcode ROM...\n");
+      //printf("Building Microcode ROM...\n");
       
       var buf = ArrayBuffer[Bits]();
 

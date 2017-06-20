@@ -400,9 +400,10 @@ object Microcode
    /*{ERET,ECALL,EBREAK}*/
    /* pass inst to CSR  */
    /* File and jmp to   */
-   /* mepc.             */,Label("SRET")
-                          ,Label("SCALL")
-                          ,Label("SBREAK")
+   /* mepc.             */,Label("DRET")
+                          ,Label("MRET")
+                          ,Label("ECALL")
+                          ,Label("EBREAK")
    /* Reg[CSR addr]<-Imm*/              , Signals(Cat(MT_X , CSR.N, LDIR_0, RS_CA , RWR_1, REN_1, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_I, IEN_1, UBR_N), "X")
    /* PC <- EVEC        */,               Signals(Cat(MT_X , CSR.I, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_X, ALU_EVEC   , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
  
