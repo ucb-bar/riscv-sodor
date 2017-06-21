@@ -86,7 +86,7 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = Reg(init = false.B)
-   val if_reg_pc     = Reg(init=(START_ADDR-4).asUInt(conf.xprlen.W))
+   val if_reg_pc     = Reg(init= START_ADDR-4.U)
     
    val exe_reg_valid = Reg(init = false.B)
    val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
@@ -106,7 +106,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
       if_pc_next := if_pc_plus4
       when (io.cpu.req.valid)
       {
-         // printf("here2\n")
          // datapath is redirecting the PC stream (misspeculation)
          if_pc_next := io.cpu.req.bits.pc
       }
@@ -131,7 +130,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Inst Fetch/Return Stage
-
    when (io.cpu.resp.ready)
    {
       exe_reg_valid :=  if_reg_valid && !io.cpu.req.valid
@@ -142,7 +140,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
-
    io.cpu.resp.valid     := exe_reg_valid
    io.cpu.resp.bits.inst := exe_reg_inst
    io.cpu.resp.bits.pc   := exe_reg_pc

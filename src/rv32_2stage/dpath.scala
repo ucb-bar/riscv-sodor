@@ -42,7 +42,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = Reg(init=START_ADDR.asUInt(conf.xprlen.W))
+   val if_reg_pc = Reg(init = START_ADDR) 
    
    val exe_reg_pc       = Reg(init=0.asUInt(conf.xprlen.W))
    val exe_reg_pc_plus4 = Reg(init=0.asUInt(conf.xprlen.W))
@@ -64,7 +64,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
 
    if_pc_next := MuxCase(if_pc_plus4, Array(
-                  (io.ddpath.resetpc === Bool(true)) -> "h80000000".U,
                   (io.ctl.pc_sel === PC_4)  -> if_pc_plus4,
                   (io.ctl.pc_sel === PC_BR) -> exe_br_target,
                   (io.ctl.pc_sel === PC_J ) -> exe_jmp_target,
@@ -191,7 +190,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                     
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := csr.io.exception
-   // TODO replay? stall?
         
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := Bool(false))

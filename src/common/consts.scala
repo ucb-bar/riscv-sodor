@@ -35,7 +35,7 @@ trait RISCVConstants
 trait PrivilegedConstants
 {
    val MTVEC = 0x100
-   val START_ADDR = MTVEC + 0x100
+   val START_ADDR = "h80000000".U //MTVEC + 0x100
 
    val SZ_PRV = 2
    val PRV_U = 0

@@ -50,7 +50,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Pipeline State Registers
 
    // Instruction Fetch State
-   val if_reg_pc             = Reg(init=START_ADDR.asUInt(conf.xprlen.W))
+   val if_reg_pc             = Reg(init = START_ADDR)
 
    // Instruction Decode State
    val dec_reg_inst          = Reg(init=BUBBLE)
@@ -69,8 +69,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_op2_sel  = Reg(UInt())
    val exe_reg_ctrl_alu_fun  = Reg(UInt())
    val exe_reg_ctrl_wb_sel   = Reg(UInt())
-   val exe_reg_ctrl_rf_wen   = Reg(init=Bool(false))
-   val exe_reg_ctrl_mem_val  = Reg(init=Bool(false))
+   val exe_reg_ctrl_rf_wen   = Reg(init=false.B)
+   val exe_reg_ctrl_mem_val  = Reg(init=false.B)
    val exe_reg_ctrl_mem_fcn  = Reg(init=M_X)
    val exe_reg_ctrl_mem_typ  = Reg(init=MT_X)
    val exe_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
@@ -85,8 +85,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val mem_reg_op1_data      = Reg(UInt(conf.xprlen.W))
    val mem_reg_op2_data      = Reg(UInt(conf.xprlen.W))
    val mem_reg_rs2_data      = Reg(UInt(conf.xprlen.W))
-   val mem_reg_ctrl_rf_wen   = Reg(init=Bool(false))
-   val mem_reg_ctrl_mem_val  = Reg(init=Bool(false))
+   val mem_reg_ctrl_rf_wen   = Reg(init=false.B)
+   val mem_reg_ctrl_mem_val  = Reg(init=false.B)
    val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
    val mem_reg_ctrl_mem_typ  = Reg(init=MT_X)
    val mem_reg_ctrl_wb_sel   = Reg(UInt())
@@ -95,7 +95,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Writeback State
    val wb_reg_wbaddr         = Reg(UInt())
    val wb_reg_wbdata         = Reg(UInt(conf.xprlen.W))
-   val wb_reg_ctrl_rf_wen    = Reg(init=Bool(false))
+   val wb_reg_ctrl_rf_wen    = Reg(init=false.B)
 
 
    //**********************************
@@ -112,11 +112,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))
 
-   if_pc_next := Mux(io.ddpath.resetpc === Bool(true) , "h80000000".U,
-               Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
+   if_pc_next := Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
                  Mux(io.ctl.exe_pc_sel === PC_BRJMP,  exe_brjmp_target,
                  Mux(io.ctl.exe_pc_sel === PC_JALR,   exe_jump_reg_target,
-                 /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target))))
+                 /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target)))
 
    // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
    when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 && 
@@ -157,13 +156,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Register File
    val regfile = Module(new RegisterFile())
-      regfile.io.rs1_addr := dec_rs1_addr
-      regfile.io.rs2_addr := dec_rs2_addr
-      val rf_rs1_data = regfile.io.rs1_data
-      val rf_rs2_data = regfile.io.rs2_data
-      regfile.io.waddr := wb_reg_wbaddr
-      regfile.io.wdata := wb_reg_wbdata
-      regfile.io.wen   := wb_reg_ctrl_rf_wen
+   regfile.io.rs1_addr := dec_rs1_addr
+   regfile.io.rs2_addr := dec_rs2_addr
+   val rf_rs1_data = regfile.io.rs1_data
+   val rf_rs2_data = regfile.io.rs2_data
+   regfile.io.waddr := wb_reg_wbaddr
+   regfile.io.wdata := wb_reg_wbdata
+   regfile.io.wen   := wb_reg_ctrl_rf_wen
 
    //// DebugModule
    regfile.io.dm_addr := io.ddpath.addr
@@ -249,8 +248,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       // insert NOP (bubble) into Execute stage on front-end stall (e.g., hazard clearing)
       exe_reg_inst          := BUBBLE
       exe_reg_wbaddr        := 0.U
-      exe_reg_ctrl_rf_wen   := Bool(false)
-      exe_reg_ctrl_mem_val  := Bool(false)
+      exe_reg_ctrl_rf_wen   := false.B
+      exe_reg_ctrl_mem_val  := false.B
       exe_reg_ctrl_mem_fcn  := M_X
       exe_reg_ctrl_csr_cmd  := CSR.N
       exe_reg_ctrl_br_type  := BR_N
@@ -272,8 +271,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       {
          exe_reg_inst          := BUBBLE
          exe_reg_wbaddr        := 0.U
-         exe_reg_ctrl_rf_wen   := Bool(false)
-         exe_reg_ctrl_mem_val  := Bool(false)
+         exe_reg_ctrl_rf_wen   := false.B
+         exe_reg_ctrl_mem_val  := false.B
          exe_reg_ctrl_mem_fcn  := M_X
          exe_reg_ctrl_csr_cmd  := CSR.N
          exe_reg_ctrl_br_type  := BR_N
@@ -301,7 +300,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val alu_shamt     = exe_alu_op2(4,0).toUInt
    val exe_adder_out = (exe_alu_op1 + exe_alu_op2)(conf.xprlen-1,0)
 
-//   exe_alu_out := MuxCase(0.U, Array(
    //only for debug purposes right now until debug() works
    exe_alu_out := MuxCase(exe_reg_inst.toUInt, Array(
                   (exe_reg_ctrl_alu_fun === ALU_ADD)  -> exe_adder_out,
@@ -328,9 +326,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    when (io.ctl.pipeline_kill)
    {
       mem_reg_pc            := BUBBLE
-      mem_reg_ctrl_rf_wen   := Bool(false)
-      mem_reg_ctrl_mem_val  := Bool(false)
-      mem_reg_ctrl_csr_cmd  := Bool(false)
+      mem_reg_ctrl_rf_wen   := false.B
+      mem_reg_ctrl_mem_val  := false.B
+      mem_reg_ctrl_csr_cmd  := false.B
    }
    .elsewhen (!io.ctl.full_stall)
    {
@@ -391,11 +389,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       wb_reg_wbaddr        := mem_reg_wbaddr
       wb_reg_wbdata        := mem_wbdata
-      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, Bool(false), mem_reg_ctrl_rf_wen)
+      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, false.B, mem_reg_ctrl_rf_wen)
    }
    .otherwise
    {
-      wb_reg_ctrl_rf_wen   := Bool(false)
+      wb_reg_ctrl_rf_wen   := false.B
    }
 
 

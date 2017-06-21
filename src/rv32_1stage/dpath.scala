@@ -22,8 +22,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
-//   val csr    = new CSRFileIO()
-//   val status = new MStatus().asOutput()
    val csr_eret = Output(Bool())
    val csr_xcpt = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
@@ -41,8 +39,7 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
-
-   
+      
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
    val pc_plus4         = Wire(UInt(32.W))
@@ -53,7 +50,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    // PC Register
    pc_next := MuxCase(pc_plus4, Array(
-                  (io.ddpath.resetpc === true.B) -> "h80000000".U,
                   (io.ctl.pc_sel === PC_4)   -> pc_plus4,
                   (io.ctl.pc_sel === PC_BR)  -> br_target,
                   (io.ctl.pc_sel === PC_J )  -> jmp_target,
@@ -61,7 +57,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.pc_sel === PC_EXC) -> exception_target
                   ))
 
-   val pc_reg = Reg(init=START_ADDR.asUInt(conf.xprlen.W))
+   val pc_reg = Reg(init = START_ADDR) 
 
    when (!io.ctl.stall) 
    {
@@ -165,13 +161,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    csr.io.retire    := !io.ctl.stall
    csr.io.exception := io.ctl.exception && ((io.imem.req.bits.addr & "hffe00000".U) === "h80000000".U)
-//   io.dat.status    := csr.io.status
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := csr.io.exception 
-   // TODO replay? stall?
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)

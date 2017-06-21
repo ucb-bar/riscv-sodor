@@ -29,8 +29,8 @@ trait ScalarOpConstants
 
    //************************************
    // Control Signals
-   val Y        = Bool(true)
-   val N        = Bool(false)
+   val Y        = true.B
+   val N        = false.B
 
    // PC Select Signal
    val PC_4     = 0.asUInt(2.W)  // PC + 4
@@ -65,12 +65,12 @@ trait ScalarOpConstants
    val OP2_X      = 0.asUInt(3.W)
 
    // Register Operand Output Enable Signal
-   val OEN_0   = Bool(false)
-   val OEN_1   = Bool(true)
+   val OEN_0   = false.B
+   val OEN_1   = true.B
 
    // Register File Write Enable Signal
-   val REN_0   = Bool(false)
-   val REN_1   = Bool(true)
+   val REN_0   = false.B
+   val REN_1   = true.B
 
    // ALU Operation Signal
    val ALU_ADD    = 0.asUInt(4.W)
@@ -95,14 +95,14 @@ trait ScalarOpConstants
    val WB_X    = 0.asUInt(2.W)
 
    // Memory Write Signal
-   val MWR_0   = Bool(false)
-   val MWR_1   = Bool(true)
-   val MWR_X   = Bool(false)
+   val MWR_0   = false.B
+   val MWR_1   = true.B
+   val MWR_X   = false.B
 
    // Memory Enable Signal
-   val MEN_0   = Bool(false)
-   val MEN_1   = Bool(true)
-   val MEN_X   = Bool(false)
+   val MEN_0   = false.B
+   val MEN_1   = true.B
+   val MEN_X   = false.B
 
    // Memory Mask Type Signal
    val MSK_B   = 0.asUInt(3.W)

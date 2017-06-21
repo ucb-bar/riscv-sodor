@@ -73,7 +73,8 @@ object Microcode
   
 
    /* ILLEGAL-OP       */
-   /* UBr to FETCH     */,Label("ILLEGAL"), Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
+   /* UBr to FETCH     */,Label("ILLEGAL"),  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_N), "X")
+                         ,                   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC  , RWR_1, REN_1, LDA_X, LDB_X, ALU_EVEC      , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
                   
    /* UNIMPLEMENTED    */
    /* UBr to FETCH     */,Label("UNIMP"),   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
@@ -342,6 +343,9 @@ object Microcode
    /* B  <- SSH1(Imm) */,                   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X , RWR_0, REN_0, LDA_0, LDB_1, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_B,  IEN_1, UBR_N), "X")
    /* PC <- A + B     */,                   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC, RWR_1, REN_1, LDA_0, LDB_0, ALU_ADD    , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X , IEN_0, UBR_J), "FETCH")
    /* UBr to FETCH   */
+   // FENCE implemented as NOP
+                        ,Label("FENCE")
+                        ,Label("FENCE_I"),  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
 
 
 

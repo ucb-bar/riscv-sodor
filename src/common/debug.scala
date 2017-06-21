@@ -138,6 +138,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   val sbaddr = Reg(UInt(conf.xprlen.W))
   val sbdata = Reg(UInt(conf.xprlen.W))
   val memreadfire = Reg(init = false.B)
+  val coreresetval = Reg(init = true.B)
 
   val read_map = collection.mutable.LinkedHashMap[Int,UInt](
     DMI_RegAddrs.DMI_ABSTRACTCS -> abstractcs.asUInt,
@@ -204,7 +205,6 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
       io.debugmem.req.bits.data := sbdata
       io.debugmem.req.bits.fcn :=  M_XWR
       io.debugmem.req.valid := io.dmi.req.valid
-      //printf("wdata:%x addr:%x\n",sbdata,sbaddr)
       when(sbcs.sbautoincrement && io.dmi.req.valid)
       {
         sbaddr := sbaddr + 4.U
@@ -261,15 +261,14 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     }
   } 
 
-/*  when (io.dmi.req.bits.op === DMConsts.dmi_OP_READ) {
-    io.dmi.resp.valid :=  true.B & io.dmi.req.valid
-  }*/
-
   when(!decoded_addr(DMI_RegAddrs.DMI_SBDATA0)){
     firstreaddone := false.B
   }
 
+  io.resetcore := coreresetval
+
   when((io.dmi.req.bits.addr === "h44".U) && io.dmi.req.valid){
+    coreresetval := false.B
     io.ddpath.resetpc := true.B
   } .otherwise {
     io.ddpath.resetpc := false.B

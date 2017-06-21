@@ -103,7 +103,6 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       (next_typ === 5.U) -> Cat(Fill(24,0.U),d1reg(7,0)),
       (next_typ === 6.U) -> Cat(Fill(16,0.U),d1reg(15,0))
    ))
-   //printf(" %x %x %x %x %x %x %x %x\n",next_typ,d1reg,d_fire,nextdreq,io.dmem.resp.bits.data,io.mem.resp.bits.data,!io.imem.resp.valid && io.dmem.req.valid && !nextdreq,io.imem.resp.valid && io.dmem.req.valid && nextdreq)
 }
  
 }

@@ -42,7 +42,6 @@ class CtlToDatIo extends Bundle()
                                     // Kill the entire pipeline disregard stalls
                                     // and kill if,dec,exe stages. 
    val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
-   val mem_exc_cause = Output(UInt(32.W)) 
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
@@ -152,28 +151,26 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception) && io.dat.valid_addr // csr.io.exception
    
-   val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
+   val dec_exception = (!cs_val_inst && io.imem.resp.valid) 
  
-   val dec_exception = exc_illegal 
-
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
 
    val dec_rs1_addr = io.dat.dec_inst(19, 15)
    val dec_rs2_addr = io.dat.dec_inst(24, 20)
    val dec_wbaddr   = io.dat.dec_inst(11, 7)
-   val dec_rs1_oen  = Mux(deckill, Bool(false), cs_rs1_oen)
-   val dec_rs2_oen  = Mux(deckill, Bool(false), cs_rs2_oen)
+   val dec_rs1_oen  = Mux(deckill, false.B, cs_rs1_oen)
+   val dec_rs2_oen  = Mux(deckill, false.B, cs_rs2_oen)
 
    val exe_reg_wbaddr      = Reg(UInt())
    val mem_reg_wbaddr      = Reg(UInt())
    val wb_reg_wbaddr       = Reg(UInt())
-   val exe_reg_ctrl_rf_wen = Reg(init=Bool(false))
-   val mem_reg_ctrl_rf_wen = Reg(init=Bool(false))
-   val wb_reg_ctrl_rf_wen  = Reg(init=Bool(false))
-   val exe_reg_exception   = Reg(init=Bool(false))
+   val exe_reg_ctrl_rf_wen = Reg(init=false.B)
+   val mem_reg_ctrl_rf_wen = Reg(init=false.B)
+   val wb_reg_ctrl_rf_wen  = Reg(init=false.B)
+   val exe_reg_exception   = Reg(init=false.B)
 
-   val exe_reg_is_csr = Reg(init=Bool(false))
+   val exe_reg_is_csr = Reg(init=false.B)
 
    // TODO rename stall==hazard_stall full_stall == cmiss_stall
    val full_stall = Wire(Bool())
@@ -182,9 +179,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
       when (deckill)
       {
          exe_reg_wbaddr      := 0.U
-         exe_reg_ctrl_rf_wen := Bool(false)
-         exe_reg_is_csr      := Bool(false)
-         exe_reg_exception   := Bool(false)
+         exe_reg_ctrl_rf_wen := false.B
+         exe_reg_is_csr      := false.B
+         exe_reg_exception   := false.B
       }
       .otherwise
       {
@@ -198,9 +195,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    {
       // kill exe stage
       exe_reg_wbaddr      := 0.U
-      exe_reg_ctrl_rf_wen := Bool(false)
-      exe_reg_is_csr      := Bool(false)
-      exe_reg_exception   := Bool(false)
+      exe_reg_ctrl_rf_wen := false.B
+      exe_reg_is_csr      := false.B
+      exe_reg_exception   := false.B
    }
 
    mem_reg_wbaddr      := exe_reg_wbaddr
@@ -208,7 +205,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    mem_reg_ctrl_rf_wen := exe_reg_ctrl_rf_wen
    wb_reg_ctrl_rf_wen  := mem_reg_ctrl_rf_wen
 
-   val exe_inst_is_load = Reg(init=Bool(false))
+   val exe_inst_is_load = Reg(init=false.B)
 
    when (!full_stall)
    {
@@ -270,7 +267,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    io.ctl.csr_cmd := Mux(csr_ren, CSR.R, cs_csr_cmd)
 
-   io.imem.req.valid := Bool(true)
+   io.imem.req.valid := true.B
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.ctl.mem_val    := cs_mem_en

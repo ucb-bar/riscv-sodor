@@ -25,8 +25,8 @@ trait ScalarOpConstants
    //************************************
    // Control Signals
 
-   val Y      = Bool(true)
-   val N      = Bool(false)
+   val Y      = true.B
+   val N      = false.B
 
    // PC Select Signal
    val PC_4   = 0.asUInt(3.W)  // PC + 4
@@ -60,9 +60,9 @@ trait ScalarOpConstants
    val OP2_X   = 0.asUInt(2.W)
 
    // Register File Write Enable Signal
-   val REN_0   = Bool(false)
-   val REN_1   = Bool(true)
-   val REN_X   = Bool(false)
+   val REN_0   = false.B
+   val REN_1   = true.B
+   val REN_X   = false.B
 
    // ALU Operation Signal
    val ALU_ADD = 1.asUInt(4.W)

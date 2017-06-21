@@ -26,10 +26,6 @@ class CtlToDatIo extends Bundle()
    val rf_wen    = Output(Bool()) 
    val csr_cmd   = Output(UInt(CSR.SZ)) 
    val exception = Output(Bool())
-   val exc_cause = Output(UInt(32.W))
-
-   val debug_dmem_val = Output(Bool())
-   val debug_dmem_typ = Output(UInt(MT_X.getWidth.W))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -39,7 +35,6 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
-   val resetSignal = Input(Bool())
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
@@ -132,7 +127,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
                            
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) //|| io.dcpath.halt //|| io.resetSignal
+   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) 
  
    // Set the data-path control signals
    io.ctl.stall    := stall
@@ -141,7 +136,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel  := cs_op2_sel
    io.ctl.alu_fun  := cs_alu_fun
    io.ctl.wb_sel   := cs_wb_sel
-   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, Bool(false), cs_rf_wen)
+   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, false.B, cs_rf_wen)
   
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
@@ -151,29 +146,22 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.csr_cmd  := Mux(stall, CSR.N, csr_cmd)
    
    // Memory Requests
-   io.imem.req.valid    := Bool(true)
+   io.imem.req.valid    := true.B
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
 
    io.dmem.req.valid    := cs_mem_en
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
-   // Exception Handling ---------------------
    
+   // Exception Handling ---------------------
    // We only need to check if the instruction is illegal (or unsupported)
    // or if the CSR file wants us to be interrupted.
    // Other exceptions are detected later in the pipeline by passing the
    // instruction to the CSR File and letting it redirect the PC as it sees
    // fit.
-   val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
+   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid) 
  
-   io.ctl.exception := exc_illegal
-   
-   // ----------------------------------------       
-   
-   // only here to thread ctrl signals to printf in dpath.scala                  
-   io.ctl.debug_dmem_val := cs_mem_en
-   io.ctl.debug_dmem_typ := cs_msk_sel
 }
 
 }

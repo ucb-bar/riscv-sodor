@@ -33,12 +33,10 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
       val dmi = Flipped(new DMIIO())
    })
 
-
-   // notice that while the core is put into reset, the scratchpad needs to be
-   // alive so that the HTIF can load in the program.
    val core   = Module(new Core())
    val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS)) 
    val debug = Module(new DebugModule())
+   core.reset := debug.io.resetcore | reset.toBool
 
    if (NUM_MEMORY_PORTS == 1)
    {
@@ -54,9 +52,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
       core.io.dmem <> memory.io.core_ports(0)
    }
 
-   // DTM memory request
+   // DTM memory access
    debug.io.debugmem <> memory.io.debug_port
-
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> io.dmi

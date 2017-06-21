@@ -37,6 +37,7 @@ class CtlToDatIo extends Bundle()
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes 
    val upc_is_fetch = Output(Bool()) // for debugging purposes 
+   val exception = Output(Bool())
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -68,10 +69,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Micro-code ROM
    val micro_code = Vec(rombits)
-   val uop = Mux(Reg(next = io.dat.force_fetch),micro_code(label_target_map("FETCH")),micro_code(upc_state))
-   when(Reg(next = io.dat.force_fetch)){
-      upc_state := label_target_map("FETCH").U
-   }
+   val uop = micro_code(upc_state) 
+   
    // Extract Control Signals from UOP
   val cs = new Bundle()
   {
@@ -96,7 +95,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   }.fromBits(uop)
   require(label_sz == 8, "Label size must be 8")
 
-  val mem_is_busy = false.B //!(io.mem.resp.valid)
+  val mem_is_busy = false.B
 
    // Micro-PC State Logic
   val upc_sel     = MuxCase(UPC_CURRENT, Array(
@@ -118,15 +117,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    
    // Exception Handling ---------------------
-   // TODO handle exceptions
-   // somehow have illegal micro-code send an exception to the CSRFile
-
-//   val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
-//    
-//   io.ctl.exception := exc_illegal || io.dat.csr_interrupt
-//   io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
-//                                            UInt(Common.Causes.illegal_instruction))
-       
+   io.ctl.exception := label_target_map("ILLEGAL").U === upc_state   
 
    // Cpath Control Interface
    io.ctl.msk_sel := cs.msk_sel
@@ -149,9 +140,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val csr_ren = (cs.csr_cmd === CSR.S || cs.csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd1 = Mux(csr_ren, CSR.R, cs.csr_cmd)
    io.ctl.csr_cmd := csr_cmd1
-
-
-
 
    io.ctl.upc := upc_state
    io.ctl.upc_is_fetch := (upc_state === label_target_map("FETCH").U)

@@ -26,9 +26,7 @@ class CtlToDatIo extends Bundle()
    val wb_sel   = Output(UInt(2.W))
    val rf_wen   = Output(Bool())
    val csr_cmd  = Output(UInt(CSR.SZ))
-
    val exception = Output(Bool())
-   val exc_cause = Output(UInt(32.W))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
@@ -163,10 +161,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
 
    // Exception Handling ---------------------
+   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
 
-   val exc_illegal = (!cs_val_inst && io.imem.resp.valid)
-
-   io.ctl.exception := exc_illegal
 
 }
 

@@ -28,7 +28,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
   val dcpath = Flipped(new DebugCPath())
 }
 
-class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
+class Core(implicit conf: SodorConfiguration) extends Module
 {
   val io = IO(new CoreIo())
   val c  = Module(new CtlPath())

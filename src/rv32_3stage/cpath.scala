@@ -19,7 +19,7 @@ import ALU._
 
 class CtrlSignals extends Bundle() 
 {
-   val exe_kill  = Output(Bool())    // squash EX stage (exception/sret occurred)
+   val exe_kill  = Output(Bool())    // squash EX stage (exception/mret occurred)
    val pc_sel    = Output(UInt(3.W)) 
    val brjmp_sel = Output(Bool())
    val op1_sel   = Output(UInt(2.W)) 
@@ -35,7 +35,6 @@ class CtrlSignals extends Bundle()
    val dmem_typ  = Output(UInt(3.W))
  
    val exception = Output(Bool())   
-   val exc_cause = Output(UInt(32.W))
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -133,7 +132,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Branch Logic   
    val take_evec = Wire(Bool()) // jump to the csr.io.evec target 
                           // (for exceptions or sret, taken in the WB stage)
-   val exe_exception = Wire(Bool()) 
 
    val ctrl_pc_sel = Mux(take_evec && io.dat.valid_addr        ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
@@ -148,9 +146,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
                            
-
-   // OR'ing with resetpc request from debug is temp hack
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid || io.dat.resetpc
+   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid 
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
@@ -159,13 +155,13 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
-   io.ctl.rf_wen     := Mux(exe_exception || !ctrl_valid, false.B, cs_rf_wen.toBool)
+   io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen.toBool)
    io.ctl.bypassable := cs_bypassable.toBool 
 
    val rs1_addr = io.imem.resp.bits.inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
-   io.ctl.csr_cmd    := Mux(exe_exception || !ctrl_valid, CSR.N, csr_cmd)
+   io.ctl.csr_cmd    := Mux(!ctrl_valid, CSR.N, csr_cmd)
    
    // Memory Requests
    if(NUM_MEMORY_PORTS == 1)
@@ -178,14 +174,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    //-------------------------------
    // Exception Handling
-
-   val exc_illegal = (!cs_inst_val && io.imem.resp.valid) 
-   exe_exception := exc_illegal 
-   io.ctl.exception := exe_exception
-
-   take_evec        := Reg(next=io.ctl.exception) ||
-                       io.dat.csr_eret || 
-                       io.dat.csr_xcpt
+   io.ctl.exception := !cs_inst_val && io.imem.resp.valid
+   take_evec        := Reg(next=io.ctl.exception) || io.dat.csr_eret 
 
 
 }

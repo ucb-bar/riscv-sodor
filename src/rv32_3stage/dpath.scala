@@ -28,12 +28,8 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
-
-   // TODO consolidate these signals
    val valid_addr = Output(Bool())
-   val resetpc = Output(Bool())
    val csr_eret = Output(Bool())
-   val csr_xcpt = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -53,8 +49,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-
-   val wb_reg_valid    = Reg(init=Bool(false))
+   val wb_reg_valid    = Reg(init=false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
    val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
@@ -71,10 +66,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.imem.resp.ready := !wb_hazard_stall // stall IF if we detect a WB->EXE hazard
 
    // if front-end mispredicted, tell it which PC to take
-   val take_pc = Mux(io.ddpath.resetpc === true.B , "h80000000".U,
-                  Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
+   val take_pc = Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
                  Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
-                                                 exe_brjmp_target))) // PC_BR or PC_J
+                                                 exe_brjmp_target)) // PC_BR or PC_J
                                                     
    io.imem.req.bits.pc := take_pc
 
@@ -92,6 +86,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                        
    val wb_wbdata    = Wire(UInt(conf.xprlen.W))
 
+   // Hazard Stall Logic 
    if(NUM_MEMORY_PORTS == 1) {
       // stall for more cycles incase of store after load with Writeback conflict
       val count = Reg(init = 1.asUInt(2.W))
@@ -111,7 +106,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                          ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)  
    }
    
-   // Hazard Stall Logic 
 
 
    // Register File
@@ -124,7 +118,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    ///
 
-   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr != 0.U) && !io.dat.csr_xcpt)
+   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr =/= 0.U))
    {
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
@@ -194,7 +188,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    if(NUM_MEMORY_PORTS == 1) 
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen)
    else   
-      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid //io.ctl.dmem_fcn
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid 
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
@@ -216,7 +210,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                                    
    //**********************************
    // Writeback Stage
-   
    wb_reg_valid := exe_valid && !wb_hazard_stall 
     
    // Control Status Registers
@@ -226,17 +219,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.decode.csr   := wb_reg_csr_addr
    csr.io.rw.wdata  := wb_reg_alu
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd 
-   val wb_csr_out    = csr.io.rw.rdata //Reg(next = csr.io.rw.rdata)
+   val wb_csr_out    = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
    csr.io.exception := Reg(next = io.ctl.exception)
    csr.io.pc        := exe_pc - 4.U
    exception_target := csr.io.evec
-   // OR'ing with resetpc request from debug is temp hack
-   io.dat.resetpc := io.ddpath.resetpc
-   io.dat.valid_addr := (exe_pc & "hffe00000".U) === "h80000000".U // || io.ddpath.resetpc === true.B 
+   io.dat.valid_addr := (exe_pc & "hffe00000".U) === "h80000000".U 
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := io.ctl.exception //&& 
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := Bool(false))
@@ -271,7 +261,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , wb_reg_wbaddr
       , wb_wbdata
       , Mux(io.ctl.exception, Str("E"), Str("_"))
-      //, Mux(((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable),Str("A"), Str(" "))
       , io.imem.resp.bits.inst
       , irt_reg(11,0)
       , Mux(wb_hazard_stall, Str("H"), Str(" "))  // HAZ -> H
@@ -308,19 +297,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
             printf("@@@ 0x%x (0x%x)\n", debug_wb_pc, debug_wb_inst)
          }
       }
-   }
-
-
-
-   //**********************************
-   // Handle Reset
-
-   when (this.reset)
-   {
-      wb_reg_ctrl.rf_wen    := false.B
-      wb_reg_ctrl.csr_cmd   := CSR.N
-      wb_reg_ctrl.dmem_val  := false.B
-      wb_reg_ctrl.exception := false.B
    }
  
 }

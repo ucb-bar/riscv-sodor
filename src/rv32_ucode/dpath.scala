@@ -21,10 +21,8 @@ class DatToCtlIo extends Bundle()
 {
    val inst     = Output(UInt(32.W))
    val alu_zero = Output(Bool())
-
    val csr_eret = Output(Bool())
    val csr_xcpt = Output(Bool())
-   val force_fetch = Output(Bool())
    val valid_addr = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
@@ -126,17 +124,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                     (io.ctl.reg_sel === RS_CR) -> csr_rdata,
                     (reg_addr === 0.U)     -> 0.asUInt(conf.xprlen.W)))
                     
-   ///// DEBUG 
-   when (io.ddpath.resetpc === true.B)
-   {
-      regfile(PC_IDX) := "h80000000".U
-      io.dat.force_fetch := true.B
-   } .otherwise {
-      io.dat.force_fetch := false.B
-   }
-   ////
-
-
    // CSR addr Register
    val csr_addr = Reg(init=0.asUInt(12.W))
    when(io.ctl.reg_wr & (io.ctl.reg_sel === RS_CA)) {
@@ -154,19 +141,16 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata 
-
    csr.io.retire    := io.ctl.upc_is_fetch
-
    // for now, the ucode does NOT support exceptions
-   csr.io.exception := false.B  
+   csr.io.exception := io.ctl.exception //false.B  
    csr.io.pc        := regfile(PC_IDX) - 4.U 
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
-   //io.dat.csr_xcpt := csr.io.csr_xcpt
-   csr.io.counters.foreach(_.inc := false.B)
 
    // Add your own uarch counters here!
+   csr.io.counters.foreach(_.inc := false.B)
 
    // ALU
    val alu_shamt = reg_b(4,0).toUInt
@@ -188,12 +172,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.toSInt < reg_b.toSInt).toUInt,
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  START_ADDR.U,
+              (io.ctl.alu_op === ALU_INIT_PC) ->  START_ADDR,
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))
-
-
   
    // Output Signals to the Control Path
    io.dat.alu_zero := (alu === 0.U)
@@ -207,12 +189,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + 1.U }
 
    // Printout
-   printf("%cCyc= %d (MA=0x%x) %d %c RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
+   printf("%cCyc= %d (MA=0x%x) %d %c %c RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
       , Mux(io.ctl.upc_is_fetch, Str("F"), Str(" "))
       , csr.io.time(31,0)
       , reg_ma
       , io.ctl.reg_sel
       , Mux(io.ctl.en_mem, Str("E"), Str(" ")) 
+      , Mux(io.ctl.exception, Str("X"), Str(" ")) 
       , reg_addr
       , bus
       , reg_a
