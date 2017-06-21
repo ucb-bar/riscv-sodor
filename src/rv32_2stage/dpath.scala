@@ -23,9 +23,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val br_lt = Output(Bool())
    val br_ltu= Output(Bool())
    val csr_eret = Output(Bool())
-   val csr_interrupt = Output(Bool())
    val csr_xcpt = Output(Bool())
-   val csr_interrupt_cause = Output(UInt(conf.xprlen.W))
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -181,25 +179,22 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
-   csr.io.rw.addr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.decode.csr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
    csr.io.retire    := !io.ctl.stall // TODO verify this works properly
    csr.io.exception := io.ctl.exception && ((exe_reg_pc & "hffe00000".U) === "h80000000".U)
-   csr.io.cause     := io.ctl.exc_cause
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
                     
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := csr.io.exception
-   io.dat.csr_interrupt := csr.io.interrupt
-   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
         
    // Add your own uarch counters here!
-   //csr.io.uarch_counters.foreach(_ := Bool(false))
+   csr.io.counters.foreach(_.inc := Bool(false))
 
  
    // WB Mux
@@ -232,8 +227,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
         
    
    // Printout
-   // TODO: provide a way to provide a disassembly on just the opcode.
-   // left as "n/a" for now.
    printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] PC= (0x%x,0x%x) [%x,%x] %c%c%c Exe: DASM(%x)\n"
       , tsc_reg(31,0)
       , exe_alu_op1
@@ -243,8 +236,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_wbdata
       , if_reg_pc
       , exe_reg_pc
-//      , Disassemble(if_inst, true)
-//      , Disassemble(exe_reg_inst, true)
       , if_inst(6,0)
       , exe_reg_inst(6,0)
       , Mux(io.ctl.stall, Str("S"), Str(" ")) //stall -> S

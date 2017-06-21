@@ -155,8 +155,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
  
    val dec_exception = exc_illegal 
-   val dec_exc_cause = Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
-                                                 UInt(Common.Causes.illegal_instruction))
 
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
@@ -265,7 +263,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.fencei     := cs_fencei || Reg(next=cs_fencei) 
 
    io.ctl.mem_exception := Reg(next=exe_reg_exception)
-   io.ctl.mem_exc_cause := Reg(next=Reg(next=dec_exc_cause))
                                     
     
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands

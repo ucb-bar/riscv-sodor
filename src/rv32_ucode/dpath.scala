@@ -150,7 +150,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    // Control Status Registers
    val csr = Module(new CSRFile())
-   csr.io.rw.addr  := csr_addr
+   csr.io.decode.csr  := csr_addr
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata 
@@ -159,15 +159,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // for now, the ucode does NOT support exceptions
    csr.io.exception := false.B  
-   csr.io.cause     := Common.Causes.illegal_instruction.U
    csr.io.pc        := regfile(PC_IDX) - 4.U 
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
    //io.dat.csr_xcpt := csr.io.csr_xcpt
-   //io.dat.csr_interrupt := csr.io.interrupt
-   //io.dat.csr_interrupt_cause := csr.io.interrupt_cause
-
+   csr.io.counters.foreach(_.inc := false.B)
 
    // Add your own uarch counters here!
 

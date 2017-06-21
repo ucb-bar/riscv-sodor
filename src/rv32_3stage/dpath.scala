@@ -33,9 +33,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val valid_addr = Output(Bool())
    val resetpc = Output(Bool())
    val csr_eret = Output(Bool())
-   val csr_interrupt = Output(Bool())
    val csr_xcpt = Output(Bool())
-   val csr_interrupt_cause = Output(UInt(conf.xprlen.W))
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -225,14 +223,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // TODO CSRFile for now handled in Execute stage (same as branch redirect),
    // but it should actually be in WB (alu_out is put on critical path).
    val csr = Module(new CSRFile())
-   csr.io.rw.addr   := wb_reg_csr_addr
+   csr.io.decode.csr   := wb_reg_csr_addr
    csr.io.rw.wdata  := wb_reg_alu
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd 
    val wb_csr_out    = csr.io.rw.rdata //Reg(next = csr.io.rw.rdata)
 
    csr.io.retire    := wb_reg_valid
    csr.io.exception := Reg(next = io.ctl.exception)
-   csr.io.cause     := wb_reg_ctrl.exc_cause
    csr.io.pc        := exe_pc - 4.U
    exception_target := csr.io.evec
    // OR'ing with resetpc request from debug is temp hack
@@ -240,11 +237,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dat.valid_addr := (exe_pc & "hffe00000".U) === "h80000000".U // || io.ddpath.resetpc === true.B 
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := io.ctl.exception //&& 
-   //io.dat.csr_interrupt := csr.io.interrupt
-   //io.dat.csr_interrupt_cause := csr.io.interrupt_cause
 
    // Add your own uarch counters here!
-   //csr.io.uarch_counters.foreach(_ := Bool(false))
+   csr.io.counters.foreach(_.inc := Bool(false))
    
    // WB Mux                                                                   
    // Note: I'm relying on the fact that the EXE stage is holding the
@@ -259,7 +254,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   ))
                                 
-   //printf("%x %x %x\n",wb_wbdata,) 
    //**********************************
    // Printout
 

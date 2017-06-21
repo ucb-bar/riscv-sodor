@@ -144,12 +144,14 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    /////////////////
 
    ///////////// IPORT
-   io.core_ports(IPORT).resp.bits.data := Mux((io.core_ports(IPORT).req.bits.addr & "hffe00000".U) === "h80000000".U
-      ,async_data.io.dataInstr(IPORT).data,0.U)
+   if (num_core_ports == 2){
+      io.core_ports(IPORT).resp.bits.data := Mux((io.core_ports(IPORT).req.bits.addr & "hffe00000".U) === "h80000000".U
+         ,async_data.io.dataInstr(IPORT).data,0.U)
+   }
    ////////////
 
 
-   /*printf("D:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.debug_port.req.bits.addr,io.debug_port.resp.bits.data,io.debug_port.req.bits.data
+  /* printf("D:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.debug_port.req.bits.addr,io.debug_port.resp.bits.data,io.debug_port.req.bits.data
       ,io.debug_port.req.bits.fcn,io.debug_port.resp.valid)
    printf("C:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.core_ports(DPORT).req.bits.addr,io.core_ports(DPORT).resp.bits.data,io.core_ports(DPORT).req.bits.data
       ,io.core_ports(DPORT).req.bits.fcn,io.core_ports(DPORT).resp.valid)*/
@@ -227,12 +229,12 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 
 
    /*printf("D:daddr:0x%x drdata:0x%x dwdata:0x%x fcn:%d respv:%x\n",io.debug_port.req.bits.addr,io.debug_port.resp.bits.data,io.debug_port.req.bits.data
-      ,io.debug_port.req.bits.fcn,io.debug_port.resp.valid)*/
-/*   printf("C:data:%x daddr:0x%x drdata:0x%x dwdata:0x%x typ:%d fcn:%d respv:%x\n",resp_datai,io.core_ports(DPORT).req.bits.addr,io.core_ports(DPORT).resp.bits.data,io.core_ports(DPORT).req.bits.data
-      ,io.core_ports(DPORT).req.bits.typ,io.core_ports(DPORT).req.bits.fcn,io.core_ports(DPORT).resp.valid)*/
-/*   printf("C:iaddr:0x%x irdata:0x%x reqv:%x respv:%x\n",io.core_ports(IPORT).req.bits.addr,io.core_ports(IPORT).resp.bits.data,
-      io.core_ports(IPORT).req.valid,io.core_ports(IPORT).resp.valid)
-*/
+      ,io.debug_port.req.bits.fcn,io.debug_port.resp.valid)
+   printf("C:data:%x daddr:0x%x drdata:0x%x dwdata:0x%x typ:%d fcn:%d respv:%x\n",resp_datai,io.core_ports(DPORT).req.bits.addr,io.core_ports(DPORT).resp.bits.data,io.core_ports(DPORT).req.bits.data
+      ,io.core_ports(DPORT).req.bits.typ,io.core_ports(DPORT).req.bits.fcn,io.core_ports(DPORT).resp.valid)
+   printf("C:iaddr:0x%x irdata:0x%x reqv:%x respv:%x\n",io.core_ports(IPORT).req.bits.addr,io.core_ports(IPORT).resp.bits.data,
+      io.core_ports(IPORT).req.valid,io.core_ports(IPORT).resp.valid)*/
+
    // DEBUG PORT-------
    io.debug_port.req.ready := Bool(true) // for now, no back pressure
    io.debug_port.resp.valid := Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)

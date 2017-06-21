@@ -132,7 +132,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
                            
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) //|| io.resetSignal
+   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) //|| io.dcpath.halt //|| io.resetSignal
  
    // Set the data-path control signals
    io.ctl.stall    := stall
@@ -168,8 +168,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
  
    io.ctl.exception := exc_illegal
-   io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
-                                            UInt(Common.Causes.illegal_instruction))
    
    // ----------------------------------------       
    

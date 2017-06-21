@@ -29,8 +29,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
    val csr_eret = Output(Bool())
    val csr_xcpt = Output(Bool())
-   val csr_interrupt = Output(Bool())
-   val csr_interrupt_cause = Output(UInt(conf.xprlen.W))
    val valid_addr = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
@@ -359,25 +357,22 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Control Status Registers
    // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
    val csr = Module(new CSRFile())
-   csr.io.rw.addr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.decode.csr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 
    csr.io.retire    := !io.ctl.full_stall && !io.ctl.dec_stall
    csr.io.exception := io.ctl.mem_exception
-   csr.io.cause     := io.ctl.mem_exc_cause
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
 
    io.dat.valid_addr := (mem_reg_pc & "hffe00000".U) === "h80000000".U  
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := csr.io.exception
-   io.dat.csr_interrupt := csr.io.interrupt
-   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
 
    // Add your own uarch counters here!
-   //csr.io.uarch_counters.foreach(_ := Bool(false))
+   csr.io.counters.foreach(_.inc := false.B)
 
 
    // WB Mux

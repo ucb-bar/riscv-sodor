@@ -25,9 +25,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 //   val csr    = new CSRFileIO()
 //   val status = new MStatus().asOutput()
    val csr_eret = Output(Bool())
-   val csr_interrupt = Output(Bool())
    val csr_xcpt = Output(Bool())
-   val csr_interrupt_cause = Output(UInt(conf.xprlen.W))
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -55,7 +53,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
  
    // PC Register
    pc_next := MuxCase(pc_plus4, Array(
-                  (io.ddpath.resetpc === Bool(true)) -> "h80000000".U,
+                  (io.ddpath.resetpc === true.B) -> "h80000000".U,
                   (io.ctl.pc_sel === PC_4)   -> pc_plus4,
                   (io.ctl.pc_sel === PC_BR)  -> br_target,
                   (io.ctl.pc_sel === PC_J )  -> jmp_target,
@@ -161,25 +159,22 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
-   csr.io.rw.addr  := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
-   csr.io.rw.cmd   := io.ctl.csr_cmd
+   csr.io.decode.csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.rw.cmd   := io.ctl.csr_cmd 
    csr.io.rw.wdata := alu_out
 
    csr.io.retire    := !io.ctl.stall
    csr.io.exception := io.ctl.exception && ((io.imem.req.bits.addr & "hffe00000".U) === "h80000000".U)
 //   io.dat.status    := csr.io.status
-   csr.io.cause     := io.ctl.exc_cause
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
    io.dat.csr_xcpt := csr.io.exception 
-   io.dat.csr_interrupt := csr.io.interrupt
-   io.dat.csr_interrupt_cause := csr.io.interrupt_cause
    // TODO replay? stall?
 
    // Add your own uarch counters here!
-   csr.io.counters.foreach(_.inc := Bool(false))
+   csr.io.counters.foreach(_.inc := false.B)
 
    // WB Mux
    wb_data := MuxCase(alu_out, Array(
@@ -224,7 +219,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
          Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
       , inst
       )
- 
+
    if (PRINT_COMMIT_LOG)
    {
       when (!io.ctl.stall)

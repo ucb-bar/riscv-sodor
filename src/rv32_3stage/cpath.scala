@@ -182,8 +182,6 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val exc_illegal = (!cs_inst_val && io.imem.resp.valid) 
    exe_exception := exc_illegal 
    io.ctl.exception := exe_exception
-   io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
-                                                 UInt(Common.Causes.illegal_instruction))
 
    take_evec        := Reg(next=io.ctl.exception) ||
                        io.dat.csr_eret || 
