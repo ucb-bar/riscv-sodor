@@ -269,9 +269,5 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
 
   when((io.dmi.req.bits.addr === "h44".U) && io.dmi.req.valid){
     coreresetval := false.B
-    io.ddpath.resetpc := true.B
-  } .otherwise {
-    io.ddpath.resetpc := false.B
   }
-
 }

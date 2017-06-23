@@ -65,6 +65,8 @@ generated-src/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/commo
 $(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc
 	$(CXX) $(CXXFLAGS) -I/usr/share/verilator/include -c -o $@ $<
 
+
+
 generated_dir = $(srcDir)/emulator/${MK_TARGET_PROC}
 
 
@@ -80,9 +82,9 @@ VERILATOR_FLAGS := --top-module Top \
 	--x-assign unique \
   -I$(srcDir)/vsrc \
   -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
-emulator: generated-src/Top.v emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SimDTM.v
+emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SimDTM.v
 	$(VERILATOR) $(VERILATOR_FLAGS) \
-	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
+	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
 # $(MODEL).o: %.o: generated-src/%.cpp
 # 	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
