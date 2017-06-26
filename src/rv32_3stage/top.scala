@@ -3,7 +3,7 @@ package Sodor
 import chisel3._
 import chisel3.util._
 
-import Constants._
+import RV32_3stage.Constants._
 import Common._
 import Common.Util._
 import ReferenceChipBackend._

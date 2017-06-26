@@ -2,7 +2,7 @@
 // I will leave it as an excercise to the reader to make a parameterizable ALU
 // that doesn't generate extra hardware for 32b. I also didn't carefully
 // consider the function encodings. - Chris
-package Sodor
+package RV32_3stage
 
 import chisel3._
 import chisel3.util._

@@ -4,7 +4,7 @@
 //
 // Arbitrates instruction and data accesses to a single port memory.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._

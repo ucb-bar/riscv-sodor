@@ -1,5 +1,5 @@
-package Sodor
-import Sodor.constants._
+package RV32_3stage
+import RV32_3stage.constants._
 
 import chisel3._
 import chisel3.util._

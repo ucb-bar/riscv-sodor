@@ -24,7 +24,7 @@
 // reader for now...
 
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._

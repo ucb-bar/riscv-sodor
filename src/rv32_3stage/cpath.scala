@@ -5,7 +5,7 @@
 // cpath must check io.imem.resp.valid to verify it's decoding an actual
 // instruction. Otherwise, it is in charge of muxing off ctrl signals.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._

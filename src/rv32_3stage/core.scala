@@ -2,8 +2,7 @@
 // RISCV Processor 
 //--------------------------------------------------------------------------
 
-package Sodor
-{
+package RV32_3stage
 
 import chisel3._
 import chisel3.util._
@@ -41,4 +40,4 @@ class Core(implicit conf: SodorConfiguration) extends Module
    cpath.io.dcpath <> io.dcpath
 }
 
-}
+

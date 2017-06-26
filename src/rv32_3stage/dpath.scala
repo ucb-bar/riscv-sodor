@@ -12,7 +12,7 @@
 //
 // Thus, this file covers the Execute and Writeback stages on the 3-stage.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._
