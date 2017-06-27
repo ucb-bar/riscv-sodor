@@ -95,7 +95,7 @@ class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
 
 class DebugCPath(implicit conf: SodorConfiguration) extends Bundle
 {
-  val halt = Output(UInt(1.W))
+  val halt = Output(Bool())
 }
 
 class DebugIo(implicit conf: SodorConfiguration) extends Bundle
@@ -165,6 +165,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   val wdata = io.dmi.req.bits.data
   dmstatus.allhalted := dmcontrol.haltreq
   dmstatus.allrunning := dmcontrol.resumereq 
+  io.dcpath.halt := dmstatus.allhalted && !dmstatus.allrunning
   when (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){ 
     when((decoded_addr(DMI_RegAddrs.DMI_ABSTRACTCS)) && io.dmi.req.valid) { 
       val tempabstractcs = new ABSTRACTCSFields().fromBits(wdata)

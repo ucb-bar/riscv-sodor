@@ -165,6 +165,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mtval = Reg(UInt(conf.xprlen.W))
   val reg_mscratch = Reg(UInt(conf.xprlen.W))
   val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
+  val reg_medeleg = Reg(UInt(conf.xprlen.W))
 
   val reg_mip = Reg(init=new MIP().fromBits(0))
   val reg_mie = Reg(init=new MIP().fromBits(0))
@@ -219,7 +220,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     CSRs.mhartid -> io.hartid,
     CSRs.dcsr -> reg_dcsr.asUInt,
     CSRs.dpc -> reg_dpc,
-    CSRs.dscratch -> reg_dscratch)
+    CSRs.dscratch -> reg_dscratch,
+    CSRs.medeleg -> reg_medeleg)
 
   for (i <- 0 until CSR.nCtr)
   {
@@ -366,6 +368,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
     when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
     when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(conf.xprlen-1,0) }
+    when (decoded_addr(CSRs.medeleg))    { reg_medeleg := wdata(conf.xprlen-1,0) }
+
     if(conf.usingUser){
       when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
       when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  

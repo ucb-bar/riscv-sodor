@@ -71,7 +71,6 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       io.mem.req.valid     := io.dmem.req.valid
       io.mem.req.bits.addr := io.dmem.req.bits.addr
       io.mem.req.bits.fcn  := io.dmem.req.bits.fcn
-      hack_typ := io.dmem.req.bits.typ
       io.mem.req.bits.typ  := io.dmem.req.bits.typ
    }
    .otherwise
@@ -85,11 +84,8 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    io.mem.req.bits.data := io.dmem.req.bits.data
    io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid
    
-   // 
-   val next_typ = Reg(UInt(3.W))
    when (!nextdreq){
-      d1reg := io.hack//((Fill(24,io.hack(7))<<8.U)(31,0) + io.hack(7,0))
-      next_typ := hack_typ
+      d1reg := io.hack
    }
 
    when (io.imem.resp.valid && io.dmem.req.valid && nextdreq){
@@ -97,12 +93,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    }
 
    io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
-   io.dmem.resp.bits.data := MuxCase(d1reg,Array(
-      (next_typ === 1.U) -> Cat(Fill(24,d1reg(7)),d1reg(7,0)),
-      (next_typ === 2.U) -> Cat(Fill(16,d1reg(15)),d1reg(15,0)),
-      (next_typ === 5.U) -> Cat(Fill(24,0.U),d1reg(7,0)),
-      (next_typ === 6.U) -> Cat(Fill(16,0.U),d1reg(15,0))
-   ))
+   io.dmem.resp.bits.data := d1reg
 }
  
 }

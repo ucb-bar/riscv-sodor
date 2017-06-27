@@ -88,9 +88,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Hazard Stall Logic 
    if(NUM_MEMORY_PORTS == 1) {
-      // stall for more cycles incase of store after load with Writeback conflict
+      // stall for more cycles incase of store after load with read after write conflict
       val count = Reg(init = 1.asUInt(2.W))
-      when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen)
+      when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
       {
          count := 0.U
       }
@@ -186,7 +186,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // datapath to data memory outputs
    io.dmem.req.valid     := io.ctl.dmem_val
    if(NUM_MEMORY_PORTS == 1) 
-      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen)
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else   
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid 
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
