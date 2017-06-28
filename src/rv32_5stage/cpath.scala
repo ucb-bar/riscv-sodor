@@ -149,7 +149,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Exception Handling ---------------------
 
-   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception) && io.dat.valid_addr // csr.io.exception
+   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception)
    
    val dec_exception = (!cs_val_inst && io.imem.resp.valid) 
  

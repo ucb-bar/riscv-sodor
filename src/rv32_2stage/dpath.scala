@@ -23,7 +23,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val br_lt = Output(Bool())
    val br_ltu= Output(Bool())
    val csr_eret = Output(Bool())
-   val csr_xcpt = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -112,7 +111,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    ///
 
 
-   when (io.ctl.rf_wen && (exe_wbaddr != 0.U) && !io.dat.csr_xcpt)
+   when (io.ctl.rf_wen && (exe_wbaddr != 0.U) && !io.ctl.exception)
    {
       regfile(exe_wbaddr) := exe_wbdata
    }
@@ -184,15 +183,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val csr_out = csr.io.rw.rdata
 
    csr.io.retire    := !io.ctl.stall // TODO verify this works properly
-   csr.io.exception := io.ctl.exception && ((exe_reg_pc & "hffe00000".U) === "h80000000".U)
+   csr.io.exception := io.ctl.exception
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
                     
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.exception
         
    // Add your own uarch counters here!
-   csr.io.counters.foreach(_.inc := Bool(false))
+   csr.io.counters.foreach(_.inc := false.B)
 
  
    // WB Mux

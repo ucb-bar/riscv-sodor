@@ -117,7 +117,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Branch Logic
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.dat.csr_xcpt     , PC_EXC,
+                         io.ctl.exception     , PC_EXC,
                      Mux(cs_br_type === BR_N , PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -141,7 +141,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
-   io.ctl.rf_wen     := Mux(stall, Bool(false), cs_rf_wen)
+   io.ctl.rf_wen     := Mux(stall, false.B, cs_rf_wen)
 
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
@@ -151,14 +151,13 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    io.ctl.csr_cmd    := Mux(stall, CSR.N, csr_cmd)
 
-   io.imem.req.valid    := Bool(true)
+   io.imem.req.valid    := true.B
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
 
    io.dmem.req.valid    := cs_mem_en
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
-
 
    // Exception Handling ---------------------
    io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)

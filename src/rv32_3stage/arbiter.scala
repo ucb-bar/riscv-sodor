@@ -85,11 +85,11 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid
    
    when (!nextdreq){
-      d1reg := io.hack
+      d1reg := io.mem.resp.bits.data
    }
 
    when (io.imem.resp.valid && io.dmem.req.valid && nextdreq){
-      i1reg := io.hack
+      i1reg := io.mem.resp.bits.data
    }
 
    io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )

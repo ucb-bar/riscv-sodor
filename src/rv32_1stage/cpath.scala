@@ -115,7 +115,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                         
    // Branch Logic   
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.dat.csr_xcpt      ,  PC_EXC,
+                         io.ctl.exception      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),

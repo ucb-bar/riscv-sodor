@@ -95,7 +95,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
   }.fromBits(uop)
   require(label_sz == 8, "Label size must be 8")
 
-  val mem_is_busy = false.B
+  val mem_is_busy = !io.mem.resp.valid && cs.en_mem.toBool
 
    // Micro-PC State Logic
   val upc_sel     = MuxCase(UPC_CURRENT, Array(
@@ -145,8 +145,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.upc_is_fetch := (upc_state === label_target_map("FETCH").U)
  
    // Memory Interface
-   io.mem.req.bits.fcn:= Mux(cs.en_mem && cs.mem_wr && io.dat.valid_addr , M_XWR, M_XRD)
-   io.mem.req.bits.typ:= cs.msk_sel
+   io.mem.req.bits.fcn := Mux(cs.en_mem && cs.mem_wr , M_XWR, M_XRD)
+   io.mem.req.bits.typ := cs.msk_sel
    io.mem.req.valid   := cs.en_mem.toBool 
 
 }

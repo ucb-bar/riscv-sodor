@@ -22,8 +22,6 @@ class DatToCtlIo extends Bundle()
    val inst     = Output(UInt(32.W))
    val alu_zero = Output(Bool())
    val csr_eret = Output(Bool())
-   val csr_xcpt = Output(Bool())
-   val valid_addr = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -183,7 +181,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Output Signals to the Memory
    io.mem.req.bits.addr := reg_ma.toUInt
    io.mem.req.bits.data := bus
-   io.dat.valid_addr := (io.mem.req.bits.addr & "hffe00000".U) === "h80000000".U                           
    // Retired Instruction Counter 
    val irt_reg = Reg(init=0.asUInt(conf.xprlen.W))
    when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + 1.U }

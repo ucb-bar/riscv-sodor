@@ -28,8 +28,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val mem_ctrl_dmem_val = Output(Bool())
 
    val csr_eret = Output(Bool())
-   val csr_xcpt = Output(Bool())
-   val valid_addr = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -364,9 +362,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
 
-   io.dat.valid_addr := (mem_reg_pc & "hffe00000".U) === "h80000000".U  
    io.dat.csr_eret := csr.io.eret
-   io.dat.csr_xcpt := csr.io.exception
    // TODO replay? stall?
 
    // Add your own uarch counters here!
@@ -425,7 +421,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_reg_pc
       , Reg(next=exe_reg_pc)
       , Reg(next=Reg(next=exe_reg_pc))
-      // TODO come up with a way to print out the opcode name, instead of just the number
       , Mux(wb_reg_ctrl_rf_wen, Str("M"), Str(" ")) 
       , Mux(mem_reg_ctrl_rf_wen, Str("Z"), Str(" "))
       , wb_reg_wbaddr

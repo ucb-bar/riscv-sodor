@@ -86,7 +86,7 @@ int main(int argc, char** argv)
    std::unique_ptr<VerilatedVcdFILE> vcdfd(new VerilatedVcdFILE(vcdfile));
    std::unique_ptr<VerilatedVcdC> tfp(new VerilatedVcdC(vcdfd.get()));
    if (vcdfile) {
-      tile->trace(tfp.get(), 99);  // Trace 99 levels of hierarchy
+      dut.trace(tfp.get(), 99);  // Trace 99 levels of hierarchy
       tfp->open("");
    }
 #endif
