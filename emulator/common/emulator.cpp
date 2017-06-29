@@ -38,23 +38,16 @@ int main(int argc, char** argv)
    uint64_t max_cycles = 0;
    int start = 0;
    bool log = false;
-   const char* vcd = NULL;
    const char* loadmem = NULL;
    FILE *vcdfile = NULL, *logfile = stderr;
    const char* failure = NULL;
-//   disassembler disasm;
-   int memory_size = (1 << 21); // 2 MB is the smallest allowed memory by the fesvr 
    
    std::vector<std::string> to_dtm;
-   // for disassembly
-   char inst_str[1024];
-   uint64_t reg_inst = 0;
-   svScope scope;
    for (int i = 1; i < argc; i++)
    {
       std::string arg = argv[i];
       if (arg.substr(0, 2) == "-v")
-         vcdfile = fopen(argv[i]+2,(const char*)'w');
+         vcdfile = fopen(argv[i]+2,(const char*)"w+");
       else if (arg.substr(0, 2) == "-s")
          random_seed = atoi(argv[i]+2);
       else if (arg == "+verbose")

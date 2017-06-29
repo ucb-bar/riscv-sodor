@@ -28,7 +28,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
-   val valid_addr = Output(Bool())
    val csr_eret = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
@@ -213,8 +212,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    wb_reg_valid := exe_valid && !wb_hazard_stall 
     
    // Control Status Registers
-   // TODO CSRFile for now handled in Execute stage (same as branch redirect),
-   // but it should actually be in WB (alu_out is put on critical path).
    val csr = Module(new CSRFile())
    csr.io.decode.csr   := wb_reg_csr_addr
    csr.io.rw.wdata  := wb_reg_alu
@@ -225,7 +222,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.exception := Reg(next = io.ctl.exception)
    csr.io.pc        := exe_pc - 4.U
    exception_target := csr.io.evec
-   io.dat.valid_addr := (exe_pc & "hffe00000".U) === "h80000000".U 
    io.dat.csr_eret := csr.io.eret
 
    // Add your own uarch counters here!
@@ -236,14 +232,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // instruction behind our jal, which assumes we always predict PC+4, and we
    // don't clear the "mispredicted" PC when we jump.
    require (PREDICT_PCP4==true)
-
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
                   (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   ))
-                                
+
    //**********************************
    // Printout
 
@@ -253,7 +248,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val debug_wb_pc = Wire(UInt(32.W))
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), 0.U, Reg(next=exe_pc))
    val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
-   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%d,%d,%d], WB: DASM(%x)\n"
+   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%d,%d], WB: DASM(%x)\n"
       , csr.io.time(31,0)
       , exe_alu_op1
       , exe_alu_op2
@@ -276,8 +271,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(exe_valid, exe_inst, BUBBLE)(6,0)
       , debug_wb_inst(6,0)
       , debug_wb_inst
-
-
       )
 
    // for debugging, print out the commit information.

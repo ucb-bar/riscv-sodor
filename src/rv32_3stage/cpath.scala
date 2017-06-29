@@ -133,7 +133,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val take_evec = Wire(Bool()) // jump to the csr.io.evec target 
                           // (for exceptions or sret, taken in the WB stage)
 
-   val ctrl_pc_sel = Mux(take_evec && io.dat.valid_addr        ,  PC_EXC,
+   val ctrl_pc_sel = Mux(take_evec            ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),

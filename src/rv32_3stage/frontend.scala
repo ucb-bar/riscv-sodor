@@ -33,7 +33,6 @@ import chisel3.util._
 
 import Constants._
 import Common._
-//import Common.Constants._
 
 
 class FrontEndIO(implicit conf: SodorConfiguration) extends Bundle
@@ -86,7 +85,7 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = Reg(init = false.B)
-   val if_reg_pc     = Reg(init= START_ADDR-4.U)
+   val if_reg_pc     = Reg(init= START_ADDR - 4.U)
     
    val exe_reg_valid = Reg(init = false.B)
    val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
@@ -127,12 +126,11 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
-
    //**********************************
    // Inst Fetch/Return Stage
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid :=  if_reg_valid && !io.cpu.req.valid
+      exe_reg_valid := if_reg_valid && !io.cpu.req.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.resp.bits.data
    }

@@ -22,12 +22,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
          val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
          val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
          val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
-         val hack = Input(UInt(conf.xprlen.W)) // HACK FOR PRINCETON
       }) 
-
-   ///////// HACK FOR PRINCETON
-   val hack_typ = Wire(UInt(3.W))
-   //////////
 
    //***************************
    val i1reg = Reg(UInt(conf.xprlen.W))
