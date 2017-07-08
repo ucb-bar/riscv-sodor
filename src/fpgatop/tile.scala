@@ -21,35 +21,91 @@ package zynq
 
 import chisel3._
 import chisel3.util._
-
+import uncore.tilelink2._
+import diplomacy._
+import zynq._
+import util._
+import uncore.axi4._
+import config._
 import RV32_3stage.Constants._
 import Common._   
 import Common.Util._   
 import RV32_3stage._
 
+class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends Bundle(){
+   val dmi = new DMIIO()
+   val tl_out = outer.masterDebug.bundleOut
+}
 
-class SodorTile(implicit val conf: SodorConfiguration) extends Module
-{
-   val io = IO(new Bundle {
-      val dmi = Flipped(new DMIIO())
-   })
+class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends LazyModuleImp(outer){
+   val io = new TLToDMIBundle(outer);
+}
 
+
+class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModule{
+  lazy val module = new TLToDMIModule(this)
+  val masterDebug = TLClientNode(TLClientParameters(name = s"Debug MemAccess"))
+}
+
+class SodorTileBundle(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends Bundle {
+   val mem_axi4 = outer.mem_axi4.bundleOut
+}
+
+class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends LazyModuleImp(outer){
+   val io = new SodorTileBundle(outer)
    val core   = Module(new Core())
-   val memory = Module(new MemAccessToTL(num_core_ports=2)) 
+   val memory = outer.memory.module 
+   val tldmi = outer.tldmi.module
    val debug = Module(new DebugModule())
    core.reset := debug.io.resetcore | reset.toBool
 
-   val arbiter = Module(new SodorMemArbiter) // only used for single port memory
-   core.io.imem <> arbiter.io.imem
-   core.io.dmem <> arbiter.io.dmem
-   debug.io.debugmem <> arbiter.io.debugmem
-   arbiter.io.mem <> memory.io.core_ports(0)
-   arbiter.io.hack := memory.io.hack
+   core.io.dmem <> memory.io.core_ports(0)
+   core.io.imem <> memory.io.core_ports(1)
+   debug.io.debugmem <> memory.io.debug_port
 
    // DTM memory access
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
-   debug.io.dmi <> io.dmi
+   debug.io.dmi <> tldmi.io.dmi
+   
+}
+
+
+class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends LazyModule
+{
+   val memory = LazyModule(new MemAccessToTL(num_core_ports=2))
+   val tldmi = LazyModule(new TLToDMI())
+   lazy val module = Module(new SodorTileModule(this))
+   private val device = new MemoryDevice
+   val config = p(DebugAddr)
+   val mem_axi4 = AXI4BlindOutputNode(Seq(  
+    AXI4SlavePortParameters(
+      slaves = Seq(AXI4SlaveParameters(
+              address       = Seq(AddressSet(config.base, config.size-1)),
+              resources     = device.reg,
+              regionType    = RegionType.UNCACHED,   // cacheable
+              executable    = true,
+              supportsWrite = TransferSizes(1, 4), // The slave supports 1-256 byte transfers
+              supportsRead  = TransferSizes(1, 4),
+              interleavedId = Some(0))),             // slave does not interleave read responses
+            beatBytes = 4,minLatency =1)
+   ))
+   
+   private val converter = LazyModule(new TLToAXI4(4))
+   private val trim = LazyModule(new AXI4IdIndexer(4))
+   private val yank = LazyModule(new AXI4UserYanker)
+   private val buffer = LazyModule(new AXI4Buffer)
+
+   val tlxbar = LazyModule(new TLXbar)
+   converter.node := tlxbar.node
+   trim.node := converter.node
+   yank.node := trim.node
+   buffer.node := yank.node
+   mem_axi4 := buffer.node
+
+   tlxbar.node := tldmi.masterDebug
+   tlxbar.node := memory.masterInstr
+   tlxbar.node := memory.masterData
 }
  
 }
