@@ -35,6 +35,7 @@ import RV32_3stage._
 class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends Bundle(){
    val dmi = new DMIIO()
    val tl_out = outer.masterDebug.bundleOut
+   val tl_in = outer.slaveDebug.bundleIn
 }
 
 class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends LazyModuleImp(outer){
@@ -45,6 +46,18 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
 class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModule{
   lazy val module = new TLToDMIModule(this)
   val masterDebug = TLClientNode(TLClientParameters(name = s"Debug MemAccess"))
+  val config = p(DebugAddrSlave) //temporary
+  val slaveDebug = TLManagerNode(Seq(TLManagerPortParameters(
+      Seq(TLManagerParameters(
+        address         = Seq(AddressSet(config.base, config.size-1)),
+        regionType      = RegionType.UNCACHED,
+        executable      = false,
+        supportsPutFull = TransferSizes(1, 4),
+        supportsPutPartial = TransferSizes(1, 4),
+        supportsGet     = TransferSizes(1, 4),
+        fifoId          = Some(0))), // requests handled in FIFO order
+      beatBytes = 4,
+      minLatency = 1)))
 }
 
 class SodorTileBundle(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends Bundle {
@@ -84,7 +97,7 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
               address       = Seq(AddressSet(config.base, config.size-1)),
               resources     = device.reg,
               regionType    = RegionType.UNCACHED,   // cacheable
-              executable    = true,
+              executable    = false,
               supportsWrite = TransferSizes(1, 4), // The slave supports 1-256 byte transfers
               supportsRead  = TransferSizes(1, 4),
               interleavedId = Some(0))),             // slave does not interleave read responses
@@ -103,9 +116,26 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
    buffer.node := yank.node
    mem_axi4 := buffer.node
 
+   val ps_slave = AXI4BlindInputNode(Seq(AXI4MasterPortParameters(
+    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery",id = IdRange(0, 1 << 2))))))
+
+   tldmi.slaveDebug := tlxbar.node
+
+   tlxbar.node :=
+    TLWidthWidget(4)(
+    AXI4ToTL()(
+    AXI4UserYanker(Some(1 << 2))(
+    AXI4Fragmenter()(
+    AXI4IdIndexer(2)(
+    ps_slave)))))
+
+
    tlxbar.node := tldmi.masterDebug
    tlxbar.node := memory.masterInstr
-   tlxbar.node := memory.masterData
+   tlxbar.node := memory.masterData 
+
+   val error = LazyModule(new TLError(address = Seq(AddressSet(0x3000, 0xfff))))
+   error.node := tlxbar.node
 }
  
 }

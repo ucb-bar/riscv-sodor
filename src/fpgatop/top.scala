@@ -23,11 +23,13 @@ object ReferenceChipBackend {
 case class MasterConfig(base: Long, size: Long, beatBytes: Int, idBits: Int)
 case object ExtMem extends Field[MasterConfig]
 case object DebugAddr extends Field[MasterConfig]
+case object DebugAddrSlave extends Field[MasterConfig]
 class WithZynqAdapter extends Config((site, here, up) => {
   case junctions.NastiKey => junctions.NastiParameters(dataBits = 32,
       addrBits = 32,idBits = 12)
   case ExtMem => MasterConfig(base= 0x80000000L, size= 0x10000000L, beatBytes= 4, idBits= 4)
   case DebugAddr => MasterConfig(base= 0x40000000L, size= 0x10000000L, beatBytes= 4, idBits= 4)
+  case DebugAddrSlave => MasterConfig(base= 0x50000000L, size= 0x10000000L, beatBytes= 4, idBits= 4)
   case TLMonitorBuilder => (args: TLMonitorArgs) => None
   case TLCombinationalCheck => false
 })
