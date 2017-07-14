@@ -17,6 +17,7 @@ import Common.Util._
 class MemAccessToTL(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration,p: Parameters) extends LazyModule {
    val masterInstr = TLClientNode(TLClientParameters(name = s"Core Instr"))
    val masterData = TLClientNode(TLClientParameters(name = s"Core Data"))
+   val masterDebug = TLClientNode(TLClientParameters(name = s"Debug MemAccess"))
    lazy val module = new MemAccessToTLModule(this,num_core_ports)
 }
 
@@ -25,11 +26,20 @@ class MemAccessToTLBundle(outer: MemAccessToTL,num_core_ports: Int)(implicit con
    val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))  
    val tl_data = outer.masterData.bundleOut
    val tl_instr = outer.masterInstr.bundleOut 
+   val tl_debug = outer.masterDebug.bundleOut  
 }
 
 class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration,p: Parameters) extends LazyModuleImp(outer) with Common.MemoryOpConstants
 {
    val io = new MemAccessToTLBundle(outer,num_core_ports)
+
+   val edge_debug = outer.masterDebug.edgesOut.head
+   val tl_debug = io.tl_debug.head
+   val edge_data = outer.masterData.edgesOut.head
+   val tl_data = io.tl_data.head
+   val edge_instr = outer.masterInstr.edgesOut.head
+   val tl_instr = io.tl_instr.head
+
    val num_bytes_per_line = 8
    val num_lines = num_bytes / num_bytes_per_line
    println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")

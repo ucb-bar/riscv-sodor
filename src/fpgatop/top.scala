@@ -39,10 +39,11 @@ class Top extends Module {
   val inParams = new WithZynqAdapter
   val tile = LazyModule(new SodorTile()(sodor_conf,inParams)).module
   val io = IO(new Bundle {
-    val ps_axi_slave = Flipped(new NastiIO()(inParams))
+    val ps_axi_slave = Flipped(tile.io.ps_slave.cloneType) //Flipped(new NastiIO()(inParams))
     val mem_axi = tile.io.mem_axi4.cloneType
   })
   io.mem_axi <> tile.io.mem_axi4
+  tile.io.ps_slave <> io.ps_axi_slave
 }
 
 

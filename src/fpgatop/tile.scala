@@ -34,18 +34,23 @@ import RV32_3stage._
 
 class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends Bundle(){
    val dmi = new DMIIO()
-   val tl_out = outer.masterDebug.bundleOut
    val tl_in = outer.slaveDebug.bundleIn
 }
 
 class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends LazyModuleImp(outer){
-   val io = new TLToDMIBundle(outer);
+   val io = new TLToDMIBundle(outer)
+   val edge_in = outer.slaveDebug.edgesIn.head
+   val tl_in = io.tl_in.head
+
+   io.dmi.req.valid := tl_in.a.fire().getOrElse(false.B)
+   io.dmi.req.bits.data := tl_in.a.bits.data
+   io.dmi.req.bits.address := tl_in.a.bits.address
+   
 }
 
 
 class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModule{
   lazy val module = new TLToDMIModule(this)
-  val masterDebug = TLClientNode(TLClientParameters(name = s"Debug MemAccess"))
   val config = p(DebugAddrSlave) //temporary
   val slaveDebug = TLManagerNode(Seq(TLManagerPortParameters(
       Seq(TLManagerParameters(
@@ -62,6 +67,7 @@ class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModu
 
 class SodorTileBundle(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends Bundle {
    val mem_axi4 = outer.mem_axi4.bundleOut
+   val ps_slave = outer.ps_slave.bundleIn
 }
 
 class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends LazyModuleImp(outer){
@@ -110,32 +116,31 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
    private val buffer = LazyModule(new AXI4Buffer)
 
    val tlxbar = LazyModule(new TLXbar)
+
+   val ps_slave = AXI4BlindInputNode(Seq(AXI4MasterPortParameters(
+    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery",id = IdRange(0, 1 << 2))))))
+   tlxbar.node :=
+    TLFIFOFixer()(
+    TLBuffer()(
+    TLWidthWidget(4)(
+    AXI4ToTL()(
+    AXI4UserYanker(Some(1 << 2))(
+    AXI4Fragmenter()(
+    AXI4IdIndexer(1)(ps_slave)))))))
    converter.node := tlxbar.node
    trim.node := converter.node
    yank.node := trim.node
    buffer.node := yank.node
    mem_axi4 := buffer.node
 
-   val ps_slave = AXI4BlindInputNode(Seq(AXI4MasterPortParameters(
-    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery",id = IdRange(0, 1 << 2))))))
-
-   tldmi.slaveDebug := tlxbar.node
-
-   tlxbar.node :=
-    TLWidthWidget(4)(
-    AXI4ToTL()(
-    AXI4UserYanker(Some(1 << 2))(
-    AXI4Fragmenter()(
-    AXI4IdIndexer(2)(
-    ps_slave)))))
-
-
-   tlxbar.node := tldmi.masterDebug
+   tlxbar.node := memory.masterDebug
    tlxbar.node := memory.masterInstr
    tlxbar.node := memory.masterData 
 
    val error = LazyModule(new TLError(address = Seq(AddressSet(0x3000, 0xfff))))
+   tldmi.slaveDebug := tlxbar.node
    error.node := tlxbar.node
+
 }
  
 }
