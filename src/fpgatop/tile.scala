@@ -42,10 +42,27 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
    val edge_in = outer.slaveDebug.edgesIn.head
    val tl_in = io.tl_in.head
 
-   io.dmi.req.valid := tl_in.a.fire().getOrElse(false.B)
+   io.dmi.req.valid := tl_in.a.valid
    io.dmi.req.bits.data := tl_in.a.bits.data
-   io.dmi.req.bits.address := tl_in.a.bits.address
-   
+   io.dmi.req.bits.addr := tl_in.a.bits.address
+   tl_in.a.ready := io.dmi.req.ready 
+
+   tl_in.d.valid := io.dmi.resp.valid
+   io.dmi.resp.ready := tl_in.d.ready
+
+   when(tl_in.a.bits.opcode === 0.U) {io.dmi.req.bits.op := DMConsts.dmi_OP_WRITE}
+   .elsewhen (tl_in.a.bits.opcode === 4.U) {io.dmi.req.bits.op := DMConsts.dmi_OP_READ}
+
+   val ack = Reg(tl_in.d.bits.cloneType)
+   when(tl_in.a.valid) { ack := edge_in.AccessAck(tl_in.a.bits, 0.U)}
+   tl_in.d.bits := ack 
+   tl_in.d.bits.data := io.dmi.resp.bits.data
+   tl_in.d.bits.opcode := Mux(edge_in.hasData(tl_in.a.bits), TLMessages.AccessAck, TLMessages.AccessAckData)
+
+   // Tie off unused channels
+   tl_in.b.valid := false.B
+   tl_in.c.ready := true.B
+   tl_in.e.ready := true.B
 }
 
 

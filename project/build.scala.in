@@ -39,7 +39,8 @@ object BuildSettings extends Build {
   lazy val rv32_ucode  = Project("rv32_ucode", file("rv32_ucode"), settings = buildSettings ++ chipSettings
     ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_ucode"))) dependsOn(common)
   lazy val fpgatop  = Project("fpgatop", file("fpgatop"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/fpgatop"))) dependsOn(common,rv32_3stage)
+    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/fpgatop"))
+    ++Seq(resourceDirectory in Compile := file("@abs_top_srcdir@/vsrc"))) dependsOn(common,rv32_3stage)
 
   val elaborateTask = InputKey[Unit]("elaborate", "convert chisel components into backend source code")
   val makeTask = InputKey[Unit]("make", "trigger backend-specific makefile command")

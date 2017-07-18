@@ -2,7 +2,7 @@ package zynq
 
 import chisel3._
 import chisel3.util._
-import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
+import chisel3.iotesters._
 import config._
 import Common._
 import diplomacy._
@@ -39,16 +39,26 @@ class Top extends Module {
   val inParams = new WithZynqAdapter
   val tile = LazyModule(new SodorTile()(sodor_conf,inParams)).module
   val io = IO(new Bundle {
-    val ps_axi_slave = Flipped(tile.io.ps_slave.cloneType) //Flipped(new NastiIO()(inParams))
+    val ps_axi_slave = Flipped(tile.io.ps_slave.cloneType)
     val mem_axi = tile.io.mem_axi4.cloneType
   })
   io.mem_axi <> tile.io.mem_axi4
   tile.io.ps_slave <> io.ps_axi_slave
 }
 
+class TopTests extends SteppedHWIOTester {
+  val device_under_test = Module(new Top())
+  expect(device_under_test.io.mem_axi(0).ar.valid, false)
+  step(1)
+}
 
 object elaborate extends ChiselFlatSpec{
   def main(args: Array[String]): Unit = {
-    chisel3.Driver.execute(args, () => new Top)
+    if(!args.isEmpty && args(0) == "testtop"){
+      assertTesterPasses(new TopTests,additionalVResources = Seq("/SyncMem.sv"))
+    } 
+    else {
+      chisel3.Driver.execute(args.slice(1, args.length), () => new Top)
+    }
   }
 }
