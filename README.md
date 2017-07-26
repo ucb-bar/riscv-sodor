@@ -1,4 +1,4 @@
-About The Sodor Processor Collection
+NAbout The Sodor Processor Collection
 ====================================
 
 Author  : Christopher Celio (celio@eecs.berkeley.edu)
@@ -41,11 +41,11 @@ documents may become dated as things like the Privileged ISA evolve.
 
 Getting the repo
 ================
-
-    $ git clone https://github.com/ucb-bar/riscv-sodor.git
-    $ cd riscv-sodor
-    $ git submodule update --init --recursive
-
+```bash
+git clone https://github.com/ucb-bar/riscv-sodor.git
+cd riscv-sodor
+git submodule update --init --recursive
+```
 
 Building the processor emulators
 ================================
@@ -60,28 +60,52 @@ The assumption is that [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-
 available on the local system.  Thus, RISC-V unit tests and benchmarks were
 compiled and committed to the sodor repository in the ./install directory (as are the .dump files).
 
+Install verilator using any of the following possible ways
+For Ubuntu 17.04
+```bash
+sudo apt install pkg-config verilator
+#optionally gtkwave to view waveform dumps
+```
+
+For Ubuntu 16.10 and lower
+```bash 
+sudo apt install pkg-config
+wget http://mirrors.kernel.org/ubuntu/pool/universe/v/verilator/verilator_3.900-1_amd64.deb
+sudo dpkg -i verilator_3.900-1_amd64.deb
+```
+
+If you don't have enough permissions to use apt on your machine
+```bash
+# make autoconf g++ flex bison should be available
+wget https://www.veripool.org/ftp/verilator-3.906.tgz
+tar -xzf verilator-3.906.tgz
+cd verilator-3.906
+unset VERILATOR_ROOT
+./configure
+make
+export VERILATOR_ROOT=$PWD
+export PATH=$VERILATOR_ROOT/bin
+```
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
-
-    $ cd riscv-fesvr
-    $ mkdir build; cd build
-    $ ../configure --prefix=/usr/local
-    $ make
+```bash
+cd riscv-fesvr
+mkdir build; cd build
+../configure --prefix=/usr/local
+make install 
+```
 
 Build the sodor emulators
-
-    $ ./configure --with-riscv=/usr/local
-    $ make
-
-Install the executables on the local system
-
-    $ make install
-
-Clean all generated files
-
-    $ make clean
-
-
+```bash
+./configure --with-riscv=/usr/local
+make
+# To run the all the stages with the given tests available in ./install
+make run-emulator
+# To install the executables on the local system
+make install
+# Clean all generated files
+make clean
+```
 (Although you can set the prefix to any directory of your choice, they must be
 the same directory for both riscv-fesvr and riscv-sodor).
 
@@ -123,39 +147,18 @@ Gathering the results
 
 (Optional) Running debug version to produce signal traces
 ---------------------------------------------------------
-
-    $ make run-emulator-debug
-
+```bash
+make run-emulator-debug
+```
 When run in debug mode, all processors will generate .vcd information (viewable
-by your favorite waveform viewer). **NOTE:** The current build system assumes
-that the user has "vcd2vpd" installed.  If not, you will need to make the
-appropriate changes to emulator/common/Makefile.include to remove references to
-"vcd2vpd".
-
-All processors can also spit out cycle-by-cycle log information: see
-emulator/common/Makefile.include and add a "+verbose" to the emulator binary
-arguments list. **WARNING:** log files may become very large!
-
-By default, assembly tests already use "+verbose" and the longer running
-benchmarks do not. See the Makefile rule "run-bmarks:
-$(global\_bmarks\_outgz)..." which, if uncommented, will run the benchmarks in
-log mode and save the output to a .gz file (you can use "zcat vvadd.out.gz |
-vim -" to read these files easily enough, if vim is your thing).
-
+by your favorite waveform viewer). All processors can also spit out cycle-by-cycle 
+log information.
 Although already done for you by the build system, to generate .vcd files, see
-./Makefile to add the "--vcd" flag to Chisel, and
-emulator/common/Makefile.include to add the "-v${vcdfilename}" flag to the
-emulator binary. Currently, the .vcd files are converted to .vpd files and then
-the .vcd files are deleted. If you do not have vcd2vpd, you will want to remove
-references to vcd2vpd in emulator/common/Makefile.include.
+ emulator/common/Makefile.include to add the "-v${vcdfilename}" flag to the
+emulator-debug binary.
 
-The 1-stage and 3-stage can run the bmarks using the proxy-kernel (pk),
-which allows it to trap and emulate illegal instructions (e.g., div/rem), and
-allows the use of printf from within the bmark application! (This assumes the
-benchmarks have been compiled for use on a proxy kernel. For example, bare
-metal programs begin at PC=0x200, whereas the proxy kernel expects the
-benchmark's main to be located at 0x10000. This is controlled by the
-tests/riscv-bmarks/Makefile SUPERVISOR\_MODE variable).
+RISC-V fesvr allows you to use elf as input to sodor cores so no need to generate
+the hex files
 
 Have fun!
 
@@ -172,13 +175,13 @@ Building a RV32I Toolchain
 If you would like to compile your own tests, you will need to build an
 RV32I compiler. Set $RISCV to where you would like to install RISC-V related
 tools, and make sure that $RISCV/bin is in your path.
-
-    $ git clone git@github.com:riscv/riscv-gnu-toolchain.git
-    $ cd riscv-gnu-toolchain
-    $ mkdir build; cd build
-    $ ../configure --prefix=$RISCV --with-arch=rv32i
-    $ make install
-
+```bash
+git clone git@github.com:riscv/riscv-gnu-toolchain.git
+cd riscv-gnu-toolchain
+mkdir build; cd build
+../configure --prefix=$RISCV --with-arch=rv32i
+make install
+```
 This will install a compiler named riscv32-unknown-elf-gcc, complete with
 newlib libraries that will only emit integer instructions. More advanced users
 will want to consult the riscv-gnu-toolchain README regarding multilib support
@@ -186,17 +189,16 @@ for different base ISAs.
 
 Compiling the tests yourself
 ----------------------------
-
+```bash
     cd riscv-tests/isa
     make
-
+```
 This will compile ALL RISC-V assembly tests (32b and 64b). Sodor only supports
 the rv32ui-p (user-level) and rv32mi-p (machine-level) physical memory tests.
-
-
+```bash
     cd riscv-tests/benchmarks
     make
-
+```
 You will need to modify the Makefile in riscv-tests/benchmarks to compile RV32I
 binaries.  By default, it will compile RV64G. If you compiled a pure RV32I
 compiler, then you may only need to change the name of the compiler used
@@ -230,7 +232,7 @@ FAQ
 First and foremost, to provide a set of easy to understand cores that users can
 easily modify and play with. Sodor is useful both as a quick introduction to
 the [RISC-V ISA](http://riscv.org) and to the hardware construction language
-[Chisel](http://chisel.eecs.berkeley.edu).
+[Chisel3](http://chisel.eecs.berkeley.edu).
 
 *Are there any diagrams of these cores?*
 
@@ -242,41 +244,11 @@ be found at the [CS152 website](http://inst.eecs.berkeley.edu/~cs152/sp12/handou
 
 *How do I generate Verilog code for use on a FPGA?*
 
-The Sodor repository is set up to use the C++-backend of Chisel to generate and
-run the Sodor emulators. Users wishing to use the Verilog-backend will
-unfortunately need to write their own testharness and glue code to interface
-with their own tool flows.
-
-*Why no Verilog?*
-
-In a past iteration, Sodor has used Synopsys's VCS and DirectC to provide a
-Verilog flow for Verlog RTL simulation.  However, as VCS/DirectC is not freely
-available, it was not clear that committing Verilog code dependent on a
-proprietary simulation program was a good idea.
-
-
-*How can I generate Verilog myself?*
-
-You can generate the Verilog code by modifying the Makefile in
-emulator/common/Makefile.include.  In the CHISEL_ARGS variable, change
-"--backend c" to "--backend v". This will dump a Top.v verilog file of the core
-and its scratchpad memory (corresponding to the Chisel module named "Top") into
-the location specified by "--targetDir" in CHISEL_ARGS.
-
-Once you have the Top.v module, you will have to write your own testharness and
-glue code to talk to Top.v.  The main difficulty here is that you need to link
-the riscv-fesvr to the Sodor core via the HTIF link ("host-target interface").
-This allows the fesvr to load a binary into the Sodor core's scratchpad memory,
-bring the core out of reset, and communicate with the core while it's running
-to handle any syscalls, error conditions, or test successful/end conditions.
-
-This basically involves porting emulator/\*/emulator.cpp to Verilog.  I
-recommend writing a Verilog testharness that interfaces with the existing C++
-code (emulator/common/htif_emulator.cc, etc.).  emulator/common/htif_main.cc
-shows an example stub that uses Synopsys's DirectC to interface between a
-Verilog test-harness and the existing C++ code.
-
-
+Chisel3 outputs verilog by default which can be generated by
+```bash
+cd emulator/rv32_1stage
+make generated-src/Top.v
+```
 
 TODO
 ----
@@ -295,4 +267,3 @@ contribute!
   more understandable.
 * Update the u-code to properly handle illegal instructions (rv32mi-p-illegal)
   and to properly handle exceptions generated by the CSR file (rv32mi-p-csr).
-
