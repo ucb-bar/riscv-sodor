@@ -41,23 +41,23 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
    val io = new TLToDMIBundle(outer)
    val edge_in = outer.slaveDebug.edgesIn.head
    val tl_in = io.tl_in.head
-
+   val areq = RegEnable(tl_in.a.bits, tl_in.a.fire())
+   val temp = Reg(init = false.B)
    io.dmi.req.valid := tl_in.a.valid
    io.dmi.req.bits.data := tl_in.a.bits.data
-   io.dmi.req.bits.addr := tl_in.a.bits.address
+   io.dmi.req.bits.addr := (tl_in.a.bits.address & "h1ff".U) >> 2.U
    tl_in.a.ready := io.dmi.req.ready 
-
-   tl_in.d.valid := io.dmi.resp.valid
+   temp := tl_in.d.ready && io.dmi.resp.valid
+   tl_in.d.valid := io.dmi.resp.valid //&& !temp
    io.dmi.resp.ready := tl_in.d.ready
+   io.dmi.req.bits.op := Mux(tl_in.a.bits.opcode === 4.U, DMConsts.dmi_OP_READ, DMConsts.dmi_OP_WRITE)
 
-   when(tl_in.a.bits.opcode === 0.U) {io.dmi.req.bits.op := DMConsts.dmi_OP_WRITE}
-   .elsewhen (tl_in.a.bits.opcode === 4.U) {io.dmi.req.bits.op := DMConsts.dmi_OP_READ}
-
-   val ack = Reg(tl_in.d.bits.cloneType)
-   when(tl_in.a.valid) { ack := edge_in.AccessAck(tl_in.a.bits, 0.U)}
-   tl_in.d.bits := ack 
+   tl_in.d.bits := Mux(io.dmi.req.valid && io.dmi.resp.valid ,edge_in.AccessAck(tl_in.a.bits, 1.U),edge_in.AccessAck(areq, 1.U))
    tl_in.d.bits.data := io.dmi.resp.bits.data
-   tl_in.d.bits.opcode := Mux(edge_in.hasData(tl_in.a.bits), TLMessages.AccessAck, TLMessages.AccessAckData)
+   tl_in.d.bits.opcode := Mux(areq.opcode === 4.U || tl_in.a.bits.opcode === 4.U , TLMessages.AccessAckData, TLMessages.AccessAck)
+   printf("TLDMI: AV:%x AR:%x DV:%x DR:%x DO:%x DD:%x DMIRD:%x DMIRV:%x AREQO:%x NO:%x V:%x DMIAddr:%x\n",tl_in.a.valid,tl_in.a.ready,tl_in.d.valid,tl_in.d.ready,
+    tl_in.d.bits.opcode,tl_in.d.bits.data,io.dmi.resp.bits.data,io.dmi.resp.valid,areq.opcode,tl_in.a.bits.opcode,io.dmi.req.valid && io.dmi.resp.valid, 
+    tl_in.a.bits.address)
 
    // Tie off unused channels
    tl_in.b.valid := false.B
@@ -103,7 +103,12 @@ class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p:
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> tldmi.io.dmi
-   
+
+   printf("STM: MEM ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WVR:%x WD:%x RV:%x RD:%x\n",io.mem_axi4(0).ar.valid,io.mem_axi4(0).ar.ready,io.mem_axi4(0).aw.valid,
+    io.mem_axi4(0).aw.ready,io.mem_axi4(0).w.valid,io.mem_axi4(0).w.ready,io.mem_axi4(0).w.bits.data,io.mem_axi4(0).r.valid,io.mem_axi4(0).r.bits.data)
+   printf("STM: PS ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WR:%x WD:%x RV:%x RD:%x BV:%x AWADDR:%x\n",io.ps_slave(0).ar.valid,io.ps_slave(0).ar.ready,io.ps_slave(0).aw.valid,
+    io.ps_slave(0).aw.ready,io.ps_slave(0).w.valid,io.ps_slave(0).w.ready,io.ps_slave(0).w.bits.data,io.ps_slave(0).r.valid,io.ps_slave(0).r.bits.data,
+    io.ps_slave(0).b.valid, io.ps_slave(0).aw.bits.addr)
 }
 
 
@@ -113,7 +118,7 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
    val tldmi = LazyModule(new TLToDMI())
    lazy val module = Module(new SodorTileModule(this))
    private val device = new MemoryDevice
-   val config = p(DebugAddr)
+   val config = p(ExtMem)
    val mem_axi4 = AXI4BlindOutputNode(Seq(  
     AXI4SlavePortParameters(
       slaves = Seq(AXI4SlaveParameters(
@@ -127,16 +132,25 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
             beatBytes = 4,minLatency =1)
    ))
    
-   private val converter = LazyModule(new TLToAXI4(4))
-   private val trim = LazyModule(new AXI4IdIndexer(4))
-   private val yank = LazyModule(new AXI4UserYanker)
-   private val buffer = LazyModule(new AXI4Buffer)
-
    val tlxbar = LazyModule(new TLXbar)
 
+   mem_axi4 := AXI4Buffer()(
+    AXI4UserYanker()(
+    AXI4IdIndexer(4)(
+    TLToAXI4(4)(tlxbar.node))))
+
+   tlxbar.node := memory.masterDebug
+   tlxbar.node := memory.masterInstr
+   tlxbar.node := memory.masterData 
+
+   val tlxbar2 = LazyModule(new TLXbar)
+   val error = LazyModule(new TLError(address = Seq(AddressSet(0x3000, 0xfff))))
    val ps_slave = AXI4BlindInputNode(Seq(AXI4MasterPortParameters(
-    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery",id = IdRange(0, 1 << 2))))))
-   tlxbar.node :=
+    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery")))))
+
+   error.node := tlxbar2.node
+   tldmi.slaveDebug := tlxbar2.node
+   tlxbar2.node :=
     TLFIFOFixer()(
     TLBuffer()(
     TLWidthWidget(4)(
@@ -144,20 +158,6 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
     AXI4UserYanker(Some(1 << 2))(
     AXI4Fragmenter()(
     AXI4IdIndexer(1)(ps_slave)))))))
-   converter.node := tlxbar.node
-   trim.node := converter.node
-   yank.node := trim.node
-   buffer.node := yank.node
-   mem_axi4 := buffer.node
-
-   tlxbar.node := memory.masterDebug
-   tlxbar.node := memory.masterInstr
-   tlxbar.node := memory.masterData 
-
-   val error = LazyModule(new TLError(address = Seq(AddressSet(0x3000, 0xfff))))
-   tldmi.slaveDebug := tlxbar.node
-   error.node := tlxbar.node
-
 }
  
 }

@@ -155,7 +155,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    // asynchronous read
    async_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := async_data.io.hr.data
-   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),Bool(true),Bool(false))
+   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR) && io.debug_port.req.valid,true.B,false.B)
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
       async_data.io.hw.addr := io.debug_port.req.bits.addr
@@ -213,18 +213,20 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    ////////////
 
    // DEBUG PORT-------
-   io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.req.ready := Reg(next = io.debug_port.req.valid) // for now, no back pressure
+   io.debug_port.resp.valid := Mux(io.debug_port.req.bits.fcn === M_XWR,io.debug_port.req.valid,
+                              Reg(next = io.debug_port.req.valid))
    // asynchronous read
    sync_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := sync_data.io.hr.data
-   sync_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),true.B,false.B)
+   sync_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR) && io.debug_port.req.valid,true.B,false.B)
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
       sync_data.io.hw.addr := io.debug_port.req.bits.addr
       sync_data.io.hw.data := io.debug_port.req.bits.data 
       sync_data.io.hw.mask := 15.U
-   } 
+   }
+   printf("MEM %x %x %x %x",io.debug_port.req.valid,io.debug_port.req.bits.data,io.debug_port.req.bits.addr,io.debug_port.req.bits.fcn) 
 }
 
 }

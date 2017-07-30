@@ -57,7 +57,7 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
 
    val req_typi = Reg(UInt(3.W))
    req_typi := io.core_ports(DPORT).req.bits.typ
-   val resp_datai = sync_data.io.dataInstr(DPORT).data
+   val resp_datai = tl_data.d.bits.data
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
       (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
@@ -80,19 +80,27 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    if (num_core_ports == 2)
       io.core_ports(IPORT).resp.bits.data := sync_data.io.dataInstr(IPORT).data 
    ////////////
+   tl_data.a.valid := false.B
+   tl_instr.a.valid := false.B
+   
 
    // DEBUG PORT-------
-   io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.req.ready := tl_debug.a.ready // for now, no back pressure
+   io.debug_port.resp.valid := tl_debug.d.valid //Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
    // asynchronous read
-   sync_data.io.hr.addr := io.debug_port.req.bits.addr
-   io.debug_port.resp.bits.data := sync_data.io.hr.data
-   sync_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),true.B,false.B)
+   tl_debug.a.bits.address := io.debug_port.req.bits.addr
+   tl_debug.a.valid := io.debug_port.req.valid
+   printf("MMTL: AV:%x %x AR:%x AA:%x AD:%x RR:%x RD:%x\n",tl_debug.a.valid,io.debug_port.req.valid,tl_debug.a.ready,tl_debug.a.bits.address,tl_debug.a.bits.data
+      ,tl_debug.d.valid,tl_debug.d.bits.data)
+   tl_debug.d.ready := true.B
+   tl_debug.a.bits.size := 2.U
+   tl_debug.a.bits.mask := 15.U
+   io.debug_port.resp.bits.data := tl_debug.d.bits.data
+   tl_debug.a.bits.opcode := Mux((io.debug_port.req.bits.fcn === M_XWR),1.U,4.U)
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
-      sync_data.io.hw.addr := io.debug_port.req.bits.addr
-      sync_data.io.hw.data := io.debug_port.req.bits.data 
-      sync_data.io.hw.mask := 15.U
+      tl_debug.a.bits.address := io.debug_port.req.bits.addr
+      tl_debug.a.bits.data := io.debug_port.req.bits.data 
    } 
 
 }
