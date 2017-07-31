@@ -90,8 +90,8 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    // asynchronous read
    tl_debug.a.bits.address := io.debug_port.req.bits.addr
    tl_debug.a.valid := io.debug_port.req.valid
-   printf("MMTL: AV:%x %x AR:%x AA:%x AD:%x RR:%x RD:%x\n",tl_debug.a.valid,io.debug_port.req.valid,tl_debug.a.ready,tl_debug.a.bits.address,tl_debug.a.bits.data
-      ,tl_debug.d.valid,tl_debug.d.bits.data)
+   /*printf("MMTL: AV:%x %x AR:%x AA:%x AD:%x RR:%x RD:%x\n",tl_debug.a.valid,io.debug_port.req.valid,tl_debug.a.ready,tl_debug.a.bits.address,tl_debug.a.bits.data
+      ,tl_debug.d.valid,tl_debug.d.bits.data)*/
    tl_debug.d.ready := true.B
    tl_debug.a.bits.size := 2.U
    tl_debug.a.bits.mask := 15.U

@@ -226,7 +226,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
       sync_data.io.hw.data := io.debug_port.req.bits.data 
       sync_data.io.hw.mask := 15.U
    }
-   printf("MEM %x %x %x %x",io.debug_port.req.valid,io.debug_port.req.bits.data,io.debug_port.req.bits.addr,io.debug_port.req.bits.fcn) 
+   //printf("MEM %x %x %x %x",io.debug_port.req.valid,io.debug_port.req.bits.data,io.debug_port.req.bits.addr,io.debug_port.req.bits.fcn) 
 }
 
 }

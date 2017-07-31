@@ -52,24 +52,31 @@ class TopTests extends SteppedHWIOTester {
   def reqW(addr: BigInt,data: BigInt) = {
     poke(device_under_test.io.ps_axi_slave(0).aw.valid, 1)
     poke(device_under_test.io.ps_axi_slave(0).w.valid, 1)
+    poke(device_under_test.io.ps_axi_slave(0).w.bits.last, 1)
     poke(device_under_test.io.ps_axi_slave(0).aw.bits.addr, addr)
-    poke(device_under_test.io.ps_axi_slave(0).aw.bits.len, 1L)
+    poke(device_under_test.io.ps_axi_slave(0).aw.bits.len, 0L)
     poke(device_under_test.io.ps_axi_slave(0).aw.bits.size, 2L)
     poke(device_under_test.io.ps_axi_slave(0).w.bits.data, data)
     poke(device_under_test.io.ps_axi_slave(0).b.ready, 1)
+  }
+  def checkReqW = {
+    expect(device_under_test.io.ps_axi_slave(0).w.ready, true)
+    expect(device_under_test.io.ps_axi_slave(0).aw.ready, true)
   }
   def resetWReq = {
     poke(device_under_test.io.ps_axi_slave(0).aw.valid, 0)
     poke(device_under_test.io.ps_axi_slave(0).w.valid, 0)
   }
+  def resetARReq = {
+    poke(device_under_test.io.ps_axi_slave(0).ar.valid, 0)
+  }
   def doneW = {
     expect(device_under_test.io.ps_axi_slave(0).b.valid, true)
-    poke(device_under_test.io.ps_axi_slave(0).b.ready, 0)
   }
   def reqR(addr: BigInt) = {
     poke(device_under_test.io.ps_axi_slave(0).ar.valid, 1)
     poke(device_under_test.io.ps_axi_slave(0).ar.bits.addr, addr)
-    poke(device_under_test.io.ps_axi_slave(0).ar.bits.len, 1L)
+    poke(device_under_test.io.ps_axi_slave(0).ar.bits.len, 0L)
     poke(device_under_test.io.ps_axi_slave(0).ar.bits.size, 2L) 
   }
   def doneR = {
@@ -84,25 +91,32 @@ class TopTests extends SteppedHWIOTester {
   enable_scala_debug = false
   enable_printf_debug = false
   val device_under_test = Module(new Top())
-  
+    
+    poke(device_under_test.io.ps_axi_slave(0).aw.bits.burst, 0L)
+    poke(device_under_test.io.ps_axi_slave(0).ar.bits.burst, 0L)
     poke(device_under_test.io.mem_axi(0).aw.ready , 1)
     poke(device_under_test.io.mem_axi(0).w.ready , 1)
     reqW(0x40000010L,0x35353535L)
-    expect(device_under_test.io.ps_axi_slave(0).aw.ready, true)
-    expect(device_under_test.io.ps_axi_slave(0).w.ready, true)
-  step(3)
-    doneW
+    checkReqW
+  step(1)
     resetWReq
+  step(1)
+    doneW
     reqR(0x40000010L)  
-  step(3)
+  step(1)
+    resetARReq
+  step(1)
     checkRResp(0x35353535L)
     doneR
     reqW(0x400000E4L,0x60000000L)
-  step(3)
-    doneW
+  step(1)
     resetWReq
+  step(1)
+    doneW
     reqR(0x400000F0L)
-  step(2)  
+  step(1)
+    resetARReq      
+  step(1)
     expect(device_under_test.io.mem_axi(0).ar.bits.addr , 0x60000000L)
     expect(device_under_test.io.mem_axi(0).ar.valid , true)
     poke(device_under_test.io.mem_axi(0).r.valid, 1)
@@ -110,8 +124,13 @@ class TopTests extends SteppedHWIOTester {
   step(3)
     expect(device_under_test.io.ps_axi_slave(0).r.valid, true)
     expect(device_under_test.io.ps_axi_slave(0).r.bits.data, 85L)
-    /*reqW(0x400000F0L,0x03040304L)
-  step(3)
+    /*poke(device_under_test.io.ps_axi_slave(0).w.bits.data, 0x03040304L)
+  step(1)
+    reqW(0x400000F0L,0x03040304L)
+    poke(device_under_test.io.ps_axi_slave(0).w.bits.strb, 15L)
+  step(1)
+    resetWReq
+  step(2)
     expect(device_under_test.io.mem_axi(0).w.bits.data , 0x03040304L)
     expect(device_under_test.io.mem_axi(0).aw.bits.addr , 0x60000000L)
     expect(device_under_test.io.mem_axi(0).w.valid , true)

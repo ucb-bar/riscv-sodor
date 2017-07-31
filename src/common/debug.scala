@@ -198,7 +198,11 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
       sbcs.sbautoread := tempsbcs.sbautoread
       sbcs.sberror := tempsbcs.sberror
     }
-    when(decoded_addr(DMI_RegAddrs.DMI_SBADDRESS0)) { sbaddr := wdata}
+    when(decoded_addr(DMI_RegAddrs.DMI_SBADDRESS0)) { 
+      when(io.dmi.req.valid){
+        sbaddr := wdata
+      }
+    }
     when(decoded_addr(DMI_RegAddrs.DMI_SBDATA0)) {
       sbdata := wdata
       io.debugmem.req.bits.addr := sbaddr
@@ -288,6 +292,6 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   when((io.dmi.req.bits.addr === "h44".U) && io.dmi.req.valid){
     coreresetval := false.B
   }
-  printf("DEBG: DREQ:%x DREV:%x DR:%x DD:%x DA:%x DO:%x SBD:%x IDMRV:%x IDMRsV:%x OIDMRsV:%x FRRD:%x RESPVAL:%x DMIRD:%x dwreqval:%x\n",io.dmi.req.valid,io.dmi.resp.valid,io.dmi.req.ready,io.dmi.req.bits.data,io.dmi.req.bits.addr,io.dmi.req.bits.op
-    ,sbdata,io.debugmem.req.valid,io.debugmem.resp.valid,Reg(next= io.debugmem.resp.valid),firstreaddone,io.debugmem.resp.bits.data,io.dmi.resp.bits.data,dwreqval)
+  /*printf("DEBG: DREQ:%x DREV:%x DR:%x DD:%x DA:%x DO:%x SBD:%x SBA:%x IDMRV:%x IDMRsV:%x OIDMRsV:%x FRRD:%x RESPVAL:%x DMIRD:%x dwreqval:%x\n",io.dmi.req.valid,io.dmi.resp.valid,io.dmi.req.ready,io.dmi.req.bits.data,io.dmi.req.bits.addr,io.dmi.req.bits.op
+    ,sbdata,sbaddr,io.debugmem.req.valid,io.debugmem.resp.valid,Reg(next= io.debugmem.resp.valid),firstreaddone,io.debugmem.resp.bits.data,io.dmi.resp.bits.data,dwreqval)*/
 }
