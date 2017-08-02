@@ -27,13 +27,19 @@ SUPERVISOR_MODE?="false"
 ifneq ($(shell which pkg-config),)
 	ifneq ($(shell pkg-config --variable=includedir verilator),)
 		VERILATOR_INCLUDE=$(shell pkg-config --variable=includedir verilator)
+	else
+		ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
+			VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
+		else
+			$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
+		endif
 	endif
 else
-    	ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
+	ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
 		VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
- 	else
-        	$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
-    	endif
+	else
+		$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
+	endif
 endif
  
 #riscv-pk is relative to top of sodor
@@ -50,7 +56,7 @@ BPPATH?=$(common)
 CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11  -g
 
 CXXSRCS := SimDTM
-CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common
+CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
 CXXDEBUGFLAGS := -DDEBUG
 
 LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lpthread
