@@ -1,4 +1,4 @@
-NAbout The Sodor Processor Collection
+About The Sodor Processor Collection
 ====================================
 
 Author  : Christopher Celio (celio@eecs.berkeley.edu)
@@ -84,7 +84,7 @@ unset VERILATOR_ROOT
 ./configure
 make
 export VERILATOR_ROOT=$PWD
-export PATH=$VERILATOR_ROOT/bin
+export PATH=$PATH:$VERILATOR_ROOT/bin
 ```
 
 Install the RISC-V front-end server to talk between the host and RISC-V target processors.
