@@ -23,7 +23,18 @@ MK_TARGET_PROC?=rv32_1stage
 #choose between 32b anad 64b binaries, using proxy-kernel 
 RV64_MODE?="false"
 SUPERVISOR_MODE?="false"
- 
+
+ifneq ($(shell which pkg-config),)
+	ifneq ($(shell pkg-config --variable=includedir verilator),)
+		VERILATOR_INCLUDE=$(shell pkg-config --variable=includedir verilator)
+	endif
+else
+    	ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
+		VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
+ 	else
+        	$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
+    	endif
+endif
  
 #riscv-pk is relative to top of sodor
 #pk_hex is relative to emulator/proc directory
@@ -38,69 +49,74 @@ BPPATH?=$(common)
 
 CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11  -g
 
-CXXSRCS := disasm htif_emulator
-CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
+CXXSRCS := SimDTM
+CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common
 CXXDEBUGFLAGS := -DDEBUG
 
-LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lfesvr -lpthread
+LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lpthread
+OBJS := $(addsuffix .o,$(CXXSRCS))
+DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS))
 
-OBJS := $(addsuffix .o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
-DEBUG_OBJS := $(addsuffix -debug.o,$(CXXSRCS) $(MODEL) $(TRACER) $(BP))
-
-CHISEL_ARGS := --noIoDebug --wio --backend c --debug --ioDebug --compileInitializationUnoptimized --W0W --targetDir emulator/${MK_TARGET_PROC}/generated-src
-CHISEL_ARGS_DEBUG := $(CHISEL_ARGS)-debug --debug --vcd --ioDebug
+CHISEL_ARGS := -td emulator/${MK_TARGET_PROC}/generated-src
+CHISEL_ARGS_DEBUG := 
 
 # To find emulator.cpp
-vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC)
-vpath %.a    $(buildLibDir)
+vpath %.cpp  $(srcDir)/emulator/$(MK_TARGET_PROC) 
+vpath %.cc 	$(srcDir)/riscv-fesvr/fesvr $(srcDir)/emulator/common
+vpath %.h 	$(srcDir)/riscv-fesvr/fesvr $(srcDir)/emulator/common
+vpath %.a    $(buildLibDir) 
+vpath %.v 	$(srcDir)/vsrc
+vpath %.sv 	$(srcDir)/vsrc
 
-generated-src/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
+
+
+generated-src/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS)"
 
-generated-src-debug/$(MODEL).cpp: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
-	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
+$(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc
+	$(CXX) $(CXXFLAGS) -I${VERILATOR_INCLUDE} -c -o $@ $<
 
-$(MODEL).o: %.o: generated-src/%.cpp
-	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp))
-	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src/$(MODEL)-*.cpp)) -o $@
 
-$(MODEL)-debug.o: %-debug.o: generated-src-debug/%.cpp
-	$(MAKE) -j $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp))
-	$(LD) -r $(patsubst %.cpp,%.o,$(shell ls generated-src-debug/$(MODEL)-*.cpp)) -o $@
 
-$(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src/$(MODEL).cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src -c -o $@ $<
+generated_dir = $(srcDir)/emulator/${MK_TARGET_PROC}
 
-$(addsuffix -debug.o,$(CXXSRCS)): %-debug.o: $(srcDir)/emulator/common/%.cc $(srcDir)/emulator/common/*.h generated-src-debug/$(MODEL).cpp
-	$(CXX) $(CXXFLAGS) -Igenerated-src-debug -c -o $@ $<
+
+# generated-src-debug/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
+# 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
+
+# Run Verilator to produce a fast binary to emulate this circuit.
+VERILATOR := verilator --cc --exe 
+VERILATOR_FLAGS := --top-module Top \
+  +define+PRINTF_COND=1 \
+  --assert \
+  --output-split 20000 \
+	--x-assign unique \
+  -I$(srcDir)/vsrc \
+  -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
+emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+	$(VERILATOR) $(VERILATOR_FLAGS) \
+	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
+	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
  
-$(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src -o $(TRACER).o
+# $(TRACER).o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src -o $(TRACER).o
  
-$(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
+# $(TRACER)-debug.o: $(TRACERPATH)/$(TRACER).h $(TRACERPATH)/$(TRACER).cpp generated-src-debug/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(TRACERPATH)/$(TRACER).cpp -I$(common) -I./generated-src-debug -o $(TRACER)-debug.o
 
-$(BP).o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src -o $(BP).o
+# $(BP).o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src -o $(BP).o
  
-$(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
+# $(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
+# 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
 
-
-emulator.o: emulator.cpp generated-src/Top.h
-	$(CXX) -c $(CXXFLAGS) $< -I$(common) -I./generated-src -o $@
-
-emulator-debug.o: emulator.cpp generated-src-debug/Top.h
-	$(CXX) -c $(CXXFLAGS) $(CXXDEBUGFLAGS) $< -I$(common) -I./generated-src-debug -o $@
-
-emulator: $(OBJS) emulator.o
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) emulator.o $(LDFLAGS)
-
-emulator-debug: $(DEBUG_OBJS) emulator-debug.o
-	$(CXX) $(CXXFLAGS) -o $@ $(DEBUG_OBJS) emulator-debug.o $(LDFLAGS)
+emulator-debug: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+	$(VERILATOR) $(VERILATOR_FLAGS) --trace \
+	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
+	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
  
 clean:
-	rm -rf *.o *.a emulator emulator-debug generated-src generated-src-debug DVEfiles output
+	rm -rf *.o *.a emulator obj_dir emulator-debug generated-src generated-src-debug DVEfiles output
 
 clean-tests:
 	rm -rf output/*.out
@@ -134,7 +150,6 @@ global_asm_tests += \
 	rv32ui-p-blt \
 	rv32ui-p-bltu \
 	rv32ui-p-bne \
-	rv32ui-p-j \
 	rv32ui-p-jal \
 	rv32ui-p-jalr \
 	rv32ui-p-lb \
@@ -157,8 +172,6 @@ global_asm_tests += \
 	rv32mi-p-sbreak \
 	rv32mi-p-scall \
 
-# wait for Privileged v1.8 to add M-level timers
-#	rv32mi-p-timer \
 # need to add support for ma exceptions
 #	rv32mi-p-ma_addr \
 	rv32mi-p-ma_fetch \
@@ -176,9 +189,9 @@ global_bmarks = \
 	median \
 	multiply \
 	qsort \
+	rsort \
 	towers \
-	vvadd \
-	dhrystone
+	vvadd 
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
@@ -190,6 +203,7 @@ local_bmarks = \
 #--------------------------------------------------------------------
     
 global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
+global_bmarks_vcd = $(addsuffix .riscv.vcd, $(global_bmarks))
 global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
 global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
 
@@ -215,32 +229,17 @@ else
 	filetype=rv64u
 endif
 endif
- 
-%pk.hex: %pk
-	$(ELF) 16 16384 $< > $@
-
-%.hex: 
-	$(MAKE) -C $(dir $@) $(notdir $@)
-
-%.riscv.hex: %
-	$(MAKE) -C $(dir $@) $(notdir $@)
-
-$(addprefix output/, $(addsuffix .hex, $(global_asm_tests))): output/%.hex: $(global_tstdir)/%.hex
-	mkdir -p output
-	ln -fs $< $@
-
-$(addprefix output/, $(addsuffix .hex, $(global_bmarks))): output/%.hex: $(global_bmarkdir)/%.riscv.hex
-	mkdir -p output
-	ln -fs $< $@
 
 output:
 	mkdir -p $@
 
-output/%.run: output/%.hex emulator
-	./emulator +max-cycles=$(asm_test_timeout) +coremap-random +loadmem=$< none $(disasm_exe) /dev/null
+output/%.vcd: $(global_tstdir)/% emulator-debug
+	mkdir -p output
+	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-output/%.out: output/%.hex emulator
-	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $@
+output/%.out: $(global_tstdir)/% emulator
+	mkdir -p output
+	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
 #	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
@@ -248,21 +247,24 @@ output/%.out: output/%.hex emulator
 
 # Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug
-	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$< none 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +loadmem=$< none 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
 	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.commit,$@)
 	sed -e '/@@@/ d' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.out,$@)
 	rm $(patsubst %.vpd,%.temp,$@)
 
 
-
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: emulator output
-	./emulator +max-cycles=$(bmark_timeout) +verbose +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none $(disasm_exe) $@
-$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator-debug output
-	./emulator +max-cycles=$(bmark_timeout) +verbose -v- +coremap-random $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(global_bmarkdir)/%.riscv emulator
+	mkdir -p output
+	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
+$(addprefix output/, $(global_bmarks_vcd)): output/%.riscv.vcd: $(global_bmarkdir)/%.riscv emulator-debug
+	mkdir -p output
+	./emulator-debug -v$@ +max-cycles=$(bmark_timeout) +verbose +loadmem=$< 2> /dev/null
+$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator output
+	./emulator +max-cycles=$(bmark_timeout) +verbose $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
-	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +coremap-random +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
 else                                                   
 
@@ -284,9 +286,9 @@ run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
 #run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
 run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks)))
 	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
-run-asm-tests-debug: $(addprefix output/, $(addsuffix .vpd, $(global_asm_tests)))
+run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
-run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vpd, $(global_bmarks)))
+run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
 
 

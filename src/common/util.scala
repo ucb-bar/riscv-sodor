@@ -5,30 +5,57 @@
 package Common
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
 import scala.math._
 import scala.collection.mutable.ArrayBuffer
 
 object Util
 {
-   implicit def intToUInt(x: Int): UInt = UInt(x)
-   implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
-   implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
-   implicit def booleanToBool(x: Boolean): Bool = Bool(x)
-   implicit def sextToConv(x: UInt) = new AnyRef {
-      def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
-   }
+  implicit def intToUInt(x: Int): UInt = x.U
+  implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
+  implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
+  implicit def booleanToBool(x: Boolean): Bool = Bool(x)
+  implicit def sextToConv(x: UInt) = new AnyRef {
+    def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
+  }
 
-   implicit def wcToUInt(c: WideCounter): UInt = c.value
+  implicit def wcToUInt(c: WideCounter): UInt = c.value
+  implicit class UIntIsOneOf(val x: UInt) extends AnyVal {
+    def isOneOf(s: Seq[UInt]): Bool = s.map(x === _).reduce(_||_)
+  
+    def isOneOf(u1: UInt, u2: UInt*): Bool = isOneOf(u1 +: u2.toSeq)
+  }
+
+  implicit class UIntToAugmentedUInt(val x: UInt) extends AnyVal {
+    def sextTo(n: Int): UInt = {
+      require(x.getWidth <= n)
+      if (x.getWidth == n) x
+      else Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
+    }
+
+    def padTo(n: Int): UInt = {
+      require(x.getWidth <= n)
+      if (x.getWidth == n) x
+      else Cat(UInt(0, n - x.getWidth), x)
+    }
+
+    def extract(hi: Int, lo: Int): UInt = {
+      if (hi == lo-1) UInt(0)
+      else x(hi, lo)
+    }
+
+    def inRange(base: UInt, bounds: UInt) = x >= base && x < bounds
+  }
 }
+
  
 //do two masks have at least 1 bit match?
 object maskMatch
 {
-   def apply(msk1: Bits, msk2: Bits): Bool =
+   def apply(msk1: UInt, msk2: UInt): Bool =
    {
-      val br_match = (msk1 & msk2) != Bits(0)
+      val br_match = (msk1 & msk2) != 0.U
       return br_match
    }
 }
@@ -36,9 +63,9 @@ object maskMatch
 //clear one-bit in the Mask as specified by the idx
 object clearMaskBit
 {
-   def apply(msk: Bits, idx: UInt): Bits =
+   def apply(msk: UInt, idx: UInt): UInt =
    {
-      return (msk & ~(Bits(1) << idx))(msk.getWidth-1, 0)
+      return (msk & ~(1.U << idx))(msk.getWidth-1, 0)
    }
 }
   
@@ -80,29 +107,34 @@ object Split
  
 
 // a counter that clock gates most of its MSBs using the LSB carry-out
-case class WideCounter(width: Int, inc: Bool = Bool(true))
+case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
 {
-   private val isWide = width >= 4
-   private val smallWidth = if (isWide) log2Up(width) else width
-   private val small = Reg(init=UInt(0, smallWidth))
-   private val nextSmall = small + UInt(1, smallWidth+1)
-   when (inc) { small := nextSmall(smallWidth-1,0) }
-                      
-   private val large = if (isWide) {
-      val r = Reg(init=UInt(0, width - smallWidth))
-      when (inc && nextSmall(smallWidth)) { r := r + UInt(1) }
-      r
-   } else null
-   
-   val value = Cat(large, small)
-   
-   def := (x: UInt) = {
-      val w = x.getWidth
-      small := x(w.min(smallWidth)-1,0)
-      if (isWide) large := (if (w < smallWidth) UInt(0) else x(w.min(width)-1,smallWidth))
-   }
-}
+  private val isWide = width > 2*inc.getWidth
+  private val smallWidth = if (isWide) inc.getWidth max log2Ceil(width) else width
+  private val small = if (reset) Reg(init=0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
+  private val nextSmall = small +& inc
+  small := nextSmall
 
+  private val large = if (isWide) {
+    val r = if (reset) Reg(init=0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
+    when (nextSmall(smallWidth)) { r := r + 1.U }
+    r
+  } else null
+
+  val value = if (isWide) Cat(large, small) else small
+  lazy val carryOut = {
+    val lo = (small ^ nextSmall) >> 1
+    if (!isWide) lo else {
+      val hi = Mux(nextSmall(smallWidth), large ^ (large +& 1.U), 0.U) >> 1
+      Cat(hi, lo)
+    }
+  }
+
+  def := (x: UInt) = {
+    small := x
+    if (isWide) large := x >> smallWidth
+  }
+}
 
 // taken from rocket FPU
 object RegEn
@@ -123,21 +155,21 @@ object RegEn
  
 object Str
 {
-  def apply(s: String): Bits = {
+  def apply(s: String): UInt = {
     var i = BigInt(0)
     require(s.forall(validChar _))
     for (c <- s)
       i = (i << 8) | c
-    Lit(i, s.length*8){Bits()}
+    i.asUInt((s.length*8).W)
   }
   def apply(x: Char): Bits = {
     require(validChar(x))
-    val lit = UInt(x, 8)
+    val lit = x.asUInt(8.W)
     lit
   }
   def apply(x: UInt): Bits = apply(x, 10)
   def apply(x: UInt, radix: Int): Bits = {
-    val rad = UInt(radix)
+    val rad = radix.U
     val digs = digits(radix)
     val w = x.getWidth
     require(w > 0)
@@ -146,13 +178,13 @@ object Str
     var s = digs(q % rad)
     for (i <- 1 until ceil(log(2)/log(radix)*w).toInt) {
       q = q / rad
-      s = Cat(Mux(Bool(radix == 10) && q === UInt(0), Str(' '), digs(q % rad)), s)
+      s = Cat(Mux(Bool(radix == 10) && q === 0.U, Str(' '), digs(q % rad)), s)
     }
     s
   }
   def apply(x: SInt): Bits = apply(x, 10)
   def apply(x: SInt, radix: Int): Bits = {
-    val neg = x < SInt(0)
+    val neg = x < 0.S
     val abs = Mux(neg, -x, x).toUInt
     if (radix != 10) {
       Cat(Mux(neg, Str('-'), Str(' ')), Str(abs, radix))
@@ -167,7 +199,7 @@ object Str
       var needSign = neg
       for (i <- 1 until ceil(log(2)/log(radix)*w).toInt) {
         q = q / rad
-        val placeSpace = q === UInt(0)
+        val placeSpace = q === 0.U
         val space = Mux(needSign, Str('-'), Str(' '))
         needSign = needSign && !placeSpace
         s = Cat(Mux(placeSpace, space, digs(q % rad)), s)

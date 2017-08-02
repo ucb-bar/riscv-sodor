@@ -7,8 +7,9 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Common._
 import Common.Instructions._
@@ -16,35 +17,31 @@ import Constants._
 
 class CtlToDatIo extends Bundle() 
 {
-   val stall     = Bool(OUTPUT)
-   val pc_sel    = UInt(OUTPUT, 3) 
-   val op1_sel   = UInt(OUTPUT, 2) 
-   val op2_sel   = UInt(OUTPUT, 2) 
-   val alu_fun   = UInt(OUTPUT, 4) 
-   val wb_sel    = UInt(OUTPUT, 3) 
-   val rf_wen    = Bool(OUTPUT) 
-   val csr_cmd   = UInt(OUTPUT, CSR.SZ) 
-   val exception = Bool(OUTPUT)
-   val exc_cause = UInt(OUTPUT, 32)
-
-   val debug_dmem_val = Bool(OUTPUT)
-   val debug_dmem_typ = Bits(OUTPUT, MT_X.getWidth)
+   val stall     = Output(Bool())
+   val pc_sel    = Output(UInt(PC_4.getWidth.W)) 
+   val op1_sel   = Output(UInt(OP1_X.getWidth.W)) 
+   val op2_sel   = Output(UInt(OP2_X.getWidth.W)) 
+   val alu_fun   = Output(UInt(ALU_X.getWidth.W)) 
+   val wb_sel    = Output(UInt(WB_X.getWidth.W)) 
+   val rf_wen    = Output(Bool()) 
+   val csr_cmd   = Output(UInt(CSR.SZ)) 
+   val exception = Output(Bool())
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
+   val dcpath = Flipped(new DebugCPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
-   val dat  = new DatToCtlIo().flip()
+   val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
-   val resetSignal = Bool(INPUT)
-   override def clone = { new CpathIo().asInstanceOf[this.type] }
+   override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {                                                                                                                   
-  val io = new CpathIo()                                                                                            
+  val io = IO(new CpathIo())                                                                                            
                                                                                                                     
    val csignals =                                                                                                   
       ListLookup(io.dat.inst,                                                                                       
@@ -100,10 +97,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                   CSRRS   -> List(Y, BR_N  , OP1_RS1, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.S),
                   CSRRC   -> List(Y, BR_N  , OP1_RS1, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.C),
            
-                  SCALL   -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
-                  SRET    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
-                  MRTS    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
-                  SBREAK  -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
+                  ECALL   -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
+                  MRET    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
+                  DRET    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
+                  EBREAK  -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
                   WFI     -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N), // implemented as a NOP
 
                   FENCE_I -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
@@ -117,9 +114,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val (cs_mem_en: Bool)   :: cs_mem_fcn         :: cs_msk_sel            :: cs_csr_cmd :: Nil = cs1
                         
    // Branch Logic   
-   val ctrl_pc_sel = Mux(io.ctl.exception ||
-                         io.dat.csr_eret  ||
-                         io.dat.csr_xcpt      ,  PC_EXC,
+   val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
+                         io.ctl.exception      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -131,7 +127,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
                            
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) || io.resetSignal
+   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) 
  
    // Set the data-path control signals
    io.ctl.stall    := stall
@@ -140,45 +136,32 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel  := cs_op2_sel
    io.ctl.alu_fun  := cs_alu_fun
    io.ctl.wb_sel   := cs_wb_sel
-   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, Bool(false), cs_rf_wen)
+   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, false.B, cs_rf_wen)
   
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
-   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === UInt(0)
+   val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
 
    io.ctl.csr_cmd  := Mux(stall, CSR.N, csr_cmd)
    
    // Memory Requests
-   io.imem.req.valid    := Bool(true)
+   io.imem.req.valid    := true.B
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
 
    io.dmem.req.valid    := cs_mem_en
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
-
-   // Exception Handling ---------------------
    
+   // Exception Handling ---------------------
    // We only need to check if the instruction is illegal (or unsupported)
    // or if the CSR file wants us to be interrupted.
    // Other exceptions are detected later in the pipeline by passing the
    // instruction to the CSR File and letting it redirect the PC as it sees
    // fit.
-   val exc_illegal = (!cs_val_inst && io.imem.resp.valid) 
+   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid) 
  
-   io.ctl.exception := exc_illegal || 
-                        io.dat.csr_interrupt
-//                        io.dat.csr.interrupt ||
-//   io.ctl.exc_cause := Mux(io.dat.csr.interrupt, io.dat.csr.interrupt_cause, 
-   io.ctl.exc_cause := Mux(io.dat.csr_interrupt, io.dat.csr_interrupt_cause, 
-                                            UInt(Common.Causes.illegal_instruction))
-   
-   // ----------------------------------------       
-   
-   // only here to thread ctrl signals to printf in dpath.scala                  
-   io.ctl.debug_dmem_val := cs_mem_en
-   io.ctl.debug_dmem_typ := cs_msk_sel
 }
 
 }

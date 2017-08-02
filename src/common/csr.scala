@@ -7,34 +7,80 @@
 package Common
 
 
-import Chisel._
+import chisel3._
+import collection.mutable.LinkedHashMap
+import chisel3.util._
 import Util._
 import Instructions._
-import Node._
+
 
 import Common.Constants._
 import scala.math._
 
 class MStatus extends Bundle {
+    // not truly part of mstatus, but convenient
+  val debug = Bool()
+  val prv = UInt(PRV.SZ.W) // not truly part of mstatus, but convenient
   val sd = Bool()
-  val zero2 = UInt(width = 31)
-  val sd_rv32 = UInt(width = 1)
-  val zero1 = UInt(width = 9)
-  val vm = UInt(width = 5)
+  val zero1 = UInt(8.W)
+  val tsr = Bool()
+  val tw = Bool()
+  val tvm = Bool()
+  val mxr = Bool()
+  val sum = Bool()
   val mprv = Bool()
-  val xs = UInt(width = 2)
-  val fs = UInt(width = 2)
-  val prv3 = UInt(width = 2)
-  val ie3 = Bool()
-  val prv2 = UInt(width = 2)
-  val ie2 = Bool()
-  val prv1 = UInt(width = 2)
-  val ie1 = Bool()
-  val prv = UInt(width = 2)
-  val ie = Bool()
+  val xs = UInt(2.W)
+  val fs = UInt(2.W)
+  val mpp = UInt(2.W)
+  val hpp = UInt(2.W)
+  val spp = UInt(1.W)
+  val mpie = Bool()
+  val hpie = Bool()
+  val spie = Bool()
+  val upie = Bool()
+  val mie = Bool()
+  val hie = Bool()
+  val sie = Bool()
+  val uie = Bool()
+}
+
+class DCSR extends Bundle {
+  val xdebugver = UInt(2.W)
+  val zero4 = UInt(2.W)
+  val zero3 = UInt(12.W)
+  val ebreakm = Bool()
+  val ebreakh = Bool()
+  val ebreaks = Bool()
+  val ebreaku = Bool()
+  val zero2 = Bool()
+  val stopcycle = Bool()
+  val stoptime = Bool()
+  val cause = UInt(3.W)
+  // TODO: debugint is not in the Debug Spec v13
+  val debugint = Bool()
+  val zero1 = UInt(2.W)
+  val step = Bool()
+  val prv = UInt(2.W)
+}
+
+object PRV
+{
+  val SZ = 2
+  val U = 0
+  val S = 1
+  val H = 2
+  val M = 3
 }
 
 class MIP extends Bundle {
+  val zero2 = Bool()
+  val debug = Bool() // keep in sync with CSR.debugIntCause
+  val zero1 = Bool()
+  val rocc = Bool()
+  val meip = Bool()
+  val heip = Bool()
+  val seip = Bool()
+  val ueip = Bool()
   val mtip = Bool()
   val htip = Bool()
   val stip = Bool()
@@ -45,250 +91,255 @@ class MIP extends Bundle {
   val usip = Bool()
 }
 
+class PerfCounterIO(implicit conf: SodorConfiguration) extends Bundle{
+  //val eventSel = Output(UInt(conf.xprlen.W))
+  val inc = Input(UInt(conf.xprlen.W))
+  override def cloneType = { new PerfCounterIO().asInstanceOf[this.type] }
+}
+
 object CSR
 {
   // commands
-  val SZ = 3
-//  val X = UInt.DC(SZ)
-  val X = UInt(0,SZ)
-  val N = UInt(0,SZ)
-  val W = UInt(1,SZ)
-  val S = UInt(2,SZ)
-  val C = UInt(3,SZ)
-  val I = UInt(4,SZ)
-  val R = UInt(5,SZ)
+  val SZ = 3.W
+  val X = 0.asUInt(SZ)
+  val N = 0.asUInt(SZ)
+  val W = 1.asUInt(SZ)
+  val S = 2.asUInt(SZ)
+  val C = 3.asUInt(SZ)
+  val I = 4.asUInt(SZ)
+  val R = 5.asUInt(SZ)
+
+  val ADDRSZ = 12
+  val firstCtr = CSRs.cycle
+  val firstCtrH = CSRs.cycleh
+  val firstHPC = CSRs.hpmcounter3
+  val firstHPCH = CSRs.hpmcounter3h
+  //val firstHPE = CSRs.mhpmevent3
+  val firstMHPC = CSRs.mhpmcounter3
+  val firstMHPCH = CSRs.mhpmcounter3h
+  val firstHPM = 3
+  val nCtr = 32
+  val nHPM = nCtr - firstHPM
+  val hpmWidth = 40
 }
 
 class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
-  val host = new HTIFIO
+  val hartid = Input(UInt(conf.xprlen.W))
   val rw = new Bundle {
-    val addr = UInt(INPUT, 12)
-    val cmd = Bits(INPUT, CSR.SZ)
-    val rdata = Bits(OUTPUT, conf.xprlen)
-    val wdata = Bits(INPUT, conf.xprlen)
+    val cmd = Input(UInt(CSR.SZ))
+    val rdata = Output(UInt(conf.xprlen.W))
+    val wdata = Input(UInt(conf.xprlen.W))
   }
 
-  val csr_replay = Bool(OUTPUT)
-  val csr_stall = Bool(OUTPUT)
-  val csr_xcpt = Bool(OUTPUT)
-  val eret = Bool(OUTPUT)
+  val csr_stall = Output(Bool())
+  val eret = Output(Bool())
+  val singleStep = Output(Bool())
 
-  val status = new MStatus().asOutput
-  val ptbr = UInt(OUTPUT, PADDR_BITS)
-  val evec = UInt(OUTPUT, VADDR_BITS)
-  val exception = Bool(INPUT)
-  val retire = Bool(INPUT)
-  val uarch_counters = Vec.fill(16)(Bool(INPUT))
-  val cause = UInt(INPUT, conf.xprlen)
-  val pc = UInt(INPUT, VADDR_BITS)
-  val fatc = Bool(OUTPUT)
-  val time = UInt(OUTPUT, conf.xprlen)
-  val interrupt = Bool(OUTPUT)
-  val interrupt_cause = UInt(OUTPUT, conf.xprlen)
+  val decode = new Bundle {
+    val csr = Input(UInt(CSR.ADDRSZ.W))
+    val read_illegal = Output(Bool())
+    val write_illegal = Output(Bool())
+    val system_illegal = Output(Bool())
+  }
+
+  val status = Output(new MStatus())
+  val evec = Output(UInt(conf.xprlen.W))
+  val exception = Input(Bool())
+  val retire = Input(Bool())
+  val pc = Input(UInt(conf.xprlen.W))
+  val time = Output(UInt(conf.xprlen.W))
+  val counters = Vec(60, new PerfCounterIO)
+
 }
 
 class CSRFile(implicit conf: SodorConfiguration) extends Module
 {
-  val io = new CSRFileIO
+  val io = IO(new CSRFileIO)
 
-  val reg_mstatus = Reg(new MStatus)
-  val reg_mie = Reg(init=new MIP().fromBits(0))
+  val reset_mstatus = Wire(init=new MStatus().fromBits(0))
+  reset_mstatus.mpp := PRV.M
+  reset_mstatus.prv := PRV.M
+  val reg_mstatus = Reg(init=reset_mstatus)
+  val reg_mepc = Reg(UInt(conf.xprlen.W))
+  val reg_mcause = Reg(UInt(conf.xprlen.W))
+  val reg_mtval = Reg(UInt(conf.xprlen.W))
+  val reg_mscratch = Reg(UInt(conf.xprlen.W))
+  val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
+  val reg_medeleg = Reg(UInt(conf.xprlen.W))
+
   val reg_mip = Reg(init=new MIP().fromBits(0))
-  val reg_mepc = Reg(UInt(width = VADDR_BITS))
-  val reg_mcause = Reg(Bits(width = conf.xprlen))
-  val reg_mbadaddr = Reg(UInt(width = VADDR_BITS))
-  val reg_mscratch = Reg(Bits(width = conf.xprlen))
-  val reg_mtimecmp = Reg(Bits(width = conf.xprlen))
-  val reg_wfi = Reg(init=Bool(false))
+  val reg_mie = Reg(init=new MIP().fromBits(0))
+  val reg_wfi = Reg(init = false.B)
+  val reg_mtvec = Reg(UInt(conf.xprlen.W))
 
-  val reg_tohost = Reg(init=Bits(0, conf.xprlen))
-  val reg_fromhost = Reg(init=Bits(0, conf.xprlen))
-  val reg_stats = Reg(init=Bool(false))
-  val reg_time = WideCounter(conf.xprlen)
-  val reg_instret = WideCounter(conf.xprlen, io.retire)
-  val reg_uarch_counters = io.uarch_counters.map(WideCounter(conf.xprlen, _))
+  val reg_time = WideCounter(64)
+  val reg_instret = WideCounter(64, io.retire)
 
-  io.interrupt_cause := 0
-  io.interrupt := io.interrupt_cause(conf.xprlen-1)
-  val some_interrupt_pending = Bool(); some_interrupt_pending := false
-  def checkInterrupt(max_priv: UInt, cond: Bool, num: Int) = {
-    when (cond && (reg_mstatus.prv < max_priv || reg_mstatus.prv === max_priv && reg_mstatus.ie)) {
-      io.interrupt_cause := UInt((BigInt(1) << (conf.xprlen-1)) + num)
-    }
-    when (cond && reg_mstatus.prv <= max_priv) {
-      some_interrupt_pending := true
-    }
-  }
+  val reg_mcounteren = Reg(UInt(32.W))
+  //val reg_hpmevent = io.counters.map(c => Reg(init = 0.asUInt(conf.xprlen.W)))
+  //(io.counters zip reg_hpmevent) foreach { case (c, e) => c.eventSel := e }
+  val reg_hpmcounter = io.counters.map(c => WideCounter(CSR.hpmWidth, c.inc, reset = false))
 
-  checkInterrupt(PRV_M, reg_mie.msip && reg_mip.msip, 0)
-  checkInterrupt(PRV_M, reg_fromhost != UInt(0), 2)
-  checkInterrupt(PRV_M, reg_mie.mtip && reg_mip.mtip, 1)
+  val new_prv = Wire(init = reg_mstatus.prv)
+  reg_mstatus.prv := new_prv
+
+  val reg_debug = Reg(init = false.B)
+  val reg_dpc = Reg(UInt(conf.xprlen.W))
+  val reg_dscratch = Reg(UInt(conf.xprlen.W))
+  val reg_singleStepped = Reg(Bool())
+  val reset_dcsr = Wire(init = new DCSR().fromBits(0))
+  reset_dcsr.xdebugver := 1
+  reset_dcsr.prv := PRV.M
+  val reg_dcsr = Reg(init = reset_dcsr)
 
   val system_insn = io.rw.cmd === CSR.I
   val cpu_ren = io.rw.cmd != CSR.N && !system_insn
 
-  val host_pcr_req_valid = Reg(Bool()) // don't reset
-  val host_pcr_req_fire = host_pcr_req_valid && !cpu_ren
-  val host_pcr_rep_valid = Reg(Bool()) // don't reset
-  val host_pcr_bits = Reg(io.host.csr_req.bits)
-  io.host.csr_req.ready := !host_pcr_req_valid && !host_pcr_rep_valid
-  io.host.csr_rep.valid := host_pcr_rep_valid
-  io.host.csr_rep.bits := host_pcr_bits.data
-  when (io.host.csr_req.fire()) {
-    host_pcr_req_valid := true
-    host_pcr_bits := io.host.csr_req.bits
-  }
-  when (host_pcr_req_fire) {
-    host_pcr_req_valid := false
-    host_pcr_rep_valid := true
-    host_pcr_bits.data := io.rw.rdata
-  }
-  when (io.host.csr_rep.fire()) { host_pcr_rep_valid := false }
-  
-  io.host.debug_stats_csr := reg_stats // direct export up the hierarchy
-
   val read_mstatus = io.status.toBits
   val isa_string = "I"
-  val cpuid = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
+  val misa = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
   val impid = 0x8000 // indicates an anonymous source, which can be used
                      // during development before a Source ID is allocated.
 
   val read_mapping = collection.mutable.LinkedHashMap[Int,Bits](
-    CSRs.fflags -> UInt(0),
-    CSRs.frm -> UInt(0),
-    CSRs.fcsr -> UInt(0),
-    CSRs.cycle -> reg_time,
-    CSRs.cyclew -> reg_time,
-    CSRs.instret -> reg_instret,
-    CSRs.instretw -> reg_instret,
-    CSRs.time -> reg_time,
-    CSRs.timew -> reg_time,
-    CSRs.stime -> reg_time,
-    CSRs.stimew -> reg_time,
-    CSRs.mcpuid -> UInt(cpuid),
-    CSRs.mimpid -> UInt(impid),
+    CSRs.mcycle -> reg_time,
+    CSRs.minstret -> reg_instret,
+    CSRs.mimpid -> 0.U,
+    CSRs.marchid -> 0.U,
+    CSRs.mvendorid -> 0.U,
+    CSRs.misa -> misa.U,
+    CSRs.mimpid -> impid.U,
     CSRs.mstatus -> read_mstatus,
-    CSRs.mtdeleg -> UInt(0),
-    CSRs.mtvec -> UInt(MTVEC),
+    CSRs.mtvec -> MTVEC.U,
     CSRs.mip -> reg_mip.toBits,
     CSRs.mie -> reg_mie.toBits,
     CSRs.mscratch -> reg_mscratch,
     CSRs.mepc -> reg_mepc,
-    CSRs.mbadaddr -> reg_mbadaddr,
+    CSRs.mtval -> reg_mtval,
     CSRs.mcause -> reg_mcause,
-    CSRs.mtimecmp -> reg_mtimecmp,
-    CSRs.mhartid -> io.host.id,
-    CSRs.send_ipi -> io.host.id, /* don't care */
-    CSRs.stats -> reg_stats,
-    CSRs.mtohost -> reg_tohost,
-    CSRs.mfromhost -> reg_fromhost)
+    CSRs.mhartid -> io.hartid,
+    CSRs.dcsr -> reg_dcsr.asUInt,
+    CSRs.dpc -> reg_dpc,
+    CSRs.dscratch -> reg_dscratch,
+    CSRs.medeleg -> reg_medeleg)
 
-  for (i <- 0 until reg_uarch_counters.size)
-    read_mapping += (CSRs.uarch0 + i) -> reg_uarch_counters(i)
+  for (i <- 0 until CSR.nCtr)
+  {
+    read_mapping += (i + CSR.firstMHPC) -> reg_hpmcounter(i)
+    read_mapping += (i + CSR.firstMHPCH) -> reg_hpmcounter(i)
+  }
 
-  val addr = Mux(cpu_ren, io.rw.addr, host_pcr_bits.addr)
-  val decoded_addr = read_mapping map { case (k, v) => k -> (addr === k) }
-
-  val addr_valid = decoded_addr.values.reduce(_||_)
-  val fp_csr = decoded_addr(CSRs.fflags) || decoded_addr(CSRs.frm) || decoded_addr(CSRs.fcsr)
-  val csr_addr_priv = io.rw.addr(9,8)
-  val priv_sufficient = reg_mstatus.prv >= csr_addr_priv
-  val read_only = io.rw.addr(11,10).andR
-  val cpu_wen = cpu_ren && io.rw.cmd != CSR.R && priv_sufficient
-  val wen = cpu_wen && !read_only || host_pcr_req_fire && host_pcr_bits.rw
-  val wdata = Mux(io.rw.cmd === CSR.W, io.rw.wdata,
-              Mux(io.rw.cmd === CSR.C, io.rw.rdata & ~io.rw.wdata,
-              Mux(io.rw.cmd === CSR.S, io.rw.rdata | io.rw.wdata,
-              host_pcr_bits.data)))
-
-  val opcode = io.rw.addr
-  val insn_call = !opcode(8) && !opcode(0) && system_insn
-  val insn_break = !opcode(8) && opcode(0) && system_insn
-  val insn_ret = opcode(8) && !opcode(1) && !opcode(0) && system_insn && priv_sufficient
-  val insn_sfence_vm = opcode(8) && !opcode(1) && opcode(0) && system_insn && priv_sufficient
-  val insn_wfi = opcode(8) && opcode(1) && !opcode(0) && system_insn && priv_sufficient
-
-  val csr_xcpt = (cpu_wen && read_only) ||
-    (cpu_ren && (!priv_sufficient || !addr_valid || fp_csr && !io.status.fs.orR)) ||
-    (system_insn && !priv_sufficient) ||
-    insn_call || insn_break
-
-  when (insn_wfi) { reg_wfi := true }
-  when (some_interrupt_pending) { reg_wfi := false }
-
-  io.fatc := insn_sfence_vm
-  io.evec := Mux(io.exception || csr_xcpt, (reg_mstatus.prv << 6) + MTVEC,
-                                           reg_mepc)
-  io.csr_xcpt := csr_xcpt
-  io.eret := insn_ret
-  io.status := reg_mstatus
-  io.status.fs := reg_mstatus.fs.orR.toSInt // either off or dirty (no clean/initial support yet)
-  io.status.xs := reg_mstatus.xs.orR.toSInt // either off or dirty (no clean/initial support yet)
-  io.status.sd := reg_mstatus.xs.orR || reg_mstatus.fs.orR
-  if (conf.xprlen == 32)
-    io.status.sd_rv32 := io.status.sd
-
-  when (io.exception || csr_xcpt) {
-    reg_mstatus.ie := false
-    reg_mstatus.prv := PRV_M
-    reg_mstatus.mprv := false
-    reg_mstatus.prv1 := reg_mstatus.prv
-    reg_mstatus.ie1 := reg_mstatus.ie
-    reg_mstatus.prv2 := reg_mstatus.prv1
-    reg_mstatus.ie2 := reg_mstatus.ie1
-
-    reg_mepc := io.pc & SInt(-4) // clear low-2 bits
-    reg_mcause := io.cause
-    when (csr_xcpt) {
-      reg_mcause := Causes.illegal_instruction
-      when (insn_break) { reg_mcause := Causes.breakpoint }
-      when (insn_call) { reg_mcause := reg_mstatus.prv + Causes.user_ecall }
+/*  for (((e, c), i) <- (reg_hpmevent.padTo(CSR.nHPM, 0.U)
+                       zip reg_hpmcounter.map(x => x: UInt).padTo(CSR.nHPM, 0.U)) zipWithIndex) {
+    read_mapping += (i + CSR.firstHPE) -> e // mhpmeventN
+    read_mapping += (i + CSR.firstMHPC) -> c // mhpmcounterN
+    if (conf.usingUser) read_mapping += (i + CSR.firstHPC) -> c // hpmcounterN
+    if (conf.xprlen == 32) {
+      read_mapping += (i + CSR.firstMHPCH) -> c // mhpmcounterNh
+      if (conf.usingUser) read_mapping += (i + CSR.firstHPCH) -> c // hpmcounterNh
     }
+  }
+*/
+  if (conf.usingUser) {
+    read_mapping += CSRs.mcounteren -> reg_mcounteren
+    read_mapping += CSRs.cycle -> reg_time
+    read_mapping += CSRs.instret -> reg_instret
+  }
 
-    reg_mbadaddr := io.pc // misaligned memory exceptions not supported...
+  if (conf.xprlen == 32) {
+    read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
+    read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
+    if (conf.usingUser) {
+      read_mapping += CSRs.cycleh -> 0.U //(reg_time >> 32)
+      read_mapping += CSRs.instreth -> 0.U //(reg_instret >> 32)
+    }
+  }
+
+  val decoded_addr = read_mapping map { case (k, v) => k -> (io.decode.csr === k) }
+
+  val priv_sufficient = reg_mstatus.prv >= io.decode.csr(9,8)
+  val read_only = io.decode.csr(11,10).andR
+  val cpu_wen = cpu_ren && io.rw.cmd != CSR.R && priv_sufficient
+  val wen = cpu_wen && !read_only
+  val wdata = readModifyWriteCSR(io.rw.cmd, io.rw.rdata, io.rw.wdata)
+  
+  val opcode = 1.U << io.decode.csr(2,0)
+  val insn_call = system_insn && opcode(0)
+  val insn_break = system_insn && opcode(1)
+  val insn_ret = system_insn && opcode(2) && priv_sufficient
+  val insn_wfi = system_insn && opcode(5) && priv_sufficient
+
+  private def decodeAny(m: LinkedHashMap[Int,Bits]): Bool = m.map { case(k: Int, _: Bits) => io.decode.csr === k }.reduce(_||_)
+  io.decode.read_illegal := reg_mstatus.prv < io.decode.csr(9,8) || !decodeAny(read_mapping) ||
+    (io.decode.csr.inRange(CSR.firstCtr, CSR.firstCtr + CSR.nCtr) || io.decode.csr.inRange(CSR.firstCtrH, CSR.firstCtrH + CSR.nCtr)) ||
+    !reg_debug
+  io.decode.write_illegal := io.decode.csr(11,10).andR
+  io.decode.system_illegal := reg_mstatus.prv < io.decode.csr(9,8)
+
+  io.status := reg_mstatus
+
+  io.eret := insn_call || insn_break || insn_ret
+
+  // ILLEGAL INSTR
+  when (io.exception) {
+    reg_mcause := Causes.illegal_instruction
+    io.evec := "h80000004".U
+    reg_mepc := io.pc // misaligned memory exceptions not supported...
   }
   
-  when (insn_ret) {
-    reg_mstatus.ie := reg_mstatus.ie1
-    reg_mstatus.prv := reg_mstatus.prv1
-    reg_mstatus.prv1 := reg_mstatus.prv2
-    reg_mstatus.ie1 := reg_mstatus.ie2
-    reg_mstatus.prv2 := PRV_U
-    reg_mstatus.ie2 := true
-  }
-  
-  assert(PopCount(insn_ret :: io.exception :: csr_xcpt :: io.csr_replay :: Nil) <= 1, "these conditions must be mutually exclusive")
+  assert(PopCount(insn_ret :: io.exception :: Nil) <= 1, "these conditions must be mutually exclusive")
 
    when (reg_time >= reg_mtimecmp) {
       reg_mip.mtip := true
    }
 
+  //DRET
+  when(insn_ret && io.decode.csr(10)){
+    new_prv := reg_dcsr.prv
+    reg_debug := false
+    io.evec := reg_dpc
+  }
+
+  //MRET
+  when (insn_ret && !io.decode.csr(10)) {
+    reg_mstatus.mie := reg_mstatus.mpie
+    reg_mstatus.mpie := true
+    new_prv := reg_mstatus.mpp
+    io.evec := reg_mepc
+  }
+
+  //ECALL 
+  when(insn_call){
+    io.evec := "h80000004".U
+    reg_mcause := reg_mstatus.prv + Causes.user_ecall
+  }
+
+  //EBREAK
+  when(insn_break){
+    io.evec := "h80000004".U
+    reg_mcause := Causes.breakpoint
+  }
+
+
   io.time := reg_time
-  io.host.ipi_req.valid := cpu_wen && decoded_addr(CSRs.send_ipi)
-  io.host.ipi_req.bits := io.rw.wdata
-  io.csr_replay := io.host.ipi_req.valid && !io.host.ipi_req.ready
   io.csr_stall := reg_wfi
 
-  when (host_pcr_req_fire && !host_pcr_bits.rw && decoded_addr(CSRs.mtohost)) { reg_tohost := UInt(0) }
 
   io.rw.rdata := Mux1H(for ((k, v) <- read_mapping) yield decoded_addr(k) -> v)
 
   when (wen) {
+
+    when (decoded_addr(CSRs.dcsr)) {
+        val new_dcsr = new DCSR().fromBits(wdata)
+        reg_dcsr.step := new_dcsr.step
+        reg_dcsr.ebreakm := new_dcsr.ebreakm
+        if (conf.usingUser) reg_dcsr.ebreaku := new_dcsr.ebreaku
+      }
+
     when (decoded_addr(CSRs.mstatus)) {
       val new_mstatus = new MStatus().fromBits(wdata)
-      reg_mstatus.ie := new_mstatus.ie
-      reg_mstatus.ie1 := new_mstatus.ie1
-
-      val supportedModes = Vec((PRV_M :: PRV_U :: (if (conf.vm) List(PRV_S) else Nil)).map(UInt(_)))
-      if (supportedModes.size > 1) {
-        reg_mstatus.mprv := new_mstatus.mprv
-        when (supportedModes contains new_mstatus.prv) { reg_mstatus.prv := new_mstatus.prv }
-        when (supportedModes contains new_mstatus.prv1) { reg_mstatus.prv1 := new_mstatus.prv1 }
-        if (supportedModes.size > 2) {
-          when (supportedModes contains new_mstatus.prv2) { reg_mstatus.prv2 := new_mstatus.prv2 }
-          reg_mstatus.ie2 := new_mstatus.ie2
-        }
-      }
+      reg_mstatus.mie := new_mstatus.mie
+      reg_mstatus.mpie := new_mstatus.mpie
     }
     when (decoded_addr(CSRs.mip)) {
       val new_mip = new MIP().fromBits(wdata)
@@ -299,38 +350,41 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
       reg_mie.msip := new_mie.msip
       reg_mie.mtip := new_mie.mtip
     }
-    when (decoded_addr(CSRs.mepc))     { reg_mepc := wdata(VADDR_BITS-1,0).toSInt & SInt(-4) }
+    for (i <- 0 until CSR.nCtr)
+    {
+      writeCounter(i + CSR.firstMHPC, reg_hpmcounter(i), wdata)
+    }
+/*    for (((e, c), i) <- (reg_hpmevent zip reg_hpmcounter) zipWithIndex) {
+      writeCounter(i + CSR.firstMHPC, c, wdata)
+      //when (decoded_addr(i + CSR.firstHPE)) { e := perfEventSets.maskEventSelector(wdata) }
+    }*/
+    writeCounter(CSRs.mcycle, reg_time, wdata)
+    writeCounter(CSRs.minstret, reg_instret, wdata)
+
+    when (decoded_addr(CSRs.dpc))      { reg_dpc := wdata }
+    when (decoded_addr(CSRs.dscratch)) { reg_dscratch := wdata }
+
+    when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(conf.xprlen-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
-    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & UInt((BigInt(1) << (conf.xprlen-1)) + 31) /* only implement 5 LSBs and MSB */ }
-    when (decoded_addr(CSRs.mbadaddr)) { reg_mbadaddr := wdata(VADDR_BITS-1,0) }
-    when (decoded_addr(CSRs.cyclew))   { reg_time := wdata }
-    when (decoded_addr(CSRs.instretw)) { reg_instret := wdata }
-    when (decoded_addr(CSRs.timew))    { reg_time := wdata }
-    when (decoded_addr(CSRs.mtimecmp)) { reg_mtimecmp := wdata; reg_mip.mtip := false }
-    when (decoded_addr(CSRs.mfromhost)){ when (reg_fromhost === UInt(0) || !host_pcr_req_fire) { reg_fromhost := wdata } }
-    when (decoded_addr(CSRs.mtohost))  { when (reg_tohost === UInt(0) || host_pcr_req_fire) { reg_tohost := wdata } }
-    when (decoded_addr(CSRs.stats))    { reg_stats := wdata(0) }
+    when (decoded_addr(CSRs.mcause))   { reg_mcause := wdata & ((BigInt(1) << (conf.xprlen-1)) + 31).U /* only implement 5 LSBs and MSB */ }
+    when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(conf.xprlen-1,0) }
+    when (decoded_addr(CSRs.medeleg))    { reg_medeleg := wdata(conf.xprlen-1,0) }
+
+    if(conf.usingUser){
+      when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
+      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  
+    }
   }
 
-  io.host.ipi_rep.ready := true
-  when (io.host.ipi_rep.valid) { reg_mip.msip := true }
-
-  when(this.reset) {
-    reg_mstatus.zero1 := 0
-    reg_mstatus.zero2 := 0
-    reg_mstatus.ie := false
-    reg_mstatus.prv := PRV_M
-    reg_mstatus.ie1 := false
-    reg_mstatus.prv1 := PRV_M /* hard-wired to M when missing user mode */
-    reg_mstatus.ie2 := false  /* hard-wired to 0 when missing supervisor mode */
-    reg_mstatus.prv2 := PRV_U /* hard-wired to 0 when missing supervisor mode */
-    reg_mstatus.ie3 := false  /* hard-wired to 0 when missing hypervisor mode */
-    reg_mstatus.prv3 := PRV_U /* hard-wired to 0 when missing hypervisor mode */
-    reg_mstatus.mprv := false
-    reg_mstatus.vm := 0
-    reg_mstatus.fs := 0
-    reg_mstatus.xs := 0
-    reg_mstatus.sd_rv32 := false
-    reg_mstatus.sd := false
+  if (!conf.usingUser) {
+    reg_mcounteren := 0
   }
+
+  def writeCounter(lo: Int, ctr: WideCounter, wdata: UInt) = {
+    val hi = lo + CSRs.mcycleh - CSRs.mcycle
+    when (decoded_addr(hi)) { ctr := Cat(wdata(ctr.getWidth-33, 0), ctr(31, 0)) }
+    when (decoded_addr(lo)) { ctr := Cat(ctr(ctr.getWidth-1, 32), wdata) }
+  }
+  def readModifyWriteCSR(cmd: UInt, rdata: UInt, wdata: UInt) =
+    (Mux(cmd.isOneOf(CSR.S, CSR.C), rdata, UInt(0)) | wdata) & ~Mux(cmd === CSR.C, wdata, UInt(0))
 }

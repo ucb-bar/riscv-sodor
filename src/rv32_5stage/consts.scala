@@ -9,8 +9,9 @@ package Sodor
 package constants
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 trait SodorProcConstants
 {
@@ -28,88 +29,88 @@ trait ScalarOpConstants
 
    //************************************
    // Control Signals
-   val Y        = Bool(true)
-   val N        = Bool(false)
+   val Y        = true.B
+   val N        = false.B
 
    // PC Select Signal
-   val PC_4     = UInt(0, 2)  // PC + 4
-   val PC_BRJMP = UInt(1, 2)  // brjmp_target
-   val PC_JALR  = UInt(2, 2)  // jump_reg_target
-   val PC_EXC   = UInt(3, 2)  // exception
+   val PC_4     = 0.asUInt(2.W)  // PC + 4
+   val PC_BRJMP = 1.asUInt(2.W)  // brjmp_target
+   val PC_JALR  = 2.asUInt(2.W)  // jump_reg_target
+   val PC_EXC   = 3.asUInt(2.W)  // exception
 
    // Branch Type
-   val BR_N     = UInt(0, 4)  // Next
-   val BR_NE    = UInt(1, 4)  // Branch on NotEqual
-   val BR_EQ    = UInt(2, 4)  // Branch on Equal
-   val BR_GE    = UInt(3, 4)  // Branch on Greater/Equal
-   val BR_GEU   = UInt(4, 4)  // Branch on Greater/Equal Unsigned
-   val BR_LT    = UInt(5, 4)  // Branch on Less Than
-   val BR_LTU   = UInt(6, 4)  // Branch on Less Than Unsigned
-   val BR_J     = UInt(7, 4)  // Jump
-   val BR_JR    = UInt(8, 4)  // Jump Register
+   val BR_N     = 0.asUInt(4.W)  // Next
+   val BR_NE    = 1.asUInt(4.W)  // Branch on NotEqual
+   val BR_EQ    = 2.asUInt(4.W)  // Branch on Equal
+   val BR_GE    = 3.asUInt(4.W)  // Branch on Greater/Equal
+   val BR_GEU   = 4.asUInt(4.W)  // Branch on Greater/Equal Unsigned
+   val BR_LT    = 5.asUInt(4.W)  // Branch on Less Than
+   val BR_LTU   = 6.asUInt(4.W)  // Branch on Less Than Unsigned
+   val BR_J     = 7.asUInt(4.W)  // Jump
+   val BR_JR    = 8.asUInt(4.W)  // Jump Register
 
    // RS1 Operand Select Signal
-   val OP1_RS1   = UInt(0, 2) // Register Source #1
-   val OP1_PC    = UInt(1, 2) // PC
-   val OP1_IMZ   = UInt(2, 2) // Zero-extended Immediate from RS1 field, for use by CSRI instructions
-   val OP1_X     = UInt(0, 2)
+   val OP1_RS1   = 0.asUInt(2.W) // Register Source #1
+   val OP1_PC    = 1.asUInt(2.W) // PC
+   val OP1_IMZ   = 2.asUInt(2.W) // Zero-extended Immediate from RS1 field, for use by CSRI instructions
+   val OP1_X     = 0.asUInt(2.W)
 
    // RS2 Operand Select Signal
-   val OP2_RS2    = UInt(0, 3) // Register Source #2
-   val OP2_ITYPE  = UInt(1, 3) // immediate, I-type
-   val OP2_STYPE  = UInt(2, 3) // immediate, S-type
-   val OP2_SBTYPE = UInt(3, 3) // immediate, B
-   val OP2_UTYPE  = UInt(4, 3) // immediate, U-type
-   val OP2_UJTYPE = UInt(5, 3) // immediate, J-type
-   val OP2_X      = UInt(0, 3)
+   val OP2_RS2    = 0.asUInt(3.W) // Register Source #2
+   val OP2_ITYPE  = 1.asUInt(3.W) // immediate, I-type
+   val OP2_STYPE  = 2.asUInt(3.W) // immediate, S-type
+   val OP2_SBTYPE = 3.asUInt(3.W) // immediate, B
+   val OP2_UTYPE  = 4.asUInt(3.W) // immediate, U-type
+   val OP2_UJTYPE = 5.asUInt(3.W) // immediate, J-type
+   val OP2_X      = 0.asUInt(3.W)
 
    // Register Operand Output Enable Signal
-   val OEN_0   = Bool(false)
-   val OEN_1   = Bool(true)
+   val OEN_0   = false.B
+   val OEN_1   = true.B
 
    // Register File Write Enable Signal
-   val REN_0   = Bool(false)
-   val REN_1   = Bool(true)
+   val REN_0   = false.B
+   val REN_1   = true.B
 
    // ALU Operation Signal
-   val ALU_ADD    = UInt ( 0, 4)
-   val ALU_SUB    = UInt ( 1, 4)
-   val ALU_SLL    = UInt ( 2, 4)
-   val ALU_SRL    = UInt ( 3, 4)
-   val ALU_SRA    = UInt ( 4, 4)
-   val ALU_AND    = UInt ( 5, 4)
-   val ALU_OR     = UInt ( 6, 4)
-   val ALU_XOR    = UInt ( 7, 4)
-   val ALU_SLT    = UInt ( 8, 4)
-   val ALU_SLTU   = UInt ( 9, 4)
-   val ALU_COPY_1 = UInt (10, 4)
-   val ALU_COPY_2 = UInt (11, 4)
-   val ALU_X      = UInt ( 0, 4)
+   val ALU_ADD    = 0.asUInt(4.W)
+   val ALU_SUB    = 1.asUInt(4.W)
+   val ALU_SLL    = 2.asUInt(4.W)
+   val ALU_SRL    = 3.asUInt(4.W)
+   val ALU_SRA    = 4.asUInt(4.W)
+   val ALU_AND    = 5.asUInt(4.W)
+   val ALU_OR     = 6.asUInt(4.W)
+   val ALU_XOR    = 7.asUInt(4.W)
+   val ALU_SLT    = 8.asUInt(4.W)
+   val ALU_SLTU   = 9.asUInt(4.W)
+   val ALU_COPY_1 = 10.asUInt(4.W)
+   val ALU_COPY_2 = 11.asUInt(4.W)
+   val ALU_X      = 0.asUInt(4.W)
 
    // Writeback Select Signal
-   val WB_ALU  = UInt(0, 2)
-   val WB_MEM  = UInt(1, 2)
-   val WB_PC4  = UInt(2, 2)
-   val WB_CSR  = UInt(3, 2)
-   val WB_X    = UInt(0, 2)
+   val WB_ALU  = 0.asUInt(2.W)
+   val WB_MEM  = 1.asUInt(2.W)
+   val WB_PC4  = 2.asUInt(2.W)
+   val WB_CSR  = 3.asUInt(2.W)
+   val WB_X    = 0.asUInt(2.W)
 
    // Memory Write Signal
-   val MWR_0   = Bool(false)
-   val MWR_1   = Bool(true)
-   val MWR_X   = Bool(false)
+   val MWR_0   = false.B
+   val MWR_1   = true.B
+   val MWR_X   = false.B
 
    // Memory Enable Signal
-   val MEN_0   = Bool(false)
-   val MEN_1   = Bool(true)
-   val MEN_X   = Bool(false)
+   val MEN_0   = false.B
+   val MEN_1   = true.B
+   val MEN_X   = false.B
 
    // Memory Mask Type Signal
-   val MSK_B   = UInt(0, 3)
-   val MSK_BU  = UInt(1, 3)
-   val MSK_H   = UInt(2, 3)
-   val MSK_HU  = UInt(3, 3)
-   val MSK_W   = UInt(4, 3)
-   val MSK_X   = UInt(4, 3)
+   val MSK_B   = 0.asUInt(3.W)
+   val MSK_BU  = 1.asUInt(3.W)
+   val MSK_H   = 2.asUInt(3.W)
+   val MSK_HU  = 3.asUInt(3.W)
+   val MSK_W   = 4.asUInt(3.W)
+   val MSK_X   = 4.asUInt(3.W)
 
 }
 

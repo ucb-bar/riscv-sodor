@@ -2,7 +2,8 @@ package Common
 package constants
 {
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import scala.math._
 
 trait RISCVConstants
@@ -21,7 +22,7 @@ trait RISCVConstants
    // location of the fifth bit in the shamt (for checking for illegal ops for SRAIW,etc.)
    val SHAMT_5_BIT = 25
    val LONGEST_IMM_SZ = 20
-   val X0 = UInt(0)
+   val X0 = 0.U
 
    // The Bubble Instruction (Machine generated NOP)
    // Insert (XOR x0,x0,x0) which is different from software compiler
@@ -34,7 +35,7 @@ trait RISCVConstants
 trait PrivilegedConstants
 {
    val MTVEC = 0x100
-   val START_ADDR = MTVEC + 0x100
+   val START_ADDR = "h80000000".U //MTVEC + 0x100
 
    val SZ_PRV = 2
    val PRV_U = 0

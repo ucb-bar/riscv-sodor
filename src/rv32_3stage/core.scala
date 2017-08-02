@@ -5,20 +5,22 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
 {
-  val host = new HTIFIO()
+  val ddpath = Flipped(new DebugDPath())
+  val dcpath = Flipped(new DebugCPath())
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
 }
 
-class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
+class Core(implicit conf: SodorConfiguration) extends Module
 {
-   val io = new CoreIo()
+   val io = IO(new CoreIo())
 
    val frontend = Module(new FrontEnd())
    val cpath  = Module(new CtlPath())
@@ -27,15 +29,16 @@ class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends 
    frontend.io.imem <> io.imem
    frontend.io.cpu <> cpath.io.imem
    frontend.io.cpu <> dpath.io.imem
+   frontend.io.cpu.req.valid := cpath.io.imem.req.valid
 
    cpath.io.ctl  <> dpath.io.ctl
    cpath.io.dat  <> dpath.io.dat
    
-   
    cpath.io.dmem <> io.dmem
    dpath.io.dmem <> io.dmem
    
-   dpath.io.host <> io.host
+   dpath.io.ddpath <> io.ddpath
+   cpath.io.dcpath <> io.dcpath
 }
 
 }

@@ -27,12 +27,12 @@
 package Sodor
 {
 
-import Chisel._
-import Node._
+import chisel3._
+import chisel3.util._
+
 
 import Constants._
 import Common._
-//import Common.Constants._
 
 
 class FrontEndIO(implicit conf: SodorConfiguration) extends Bundle
@@ -40,68 +40,69 @@ class FrontEndIO(implicit conf: SodorConfiguration) extends Bundle
    val cpu  = new FrontEndCpuIO
    val imem = new MemPortIo(conf.xprlen)
   
-   override def clone = { new FrontEndIO().asInstanceOf[this.type] }
+   override def cloneType = { new FrontEndIO().asInstanceOf[this.type] }
 }
 
  
 class FrontEndReq(xprlen: Int) extends Bundle
 {
-   val pc   = UInt(width = xprlen) 
+   val pc   = UInt(xprlen.W)
    
-   override def clone = { new FrontEndReq(xprlen).asInstanceOf[this.type] }
+   override def cloneType = { new FrontEndReq(xprlen).asInstanceOf[this.type] }
 }
  
 
 class FrontEndResp(xprlen: Int) extends Bundle
 {
-   val pc   = UInt(width = xprlen) 
-   val inst = Bits(width = 32)  // only support 32b insts for now
+   val pc   = UInt(xprlen.W) 
+   val inst = UInt(xprlen.W)  // only support 32b insts for now
    
-   override def clone = { new FrontEndResp(xprlen).asInstanceOf[this.type] }
+   override def cloneType = { new FrontEndResp(xprlen).asInstanceOf[this.type] }
 }
-   
+
+class FrontEndDebug(xprlen: Int) extends Bundle
+{
+   val if_pc   = Output(UInt(xprlen.W))
+   val if_inst = Output(UInt(xprlen.W))
+   override def cloneType = { new FrontEndDebug(xprlen).asInstanceOf[this.type] }
+}   
 
 class FrontEndCpuIO(implicit conf: SodorConfiguration) extends Bundle
 {
-   val req = new ValidIO(new FrontEndReq(conf.xprlen)).flip
+   val req = Flipped(new ValidIO(new FrontEndReq(conf.xprlen)))
    val resp = new DecoupledIO(new FrontEndResp(conf.xprlen))
  
-   val debug = new Bundle
-   {
-      val if_pc   = Bits(width = conf.xprlen)
-      val if_inst = Bits(width = 32)
-   }.asOutput
+   val debug = new FrontEndDebug(conf.xprlen)
  
-   override def clone = { new FrontEndCpuIO().asInstanceOf[this.type] }
+   override def cloneType = { new FrontEndCpuIO().asInstanceOf[this.type] }
 }
 
 class FrontEnd(implicit conf: SodorConfiguration) extends Module
 {
-   val io = new FrontEndIO
+   val io = IO(new FrontEndIO)
 
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_valid  = Reg(init=Bool(false))
-   val if_reg_pc     = Reg(init=UInt(START_ADDR-4,conf.xprlen))
+   val if_reg_valid  = Reg(init = false.B)
+   val if_reg_pc     = Reg(init= START_ADDR - 4.U)
     
-   val exe_reg_valid = Reg(init=Bool(false))
-   val exe_reg_pc    = Reg(UInt(width=conf.xprlen))
-   val exe_reg_inst  = Reg(Bits(width=32))
+   val exe_reg_valid = Reg(init = false.B)
+   val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
+   val exe_reg_inst  = Reg(UInt(conf.xprlen.W))
 
    //**********************************
    // Next PC Stage (if we can call it that)
-   val if_pc_next = UInt()
-   val if_val_next = Bool(true) // for now, always true. But instruction
+   val if_pc_next = Wire(UInt(conf.xprlen.W))
+   val if_val_next = Wire(init = true.B) // for now, always true. But instruction
                                 // buffers, etc., could make that not the case.
    
-   val if_pc_plus4 = (if_reg_pc + UInt(4, conf.xprlen))               
+   val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
 
    // stall IF/EXE if backend not ready
    when (io.cpu.resp.ready)
    {
       if_pc_next := if_pc_plus4
-
       when (io.cpu.req.valid)
       {
          // datapath is redirecting the PC stream (misspeculation)
@@ -125,13 +126,11 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
-
    //**********************************
    // Inst Fetch/Return Stage
-
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid :=  if_reg_valid && !io.cpu.req.valid
+      exe_reg_valid := if_reg_valid && !io.cpu.req.valid
       exe_reg_pc    := if_reg_pc
       exe_reg_inst  := io.imem.resp.bits.data
    }
@@ -139,7 +138,6 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
-
    io.cpu.resp.valid     := exe_reg_valid
    io.cpu.resp.bits.inst := exe_reg_inst
    io.cpu.resp.bits.pc   := exe_reg_pc
