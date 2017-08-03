@@ -40,19 +40,27 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    val edge_instr = outer.masterInstr.edgesOut.head
    val tl_instr = io.tl_instr.head
 
-   val num_bytes_per_line = 8
-   val num_lines = num_bytes / num_bytes_per_line
-   println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val sync_data = Module(new SyncMem(log2Ceil(num_bytes)))
-   sync_data.io.clk := clock
-   for (i <- 0 until num_core_ports)
-   {
-      io.core_ports(i).resp.valid := Reg(next = io.core_ports(i).req.valid)
-      io.core_ports(i).req.ready := true.B // for now, no back pressure 
-      sync_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
+   ///////////// IPORT
+   if (num_core_ports == 2){
+      tl_instr.d.ready := true.B
+      tl_instr.a.bits.address := io.core_ports(IPORT).req.bits.addr
+      tl_instr.a.valid := io.core_ports(IPORT).req.valid
+      tl_instr.a.bits.data := io.core_ports(IPORT).req.bits.data
+      tl_instr.a.bits.opcode := 4.U
+      tl_instr.a.bits.size := 2.U
+      tl_instr.a.bits.mask := 15.U 
+      io.core_ports(IPORT).req.ready := tl_instr.a.ready // for now, no back pressure 
+      io.core_ports(IPORT).resp.valid := tl_instr.d.valid
+      io.core_ports(IPORT).resp.bits.data := tl_instr.d.bits.data
    }
+   /////////////////
 
    /////////// DPORT 
+   tl_data.d.ready := true.B
+   tl_data.a.valid := io.core_ports(DPORT).req.valid
+   io.core_ports(DPORT).resp.valid := tl_data.d.valid
+   io.core_ports(DPORT).req.ready := tl_data.a.ready // for now, no back pressure 
+   tl_data.a.bits.address := io.core_ports(DPORT).req.bits.addr
    val req_addri = io.core_ports(DPORT).req.bits.addr
 
    val req_typi = Reg(UInt(3.W))
@@ -61,32 +69,27 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
       (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)), 
-      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)), 
-      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0)) 
+      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0))
    ))
 
-   sync_data.io.dw.en := Mux((io.core_ports(DPORT).req.bits.fcn === M_XWR),true.B,false.B)
-   when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
-   {
-      sync_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
-      sync_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-      sync_data.io.dw.mask := Mux(io.core_ports(DPORT).req.bits.typ === MT_B,1.U << req_addri(1,0),
-                              Mux(io.core_ports(DPORT).req.bits.typ === MT_H,3.U << req_addri(1,0),15.U))
+   when(io.core_ports(DPORT).req.bits.fcn === M_XWR){
+      tl_data.a.bits.opcode := Mux((req_typi === MT_W || req_typi === MT_WU),0.U,1.U)
    }
+   when(io.core_ports(DPORT).req.bits.fcn === M_XRD){
+      tl_data.a.bits.opcode := 4.U
+   }
+   tl_data.a.bits.mask := MuxCase(15.U,Array(
+      (req_typi === MT_B || req_typi === MT_BU) -> 1.U, 
+      (req_typi === MT_H || req_typi === MT_HU) -> 3.U))
+   tl_data.a.bits.size := MuxCase(2.U,Array(
+      (req_typi === MT_B || req_typi === MT_BU) -> 1.U, 
+      (req_typi === MT_H || req_typi === MT_HU) -> 0.U))
+   tl_data.a.bits.data := io.core_ports(DPORT).req.bits.data
    /////////////////
-
-   ///////////// IPORT
-   if (num_core_ports == 2)
-      io.core_ports(IPORT).resp.bits.data := sync_data.io.dataInstr(IPORT).data 
-   ////////////
-   tl_data.a.valid := false.B
-   tl_instr.a.valid := false.B
    
-
    // DEBUG PORT-------
    io.debug_port.req.ready := tl_debug.a.ready // for now, no back pressure
-   io.debug_port.resp.valid := tl_debug.d.valid //Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.resp.valid := tl_debug.d.valid 
    // asynchronous read
    tl_debug.a.bits.address := io.debug_port.req.bits.addr
    tl_debug.a.valid := io.debug_port.req.valid

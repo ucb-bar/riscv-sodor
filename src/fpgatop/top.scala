@@ -124,8 +124,7 @@ class TopTests extends SteppedHWIOTester {
   step(3)
     expect(device_under_test.io.ps_axi_slave(0).r.valid, true)
     expect(device_under_test.io.ps_axi_slave(0).r.bits.data, 85L)
-    /*poke(device_under_test.io.ps_axi_slave(0).w.bits.data, 0x03040304L)
-  step(1)
+  /*step(1)
     reqW(0x400000F0L,0x03040304L)
     poke(device_under_test.io.ps_axi_slave(0).w.bits.strb, 15L)
   step(1)
@@ -134,7 +133,16 @@ class TopTests extends SteppedHWIOTester {
     expect(device_under_test.io.mem_axi(0).w.bits.data , 0x03040304L)
     expect(device_under_test.io.mem_axi(0).aw.bits.addr , 0x60000000L)
     expect(device_under_test.io.mem_axi(0).w.valid , true)
-    expect(device_under_test.io.mem_axi(0).aw.valid , true)*/
+    expect(device_under_test.io.mem_axi(0).aw.valid , true)
+    expect(device_under_test.io.mem_axi(0).b.ready , true)
+    poke(device_under_test.io.mem_axi(0).b.valid , 1)
+  step(1)
+    poke(device_under_test.io.mem_axi(0).b.valid , 0)
+    expect(device_under_test.io.mem_axi(0).b.ready , true)
+    poke(device_under_test.io.mem_axi(0).w.ready , 0)
+    poke(device_under_test.io.mem_axi(0).aw.ready , 0)
+  step(1)
+    doneW*/
 }
 
 class TestHarnessTester(dut: TestHarness) extends PeekPokeTester(dut) {
