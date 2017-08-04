@@ -1,5 +1,6 @@
 About The Sodor Processor Collection
 ====================================
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/librecores/riscv-sodor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Diagrams: [Sodor Github wiki](https://github.com/ucb-bar/riscv-sodor/wiki)
 
@@ -32,7 +33,7 @@ to Verilator along with a test harness in C++ to generate and run the Sodor emul
 
 This repo works great as an undergraduate lab (and has been used by Berkeley's
 CS152 class for 3 semesters and counting). See doc/ for an example, as well as
-for some processor diagrams. Be careful though - admittedly some of those
+for some processor diagrams which can be viewed using [draw.io](https://www.draw.io). Be careful though - admittedly some of those
 documents may become dated as things like the Privileged ISA evolve.
 
 
@@ -106,23 +107,6 @@ make clean
 ```
 (Although you can set the prefix to any directory of your choice, they must be
 the same directory for both riscv-fesvr and riscv-sodor).
-
-(Alternative) Build together with Chisel sources
-------------------------------------------------
-
-This repository packages [SBT](http://github.com/harrah/xsbt/wiki/Getting-Started-Setup)
-(Scala Built Tool) for convenience.  By default SBT will fetch the Chisel
-package specified in project/build.scala.
-
-If you are a developer of Chisel and are using sodor cores to test your changes
-to the Chisel repository, it is convenient to rebuild the Chisel package before
-building the sodor cores. To do that, fetch the Chisel repo from github and pass 
-the path to the local Chisel source directory to the configure script.
-
-    $ git clone https://github.com/ucb-bar/chisel.git
-    $ cd riscv-sodor
-    $ ./configure --with-riscv=/usr/local --with-chisel=../chisel
-    $ make
 
 Creating a source release package
 =================================
