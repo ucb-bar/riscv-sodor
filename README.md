@@ -33,7 +33,7 @@ to Verilator along with a test harness in C++ to generate and run the Sodor emul
 
 This repo works great as an undergraduate lab (and has been used by Berkeley's
 CS152 class for 3 semesters and counting). See doc/ for an example, as well as
-for some processor diagrams which can be viewed using [draw.io](https://www.draw.io). Be careful though - admittedly some of those
+for some processor diagrams which can be viewed using [draw.io](https://www.draw.io) using the following steps  draw.io -> File -> Import from -> URL then add this https://raw.githubusercontent.com/librecores/riscv-sodor/master/doc/1stage.xml. Be careful though - admittedly some of those
 documents may become dated as things like the Privileged ISA evolve.
 
 
