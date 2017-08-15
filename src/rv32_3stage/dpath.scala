@@ -102,10 +102,10 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    else{
       wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
-                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)  
+                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
+                         (io.ctl.dmem_val && (!io.dmem.resp.valid || (io.dmem.resp.valid && io.dmem.resp.ready 
+                           && (wb_reg_ctrl.wb_sel === WB_MEM))))
    }
-   
-
 
    // Register File
    val regfile = Mem(UInt(conf.xprlen.W), 32)
@@ -144,10 +144,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Bypass Muxes
    // bypass early for branch condition checking, and to prevent needing 3 bypass muxes
    val exe_rs1_data = MuxCase(rf_rs1_data, Array(
-                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu,
+                           (io.dmem.resp.valid && (wb_reg_wbaddr === exe_rs1_addr) && wb_reg_ctrl.rf_wen)  -> io.dmem.resp.bits.data)
                         )
    val exe_rs2_data = MuxCase(rf_rs2_data, Array(
-                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu,
+                           (io.dmem.resp.valid && (wb_reg_wbaddr === exe_rs2_addr) && wb_reg_ctrl.rf_wen) -> io.dmem.resp.bits.data)
                         )
    
 
@@ -183,11 +185,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
     
    // datapath to data memory outputs
-   io.dmem.req.valid     := io.ctl.dmem_val
+   val once = Reg(init = true.B)
+   when(io.dmem.req.ready && io.dmem.req.valid){
+      once := false.B
+   } .elsewhen(io.dmem.resp.valid) { 
+      once := true.B
+   }
+   io.dmem.req.valid     := io.ctl.dmem_val && once
+   io.dmem.resp.ready := once | Reg(next = io.ctl.dmem_fcn)
    if(NUM_MEMORY_PORTS == 1) 
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else   
-      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid 
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & (!wb_hazard_stall | once) & exe_valid 
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
@@ -248,7 +257,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val debug_wb_pc = Wire(UInt(32.W))
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), 0.U, Reg(next=exe_pc))
    val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
-   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%d,%d], WB: DASM(%x)\n"
+   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%x,%x], WB: DASM(%x)\n"
       , csr.io.time(31,0)
       , exe_alu_op1
       , exe_alu_op2
@@ -268,7 +277,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_pc(31,0)
       , Mux(Reg(next=wb_hazard_stall), 0.U, Reg(next=exe_pc(31,0)))
       , io.imem.debug.if_inst(6,0)
-      , Mux(exe_valid, exe_inst, BUBBLE)(6,0)
+      , Mux(exe_valid, exe_inst, BUBBLE)
       , debug_wb_inst(6,0)
       , debug_wb_inst
       )

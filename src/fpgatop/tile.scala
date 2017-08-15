@@ -48,7 +48,6 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
    io.dmi.req.bits.data := tl_in.a.bits.data
    io.dmi.req.bits.addr := (tl_in.a.bits.address & "h1ff".U) >> 2.U
    tl_in.a.ready := io.dmi.req.ready 
-   temp := tl_in.d.ready && io.dmi.resp.valid
    tl_in.d.valid := io.dmi.resp.valid //&& !temp
    io.dmi.resp.ready := tl_in.d.ready
    io.dmi.req.bits.op := Mux(tl_in.a.bits.opcode === 4.U, DMConsts.dmi_OP_READ, DMConsts.dmi_OP_WRITE)
@@ -56,10 +55,10 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
    tl_in.d.bits := Mux(io.dmi.req.valid && io.dmi.resp.valid ,edge_in.AccessAck(tl_in.a.bits, 0.U),edge_in.AccessAck(areq, 0.U))
    tl_in.d.bits.data := io.dmi.resp.bits.data
    tl_in.d.bits.opcode := Mux(((areq.opcode === 4.U) && !temp3) || tl_in.a.bits.opcode === 4.U , TLMessages.AccessAckData, TLMessages.AccessAck)
-   /*printf("TLDMI: AV:%x AR:%x AD:%x DV:%x DR:%x DO:%x DD:%x DMIRD:%x DMIRsD:%x DMIRsV:%x AREQO:%x NO:%x V:%x DMIAddr:%x T3:%x\n",tl_in.a.valid,tl_in.a.ready,tl_in.a.bits.data,
+   printf("TLDMI: AV:%x AR:%x AD:%x DV:%x DR:%x DO:%x DD:%x DMIRD:%x DMIRsD:%x DMIRsV:%x AREQO:%x NO:%x V:%x DMIAddr:%x T3:%x\n",tl_in.a.valid,tl_in.a.ready,tl_in.a.bits.data,
       tl_in.d.valid,tl_in.d.ready,
     tl_in.d.bits.opcode,tl_in.d.bits.data,io.dmi.req.bits.data,io.dmi.resp.bits.data,io.dmi.resp.valid,areq.opcode,tl_in.a.bits.opcode,
-    io.dmi.req.valid && io.dmi.resp.valid,tl_in.a.bits.address,temp3)*/
+    io.dmi.req.valid && io.dmi.resp.valid,tl_in.a.bits.address,temp3)
 
    // Tie off unused channels
    tl_in.b.valid := false.B
@@ -106,9 +105,10 @@ class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p:
    debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> tldmi.io.dmi
 
-   printf("STM: MEM ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WVR:%x WD:%x RV:%x RD:%x AR:%x AW:%x\n",io.mem_axi4(0).ar.valid,io.mem_axi4(0).ar.ready,io.mem_axi4(0).aw.valid,
+   printf("STM: MEM ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WVR:%x WD:%x RV:%x RD:%x AR:%x AW:%x MM:%x AWL:%x AWS:%x BV:%x\n",io.mem_axi4(0).ar.valid,io.mem_axi4(0).ar.ready,io.mem_axi4(0).aw.valid,
     io.mem_axi4(0).aw.ready,io.mem_axi4(0).w.valid,io.mem_axi4(0).w.ready,io.mem_axi4(0).w.bits.data,io.mem_axi4(0).r.valid,io.mem_axi4(0).r.bits.data,
-    io.mem_axi4(0).ar.bits.addr,io.mem_axi4(0).aw.bits.addr)
+    io.mem_axi4(0).ar.bits.addr,io.mem_axi4(0).aw.bits.addr,io.mem_axi4(0).w.bits.strb,io.mem_axi4(0).aw.bits.len,io.mem_axi4(0).aw.bits.size,
+    io.mem_axi4(0).b.valid)
    printf("STM: PS ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WR:%x WD:%x RV:%x RD:%x BV:%x AWADDR:%x\n",io.ps_slave(0).ar.valid,io.ps_slave(0).ar.ready,io.ps_slave(0).aw.valid,
     io.ps_slave(0).aw.ready,io.ps_slave(0).w.valid,io.ps_slave(0).w.ready,io.ps_slave(0).w.bits.data,io.ps_slave(0).r.valid,io.ps_slave(0).r.bits.data,
     io.ps_slave(0).b.valid, io.ps_slave(0).aw.bits.addr)
@@ -122,10 +122,11 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
    lazy val module = Module(new SodorTileModule(this))
    private val device = new MemoryDevice
    val config = p(ExtMem)
+   val mmio = p(MMIO)
    val mem_axi4 = AXI4BlindOutputNode(Seq(  
     AXI4SlavePortParameters(
       slaves = Seq(AXI4SlaveParameters(
-              address       = Seq(AddressSet(config.base, config.size-1)),
+              address       = Seq(AddressSet(config.base, config.size-1),AddressSet(mmio.base, mmio.size-1)),
               resources     = device.reg,
               regionType    = RegionType.UNCACHED,   // cacheable
               executable    = false,
@@ -138,7 +139,7 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
    val tlxbar = LazyModule(new TLXbar)
 
    mem_axi4 := AXI4Buffer()(
-    AXI4UserYanker()(
+    AXI4UserYanker(Some(4))(
     AXI4IdIndexer(4)(
     TLToAXI4(4)(tlxbar.node))))
 
@@ -160,7 +161,7 @@ class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends Laz
     AXI4ToTL()(
     AXI4UserYanker(Some(2))(
     AXI4Fragmenter()(
-    AXI4IdIndexer(0)(ps_slave)))))))
+    AXI4IdIndexer(3)(ps_slave)))))))
 }
  
 }

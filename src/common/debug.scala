@@ -159,6 +159,14 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   val decoded_addr = read_map map { case (k, v) => k -> (io.dmi.req.bits.addr === k) }
   val reqval = Reg(init = false.B)
   val dwreqval = Reg(init = false.B)
+  val memongoing = Reg(init = false.B)
+  val firstreaddone = Reg(init = false.B) 
+  when(io.debugmem.req.valid && io.debugmem.req.ready){
+    memongoing := true.B
+  }
+  when(io.debugmem.resp.valid){
+    memongoing := false.B
+  }
   val earlyrespond = Wire(UInt(conf.xprlen.W))
   earlyrespond := Mux1H(for ((k, v) <- read_map) yield decoded_addr(k) -> v)
   val wdata = io.dmi.req.bits.data
@@ -208,10 +216,10 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
       io.debugmem.req.bits.addr := sbaddr
       io.debugmem.req.bits.data := sbdata
       io.debugmem.req.bits.fcn :=  M_XWR
-      when(io.dmi.req.valid){
+      when(io.dmi.req.valid && !memongoing){
         dwreqval := true.B
       } 
-      when(io.debugmem.resp.valid){
+      when(io.debugmem.req.ready && dwreqval){
         dwreqval := false.B
       }
       io.debugmem.req.valid := dwreqval
@@ -219,6 +227,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
       {
         sbaddr := sbaddr + 4.U
       }
+      firstreaddone := false.B
     }
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) ( data0 := wdata )
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0+1)) ( data1 := wdata )
@@ -237,24 +246,25 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     abstractcs.cmderr := 0.U
   }
 
-  val firstreaddone = Reg(init = false.B) 
+  val temp = Wire(init = false.B)
 
   io.dmi.req.ready := MuxCase(false.B, Array(
-    dwreqval -> io.debugmem.resp.valid,
-    firstreaddone -> true.B,
-    !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
-  ))  
-  val temp = Wire(init = false.B)
-  io.dmi.resp.valid := MuxCase(false.B, Array(
-    dwreqval -> io.debugmem.resp.valid,
+    memongoing -> io.debugmem.resp.valid,
     firstreaddone -> (Reg(next = io.debugmem.resp.valid) || temp),
     !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
   ))  
+  io.dmi.resp.valid := MuxCase(false.B, Array(
+    firstreaddone -> (Reg(next = io.debugmem.resp.valid) || temp),
+    memongoing -> io.debugmem.resp.valid,
+    !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
+  ))
+  //printf("DEG1 frdd:%x mo:%x nosbd:%x\n",firstreaddone,memongoing,!decoded_addr(DMI_RegAddrs.DMI_SBDATA0))  
   io.dmi.resp.bits.data := Mux(firstreaddone, sbdata , earlyrespond)
+  val once = Reg(init = true.B)
   when ((decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_READ)) || (sbcs.sbautoread && firstreaddone)){
     io.debugmem.req.bits.addr :=  sbaddr
     io.debugmem.req.bits.fcn := M_XRD
-    io.debugmem.req.valid := io.dmi.req.valid
+    io.debugmem.req.valid := io.dmi.req.valid && !memongoing
     // for async data readily available
     // so capture it in reg
     when(io.debugmem.resp.valid){
@@ -279,12 +289,9 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   } 
 
   when(!decoded_addr(DMI_RegAddrs.DMI_SBDATA0)){
-    firstreaddone := io.debugmem.resp.valid && !dwreqval
+    firstreaddone := io.debugmem.resp.valid
     io.debugmem.req.valid := false.B
     io.debugmem.req.bits.fcn := 0.U
-    when(io.debugmem.resp.valid){
-      dwreqval := false.B
-    }
   }
 
   io.resetcore := coreresetval
@@ -292,6 +299,9 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   when((io.dmi.req.bits.addr === "h44".U) && io.dmi.req.valid){
     coreresetval := false.B
   }
-  /*printf("DEBG: DREQ:%x DREV:%x DR:%x DD:%x DA:%x DO:%x SBD:%x SBA:%x IDMRV:%x IDMRsV:%x OIDMRsV:%x FRRD:%x RESPVAL:%x DMIRD:%x dwreqval:%x\n",io.dmi.req.valid,io.dmi.resp.valid,io.dmi.req.ready,io.dmi.req.bits.data,io.dmi.req.bits.addr,io.dmi.req.bits.op
-    ,sbdata,sbaddr,io.debugmem.req.valid,io.debugmem.resp.valid,Reg(next= io.debugmem.resp.valid),firstreaddone,io.debugmem.resp.bits.data,io.dmi.resp.bits.data,dwreqval)*/
+  when((io.dmi.req.bits.addr === "h48".U) && io.dmi.req.valid){
+    coreresetval := true.B
+  }
+  printf("DEBG: DREQ:%x DREV:%x DR:%x DD:%x DA:%x DO:%x SBD:%x SBA:%x IDMRV:%x IDMRsV:%x OIDMRsV:%x FRRD:%x RESPVAL:%x DMIRD:%x dwreqval:%x\n",io.dmi.req.valid,io.dmi.resp.valid,io.dmi.req.ready,io.dmi.req.bits.data,io.dmi.req.bits.addr,io.dmi.req.bits.op
+    ,sbdata,sbaddr,io.debugmem.req.valid,io.debugmem.resp.valid,Reg(next= io.debugmem.resp.valid),firstreaddone,io.debugmem.resp.bits.data,io.dmi.resp.bits.data,memongoing)
 }

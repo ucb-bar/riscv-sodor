@@ -41,10 +41,16 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    val tl_instr = io.tl_instr.head
 
    ///////////// IPORT
+   /*val once = Reg(init = true.B)
+   when(tl_instr.a.ready && tl_instr.a.valid){
+      once := false.B
+   } .elsewhen(tl_instr.d.valid) { 
+      once := true.B
+   }*/
    if (num_core_ports == 2){
       tl_instr.d.ready := true.B
-      tl_instr.a.bits.address := io.core_ports(IPORT).req.bits.addr
-      tl_instr.a.valid := io.core_ports(IPORT).req.valid
+      tl_instr.a.bits.address := (io.core_ports(IPORT).req.bits.addr & "h1FFFFF".U) | p(ExtMem).base.U
+      tl_instr.a.valid := io.core_ports(IPORT).req.valid //&& once
       tl_instr.a.bits.data := io.core_ports(IPORT).req.bits.data
       tl_instr.a.bits.opcode := 4.U
       tl_instr.a.bits.size := 2.U
@@ -56,11 +62,12 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    /////////////////
 
    /////////// DPORT 
-   tl_data.d.ready := true.B
+   tl_data.d.ready := io.core_ports(DPORT).resp.ready
    tl_data.a.valid := io.core_ports(DPORT).req.valid
    io.core_ports(DPORT).resp.valid := tl_data.d.valid
    io.core_ports(DPORT).req.ready := tl_data.a.ready // for now, no back pressure 
-   tl_data.a.bits.address := io.core_ports(DPORT).req.bits.addr
+   tl_data.a.bits.address := Mux(io.core_ports(DPORT).req.bits.addr(31),(io.core_ports(DPORT).req.bits.addr & "h1FFFFF".U) | p(ExtMem).base.U,
+      io.core_ports(DPORT).req.bits.addr)
    val req_addri = io.core_ports(DPORT).req.bits.addr
 
    val req_typi = Reg(UInt(3.W))
@@ -93,8 +100,6 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    // asynchronous read
    tl_debug.a.bits.address := io.debug_port.req.bits.addr
    tl_debug.a.valid := io.debug_port.req.valid
-   /*printf("MMTL: AV:%x %x AR:%x AA:%x AD:%x RR:%x RD:%x\n",tl_debug.a.valid,io.debug_port.req.valid,tl_debug.a.ready,tl_debug.a.bits.address,tl_debug.a.bits.data
-      ,tl_debug.d.valid,tl_debug.d.bits.data)*/
    tl_debug.d.ready := true.B
    tl_debug.a.bits.size := 2.U
    tl_debug.a.bits.mask := 15.U
@@ -106,4 +111,10 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
       tl_debug.a.bits.data := io.debug_port.req.bits.data 
    } 
 
+   printf("MMTLDe: AV:%x %x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x\n",tl_debug.a.valid,io.debug_port.req.valid,tl_debug.a.ready,tl_debug.a.bits.address,tl_debug.a.bits.data
+      ,tl_debug.d.valid,tl_debug.d.bits.data,tl_debug.d.ready)
+   printf("MMTLI: AV:%x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x\n",tl_instr.a.valid,tl_instr.a.ready,tl_instr.a.bits.address,tl_instr.a.bits.data
+      ,tl_instr.d.valid,tl_instr.d.bits.data,tl_instr.d.ready)
+   printf("MMTLDa: AV:%x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x CPDA:%x\n",tl_data.a.valid,tl_data.a.ready,tl_data.a.bits.address,tl_data.a.bits.data
+      ,tl_data.d.valid,tl_data.d.bits.data,tl_data.d.ready,io.core_ports(DPORT).req.bits.addr)
 }

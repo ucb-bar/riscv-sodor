@@ -98,16 +98,22 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
                                 // buffers, etc., could make that not the case.
    
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
+   val redirect = Reg(init = false.B)
+   val redirectpc = Reg(UInt(32.W))
 
+   when ((io.cpu.req.valid && !io.imem.resp.valid) && !(io.imem.req.ready && io.imem.req.valid))
+   {
+      redirect := true.B
+      redirectpc := io.cpu.req.bits.pc
+   } .elsewhen (io.imem.req.ready && io.imem.req.valid) {
+      redirect := false.B
+   } 
+   printf("FR: ICRV:%x RED:%x ICRBP:%x IPN:%x\n",io.cpu.req.valid,redirect,io.cpu.req.bits.pc,if_pc_next)
    // stall IF/EXE if backend not ready
    when (io.cpu.resp.ready)
    {
-      if_pc_next := if_pc_plus4
-      when (io.cpu.req.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         if_pc_next := io.cpu.req.bits.pc
-      }
+      if_pc_next := Mux(io.cpu.req.valid,io.cpu.req.bits.pc,
+            Mux(redirect,redirectpc,if_pc_plus4))
    }
    .otherwise
    {
@@ -116,23 +122,48 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    when (io.cpu.resp.ready)
    {
-      if_reg_pc    := if_pc_next
-      if_reg_valid := if_val_next
+      when(io.imem.req.ready && io.imem.req.valid){
+         if_reg_pc    := if_pc_next
+         if_reg_valid := true.B
+      } .elsewhen(io.imem.resp.valid) {
+         if_reg_valid := false.B
+      }
    }
 
    // set up outputs to the instruction memory
+
+   val once = Reg(init = true.B)
+   when(io.imem.req.ready && io.imem.req.valid){
+      once := false.B
+   } .elsewhen(io.imem.resp.valid) { 
+      once := true.B
+   }
+
    io.imem.req.bits.addr := if_pc_next
-   io.imem.req.valid     := if_val_next
+   io.imem.req.valid     := !reset && (once || io.imem.resp.valid) && io.cpu.resp.ready
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
    //**********************************
    // Inst Fetch/Return Stage
+   val instrreg = Reg(UInt(conf.xprlen.W))
+   val respavail = Reg(init = false.B)
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid := if_reg_valid && !io.cpu.req.valid
-      exe_reg_pc    := if_reg_pc
-      exe_reg_inst  := io.imem.resp.bits.data
+      when(!(io.cpu.req.valid || redirect)){
+         exe_reg_pc    := if_reg_pc
+      }
+      when(io.imem.resp.valid) {
+         exe_reg_valid := !(io.cpu.req.valid || redirect)   // true.B //if_reg_valid && 
+         exe_reg_inst  := io.imem.resp.bits.data
+      } .otherwise {
+         exe_reg_valid := respavail
+         respavail := false.B
+         exe_reg_inst := instrreg
+      }
+   } .elsewhen(io.imem.resp.valid) {
+      instrreg := io.imem.resp.bits.data
+      respavail := true.B
    }
 
    //**********************************

@@ -80,7 +80,7 @@ class SyncMem(val addrWidth : Int) extends BlackBox{
 class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
 {
    val req    = new DecoupledIO(new MemReq(data_width))
-   val resp   = Flipped(new ValidIO(new MemResp(data_width)))
+   val resp   = Flipped(new DecoupledIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
