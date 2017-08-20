@@ -22,7 +22,7 @@ import Common.Instructions._
 class CtlToDatIo extends Bundle()
 {
    val dec_stall  = Output(Bool())    // stall IF/DEC stages (due to hazards)
-   val full_stall = Output(Bool())    // stall entire pipeline (due to D$ misses)
+   val mem_stall = Output(Bool())    // stall entire pipeline
    val exe_pc_sel = Output(UInt(2.W))
    val br_type    = Output(UInt(4.W))
    val if_kill    = Output(Bool())
@@ -41,7 +41,7 @@ class CtlToDatIo extends Bundle()
    val pipeline_kill = Output(Bool()) // an exception occurred (detected in mem stage).
                                     // Kill the entire pipeline disregard stalls
                                     // and kill if,dec,exe stages. 
-   val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
+   val mem_illegal = Output(Bool()) // tell the CSR that illegal instruction was encountered
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
@@ -149,12 +149,12 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Exception Handling ---------------------
 
-   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception)
+   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_illegal)
    
-   val dec_exception = (!cs_val_inst && io.imem.resp.valid) 
+   val dec_illegal = (!cs_val_inst && io.imem.resp.valid) //illegal instruction
  
    // Stall Signal Logic --------------------
-   val stall   = Wire(Bool())
+   val hazard_stall   = Wire(Bool())
 
    val dec_rs1_addr = io.dat.dec_inst(19, 15)
    val dec_rs2_addr = io.dat.dec_inst(24, 20)
@@ -162,42 +162,41 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    val dec_rs1_oen  = Mux(deckill, false.B, cs_rs1_oen)
    val dec_rs2_oen  = Mux(deckill, false.B, cs_rs2_oen)
 
-   val exe_reg_wbaddr      = Reg(UInt())
-   val mem_reg_wbaddr      = Reg(UInt())
-   val wb_reg_wbaddr       = Reg(UInt())
+   val exe_reg_wbaddr      = Reg(UInt(5.W))
+   val mem_reg_wbaddr      = Reg(UInt(5.W))
+   val wb_reg_wbaddr       = Reg(UInt(5.W))
    val exe_reg_ctrl_rf_wen = Reg(init=false.B)
    val mem_reg_ctrl_rf_wen = Reg(init=false.B)
    val wb_reg_ctrl_rf_wen  = Reg(init=false.B)
-   val exe_reg_exception   = Reg(init=false.B)
+   val exe_reg_illegal   = Reg(init=false.B)
 
    val exe_reg_is_csr = Reg(init=false.B)
 
-   // TODO rename stall==hazard_stall full_stall == cmiss_stall
-   val full_stall = Wire(Bool())
-   when (!stall && !full_stall)
+   val mem_stall = Wire(Bool())
+   when (!hazard_stall && !mem_stall)
    {
       when (deckill)
       {
          exe_reg_wbaddr      := 0.U
          exe_reg_ctrl_rf_wen := false.B
          exe_reg_is_csr      := false.B
-         exe_reg_exception   := false.B
+         exe_reg_illegal   := false.B
       }
       .otherwise
       {
          exe_reg_wbaddr      := dec_wbaddr
          exe_reg_ctrl_rf_wen := cs_rf_wen
          exe_reg_is_csr      := cs_csr_cmd != CSR.N && cs_csr_cmd != CSR.I
-         exe_reg_exception   := dec_exception
+         exe_reg_illegal   := dec_illegal
       }
    }
-   .elsewhen (stall && !full_stall)
+   .elsewhen (hazard_stall && !mem_stall)
    {
       // kill exe stage
       exe_reg_wbaddr      := 0.U
       exe_reg_ctrl_rf_wen := false.B
       exe_reg_is_csr      := false.B
-      exe_reg_exception   := false.B
+      exe_reg_illegal   := false.B
    }
 
    mem_reg_wbaddr      := exe_reg_wbaddr
@@ -207,7 +206,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    val exe_inst_is_load = Reg(init=false.B)
 
-   when (!full_stall)
+   when (!mem_stall)
    {
       exe_inst_is_load := cs_mem_en && (cs_mem_fcn === M_XRD)
    }
@@ -215,18 +214,17 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Stall signal stalls instruction fetch & decode stages,
    // inserts NOP into execute stage,  and drains execute, memory, and writeback stages
-   // stalls on I$ misses and on hazards
    if (USE_FULL_BYPASSING)
    {
       // stall for load-use hazard
-      stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != 0.U) && dec_rs1_oen) ||
+      hazard_stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != 0.U) && dec_rs1_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr != 0.U) && dec_rs2_oen) ||
                (exe_reg_is_csr)
    }
    else
    {
       // stall for all hazards
-      stall := ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != 0.U) && exe_reg_ctrl_rf_wen && dec_rs1_oen) ||
+      hazard_stall := ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != 0.U) && exe_reg_ctrl_rf_wen && dec_rs1_oen) ||
                ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr != 0.U) && mem_reg_ctrl_rf_wen && dec_rs1_oen) ||
                ((wb_reg_wbaddr  === dec_rs1_addr) && (dec_rs1_addr != 0.U) &&  wb_reg_ctrl_rf_wen && dec_rs1_oen) ||
                ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr != 0.U) && exe_reg_ctrl_rf_wen && dec_rs2_oen) ||
@@ -238,13 +236,13 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    }
 
 
-   // stall full pipeline on D$ miss
+   // stall(mem_stall) full pipeline on no response from memory
    val dmem_val   = io.dat.mem_ctrl_dmem_val
-   full_stall := !io.imem.resp.valid || !((dmem_val && io.dmem.resp.valid) || !dmem_val)
+   mem_stall := !io.imem.resp.valid || !((dmem_val && io.dmem.resp.valid) || !dmem_val)
 
 
-   io.ctl.dec_stall  := stall // stall if, dec stage (pipeline hazard)
-   io.ctl.full_stall := full_stall // stall entire pipeline (cache miss)
+   io.ctl.dec_stall  := hazard_stall // stall if, dec stage (pipeline hazard)
+   io.ctl.mem_stall := mem_stall // stall entire pipeline
    io.ctl.exe_pc_sel := ctrl_exe_pc_sel
    io.ctl.br_type    := cs_br_type
    io.ctl.if_kill    := ifkill
@@ -259,7 +257,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || Reg(next=cs_fencei) 
 
-   io.ctl.mem_exception := Reg(next=exe_reg_exception)
+   io.ctl.mem_illegal := Reg(next=exe_reg_illegal)
                                     
     
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands

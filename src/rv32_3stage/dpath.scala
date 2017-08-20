@@ -200,7 +200,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       wb_reg_ctrl.rf_wen    := false.B
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := false.B
-      wb_reg_ctrl.exception := false.B
+      wb_reg_ctrl.illegal := false.B
    }
 
    wb_reg_alu      := exe_alu_out
@@ -219,7 +219,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val wb_csr_out    = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
-   csr.io.exception := Reg(next = io.ctl.exception)
+   csr.io.illegal := Reg(next = io.ctl.illegal)
    csr.io.pc        := exe_pc - 4.U
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
@@ -255,7 +255,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))
       , wb_reg_wbaddr
       , wb_wbdata
-      , Mux(io.ctl.exception, Str("E"), Str("_"))
+      , Mux(io.ctl.illegal, Str("I"), Str("_"))
       , io.imem.resp.bits.inst
       , irt_reg(11,0)
       , Mux(wb_hazard_stall, Str("H"), Str(" "))  // HAZ -> H

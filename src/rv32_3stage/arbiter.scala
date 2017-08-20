@@ -39,7 +39,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    // CYC 1 : Store inst in reg requested in prev CYC 
    //         make data addr available on MEM PORT
    // CYC 2 : Store data in reg to be used in next CYC
-   // CYC 3 : Default State with data addr on MEM PORT
+   // CYC 3 : Default State with instr addr on MEM PORT
    // nextdreq ensures that data req gets access to bus only
    // for one cycle 
    // alternate between data and instr to avoid starvation

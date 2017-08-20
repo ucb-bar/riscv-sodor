@@ -103,7 +103,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_jump_reg_target = Wire(UInt(32.W))
    val exception_target    = Wire(UInt(32.W))
 
-   when ((!io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill)
+   when ((!io.ctl.dec_stall && !io.ctl.mem_stall) || io.ctl.pipeline_kill)
    {
       if_reg_pc := if_pc_next
    }
@@ -117,7 +117,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
    when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 && 
-         !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill)
+         !io.ctl.dec_stall && !io.ctl.mem_stall && !io.ctl.pipeline_kill)
    {
       if_pc_next := if_reg_pc
    }
@@ -130,7 +130,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    {
       dec_reg_inst := BUBBLE
    }
-   .elsewhen (!io.ctl.dec_stall && !io.ctl.full_stall)
+   .elsewhen (!io.ctl.dec_stall && !io.ctl.mem_stall)
    {
       when (io.ctl.if_kill)
       {
@@ -240,7 +240,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
 
 
-   when ((io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill)
+   when ((io.ctl.dec_stall && !io.ctl.mem_stall) || io.ctl.pipeline_kill)
    {
       // (kill exe stage)
       // insert NOP (bubble) into Execute stage on front-end stall (e.g., hazard clearing)
@@ -252,7 +252,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       exe_reg_ctrl_csr_cmd  := CSR.N
       exe_reg_ctrl_br_type  := BR_N
    }
-   .elsewhen(!io.ctl.dec_stall && !io.ctl.full_stall)
+   .elsewhen(!io.ctl.dec_stall && !io.ctl.mem_stall)
    {
       // no stalling...
       exe_reg_pc            := dec_reg_pc
@@ -328,7 +328,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       mem_reg_ctrl_mem_val  := false.B
       mem_reg_ctrl_csr_cmd  := false.B
    }
-   .elsewhen (!io.ctl.full_stall)
+   .elsewhen (!io.ctl.mem_stall)
    {
       mem_reg_pc            := exe_reg_pc
       mem_reg_inst          := exe_reg_inst
@@ -349,21 +349,18 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Memory Stage
-
    // Control Status Registers
-   // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
    val csr = Module(new CSRFile())
    csr.io.decode.csr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 
-   csr.io.retire    := !io.ctl.full_stall && !io.ctl.dec_stall
-   csr.io.exception := io.ctl.mem_exception
+   csr.io.retire    := !io.ctl.mem_stall && !io.ctl.dec_stall
+   csr.io.illegal := io.ctl.mem_illegal
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
 
    io.dat.csr_eret := csr.io.eret
-   // TODO replay? stall?
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
@@ -380,12 +377,11 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Writeback Stage
-
-   when (!io.ctl.full_stall)
+   when (!io.ctl.mem_stall)
    {
       wb_reg_wbaddr        := mem_reg_wbaddr
       wb_reg_wbdata        := mem_wbdata
-      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, false.B, mem_reg_ctrl_rf_wen)
+      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_illegal, false.B, mem_reg_ctrl_rf_wen)
    }
    .otherwise
    {
@@ -425,13 +421,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(mem_reg_ctrl_rf_wen, Str("Z"), Str(" "))
       , wb_reg_wbaddr
       , wb_reg_wbdata
-      , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F 
+      , Mux(io.ctl.mem_stall, Str("F"),   //FREEZE-> F 
         Mux(io.ctl.dec_stall, Str("S"), Str(" ")))  //STALL->S
       , Mux(io.ctl.exe_pc_sel === 1.U, Str("B"),  //BJ -> B
         Mux(io.ctl.exe_pc_sel === 2.U, Str("J"),   //JR -> J
         Mux(io.ctl.exe_pc_sel === 3.U, Str("E"),   //EX -> E
         Mux(io.ctl.exe_pc_sel === 0.U, Str(" "), Str("?")))))
-      , Mux(csr.io.exception, Str("X"), Str(" "))
+      , Mux(csr.io.illegal, Str("X"), Str(" "))
       , Mux(io.ctl.pipeline_kill, BUBBLE, exe_reg_inst)
       )
 

@@ -102,10 +102,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                      (io.ctl.reg_sel === RS_PC)  -> PC_IDX,
                      (io.ctl.reg_sel === RS_RD)  -> rd,
                      (io.ctl.reg_sel === RS_RS1) -> rs1,
-                     (io.ctl.reg_sel === RS_RS2) -> rs2,
-                     (io.ctl.reg_sel === RS_X0)  -> X0,
-                     (io.ctl.reg_sel === RS_CA)  -> X0,
-                     (io.ctl.reg_sel === RS_CR)  -> X0
+                     (io.ctl.reg_sel === RS_RS2) -> rs2
                    ))
  
    //note: I could be far more clever and save myself on wasted registers here...
@@ -140,8 +137,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata 
    csr.io.retire    := io.ctl.upc_is_fetch
-   // for now, the ucode does NOT support exceptions
-   csr.io.exception := io.ctl.exception //false.B  
+   // illegal micro-code encountered
+   csr.io.illegal := io.ctl.illegal  
    csr.io.pc        := regfile(PC_IDX) - 4.U 
    exception_target := csr.io.evec
 
@@ -192,7 +189,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , reg_ma
       , io.ctl.reg_sel
       , Mux(io.ctl.en_mem, Str("E"), Str(" ")) 
-      , Mux(io.ctl.exception, Str("X"), Str(" ")) 
+      , Mux(io.ctl.illegal, Str("X"), Str(" ")) 
       , reg_addr
       , bus
       , reg_a

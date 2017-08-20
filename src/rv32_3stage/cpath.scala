@@ -34,7 +34,7 @@ class CtrlSignals extends Bundle()
    val dmem_fcn  = Output(UInt(M_X.getWidth))
    val dmem_typ  = Output(UInt(3.W))
  
-   val exception = Output(Bool())   
+   val illegal = Output(Bool())   
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -174,8 +174,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    //-------------------------------
    // Exception Handling
-   io.ctl.exception := !cs_inst_val && io.imem.resp.valid
-   take_evec        := Reg(next=io.ctl.exception) || io.dat.csr_eret 
+   io.ctl.illegal := !cs_inst_val && io.imem.resp.valid
+   take_evec        := Reg(next=io.ctl.illegal) || io.dat.csr_eret 
 
 
 }

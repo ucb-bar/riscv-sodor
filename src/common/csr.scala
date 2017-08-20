@@ -144,7 +144,7 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
 
   val status = Output(new MStatus())
   val evec = Output(UInt(conf.xprlen.W))
-  val exception = Input(Bool())
+  val illegal = Input(Bool())
   val retire = Input(Bool())
   val pc = Input(UInt(conf.xprlen.W))
   val time = Output(UInt(conf.xprlen.W))
@@ -281,13 +281,13 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   io.eret := insn_call || insn_break || insn_ret
 
   // ILLEGAL INSTR
-  when (io.exception) {
+  when (io.illegal) {
     reg_mcause := Causes.illegal_instruction
     io.evec := "h80000004".U
     reg_mepc := io.pc // misaligned memory exceptions not supported...
   }
   
-  assert(PopCount(insn_ret :: io.exception :: Nil) <= 1, "these conditions must be mutually exclusive")
+  assert(PopCount(insn_ret :: io.illegal :: Nil) <= 1, "these conditions must be mutually exclusive")
 
    when (reg_time >= reg_mtimecmp) {
       reg_mip.mtip := true

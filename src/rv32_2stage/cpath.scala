@@ -26,7 +26,7 @@ class CtlToDatIo extends Bundle()
    val wb_sel   = Output(UInt(2.W))
    val rf_wen   = Output(Bool())
    val csr_cmd  = Output(UInt(CSR.SZ))
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
@@ -117,7 +117,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Branch Logic
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.ctl.exception     , PC_EXC,
+                         io.ctl.illegal     , PC_EXC,
                      Mux(cs_br_type === BR_N , PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -160,7 +160,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.bits.typ := cs_msk_sel
 
    // Exception Handling ---------------------
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
+   io.ctl.illegal := (!cs_val_inst && io.imem.resp.valid)
 
 
 }

@@ -87,9 +87,6 @@ $(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc
 generated_dir = $(srcDir)/emulator/${MK_TARGET_PROC}
 
 
-# generated-src-debug/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/common/*.scala
-# 	cd $(buildDir) && $(SBT) "project ${MK_TARGET_PROC}" "run $(CHISEL_ARGS_DEBUG)"
-
 # Run Verilator to produce a fast binary to emulate this circuit.
 VERILATOR := verilator --cc --exe 
 VERILATOR_FLAGS := --top-module Top \
@@ -213,7 +210,6 @@ global_asm_vcd = $(addsuffix .vcd, $(global_asm_tests))
 global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
 global_bmarks_vcd = $(addsuffix .riscv.vcd, $(global_bmarks))
 global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
-global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
 
 asm_test_timeout ?=30000
 bmark_timeout ?=1000000
@@ -248,18 +244,6 @@ $(addprefix output/, $(global_asm_vcd)): output/%.vcd: $(global_tstdir)/% emulat
 $(addprefix output/, $(global_asm_out)): output/%.out: $(global_tstdir)/% emulator
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
-#	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
-#	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
-#	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
-#	rm $(patsubst %.out,%.temp,$@)
-
-# Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
-output/%.vpd: output/%.hex emulator-debug
-	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- +loadmem=$< none 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
-	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.commit,$@)
-	sed -e '/@@@/ d' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.out,$@)
-	rm $(patsubst %.vpd,%.temp,$@)
-
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
@@ -271,8 +255,6 @@ $(addprefix output/, $(global_bmarks_vcd)): output/%.riscv.vcd: $(global_bmarkdi
 	./emulator-debug -v$@ +max-cycles=$(bmark_timeout) +verbose +loadmem=$< 2> /dev/null
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator output
 	./emulator +max-cycles=$(bmark_timeout) +verbose $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
-$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
-	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
 else                                                   
 
@@ -283,10 +265,6 @@ else
 #$(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator $(PK_HEX) output
 #	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
 #	$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) +verbose $(seed) pk $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
-#$(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug $(PK_HEX) output
-#	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -voutput/$*.riscv.vcd +verbose +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > output/$*.riscv.out.gz; vcd2vpd output/$*.riscv.vcd output/$*.riscv.vpd; rm output/$*.riscv.vcd;
-#	-$(PK_PATH) ./emulator-debug +max-cycles=$(bmark_timeout) $(seed) -v- +coremap-random +loadmem=$(PK_HEX) none $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
-#    
 endif
 
 run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
@@ -294,11 +272,6 @@ run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
 #run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
 run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks)))
 	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
-run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests)))
-	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
-run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks)))
-	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
-
 
 run: run-asm-tests run-bmarks-test
 run-debug: run-asm-tests-debug run-bmarks-test-debug

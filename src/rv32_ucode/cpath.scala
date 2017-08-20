@@ -37,7 +37,7 @@ class CtlToDatIo extends Bundle()
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes 
    val upc_is_fetch = Output(Bool()) // for debugging purposes 
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
@@ -117,7 +117,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    
    // Exception Handling ---------------------
-   io.ctl.exception := label_target_map("ILLEGAL").U === upc_state   
+   io.ctl.illegal := label_target_map("ILLEGAL").U === upc_state   
 
    // Cpath Control Interface
    io.ctl.msk_sel := cs.msk_sel

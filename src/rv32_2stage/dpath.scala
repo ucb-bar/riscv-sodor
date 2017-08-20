@@ -111,7 +111,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    ///
 
 
-   when (io.ctl.rf_wen && (exe_wbaddr != 0.U) && !io.ctl.exception)
+   when (io.ctl.rf_wen && (exe_wbaddr != 0.U) && !io.ctl.illegal)
    {
       regfile(exe_wbaddr) := exe_wbdata
    }
@@ -183,7 +183,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val csr_out = csr.io.rw.rdata
 
    csr.io.retire    := !io.ctl.stall // TODO verify this works properly
-   csr.io.exception := io.ctl.exception
+   csr.io.illegal := io.ctl.illegal
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
                     
