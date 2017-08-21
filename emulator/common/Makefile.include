@@ -194,7 +194,8 @@ global_bmarks = \
 	qsort \
 	rsort \
 	towers \
-	vvadd 
+	vvadd \
+	dhrystone
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
