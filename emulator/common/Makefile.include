@@ -65,7 +65,8 @@ generated-src/Top.v: $(srcDir)/src/${MK_TARGET_PROC}/*.scala $(srcDir)/src/commo
 $(addsuffix .o,$(CXXSRCS)): %.o: $(srcDir)/emulator/common/%.cc
 	$(CXX) $(CXXFLAGS) -I/usr/share/verilator/include -c -o $@ $<
 
-
+dtmxsdb: $(srcDir)/emulator/common/dtmxsdb.cc
+	$(CXX) $(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr -o $@ $< $(srcDir)/riscv-fesvr/build/libfesvr.so
 
 generated_dir = $(srcDir)/emulator/${MK_TARGET_PROC}
 

@@ -185,7 +185,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
         command.regno := tempcommand.regno
         command.transfer := tempcommand.transfer
         command.write := tempcommand.write
-        abstractcs.cmderr := 1.U
+        abstractcs.cmderr := Mux(io.dmi.req.valid,1.U,0.U)
       } .otherwise {
         abstractcs.cmderr := 2.U
       }
@@ -236,7 +236,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
 
   /// abstract cs command regfile access
   io.ddpath.addr := command.regno & "hfff".U
-  when(command.transfer && abstractcs.cmderr =/= 0.U){
+  when(command.transfer && (abstractcs.cmderr === 1.U)){
     when(command.write){
       io.ddpath.wdata := data0
       io.ddpath.validreq := true.B     

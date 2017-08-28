@@ -33,7 +33,7 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
     create_fileset -srcset sources_1
 }
 
-add_files -verbose -norecurse -copy_to $projdir/src -fileset [get_filesets sources_1] $hdl_files
+add_files -force -verbose -norecurse -copy_to $projdir/src -fileset [get_filesets sources_1] $hdl_files
 
 set_property top sodor_zynq_v1_0 [get_filesets sources_1]
 
