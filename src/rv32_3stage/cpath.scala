@@ -146,7 +146,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
                            
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid 
+   io.imem.req.valid := (!(ctrl_pc_sel === PC_4) && ctrl_valid) || (take_evec && Reg(next = ctrl_valid))
    //printf("CPATH: MRV:%x IV:%x\n",io.imem.req.valid,ctrl_valid)
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel

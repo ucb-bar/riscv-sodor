@@ -42,13 +42,12 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
    val edge_in = outer.slaveDebug.edgesIn.head
    val tl_in = io.tl_in.head
    val areq = RegEnable(tl_in.a.bits, tl_in.a.fire())
-   val temp = Reg(init = false.B)
    val temp3 = Wire(init = false.B)
    io.dmi.req.valid := tl_in.a.valid
    io.dmi.req.bits.data := tl_in.a.bits.data
    io.dmi.req.bits.addr := (tl_in.a.bits.address & "h1ff".U) >> 2.U
    tl_in.a.ready := io.dmi.req.ready 
-   tl_in.d.valid := io.dmi.resp.valid //&& !temp
+   tl_in.d.valid := io.dmi.resp.valid 
    io.dmi.resp.ready := tl_in.d.ready
    io.dmi.req.bits.op := Mux(tl_in.a.bits.opcode === 4.U, DMConsts.dmi_OP_READ, DMConsts.dmi_OP_WRITE)
    temp3 := tl_in.a.valid && io.dmi.resp.valid

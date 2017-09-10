@@ -84,7 +84,8 @@ uint32_t dtmxsdb_t::do_command(dtmxsdb_t::req r)
     else if (strstr(server_reply,"okay"))
     {
       sscanf(server_reply,"okay %x:   %x\n",&a,&b);
-      printf("0x%x\n",b);
+      if(log)
+        printf("0x%x\n",b);
       return b;
     }
   }
@@ -566,10 +567,12 @@ void dtmxsdb_t::producer_thread()
   xlen = get_xlen();
   resume();
   int exit_code = htif_t::run();
-  if(exit_code != 1)
+  if(exit_code != 0)
     exit(1);
-  else 
+  else {
+    printf("Sucess\n");
     exit(0);
+  }
 }
 
 void dtmxsdb_t::start_host_thread()
