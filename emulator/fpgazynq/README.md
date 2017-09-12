@@ -17,4 +17,7 @@ $ make dtmxsdb
 # after starting the xsdbserver
 $ ./dtmxsdb +verbose +p46677 +loadmem=../../install/riscv-tests/rv32ui-p-add
 ```
-
+to try the automated tests 
+```bash
+make -i port=<#xsdbserver> fpga-asm-tests
+```
