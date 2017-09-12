@@ -1,19 +1,3 @@
-Compiled test available can be downloaded from this link [drive](https://drive.google.com/open?id=0BwB2Eafip96vbjU4RWduT1BUdnc)
-
-you will have to modify emulator/common/Makefile.include to provide the correct path for the binaries after extracting 
-
-Alternatively following link contains the compiler [drive](https://drive.google.com/open?id=0BwB2Eafip96vYzkwc0Z0clFpdVU) 
-
-To use the compiler extract it to suitable folder
-
-```bash 
-#take a back up of /opt/riscv if it already exists
-sudo rm /opt/riscv 
-sudo ln -s <folder> /opt/riscv
-#cd into riscv-tests and then compile tests
-#make sure /opt/riscv is in your system path
-```
-
 About The Sodor Processor Collection
 ====================================
 
