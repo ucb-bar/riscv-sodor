@@ -21,3 +21,8 @@ install/share
 sbt/*/target
 */target
 *.log
+*.jou
+fpga/hdl/Top.v
+fpga/ip_repo
+fpga/myproj
+test_run_dir

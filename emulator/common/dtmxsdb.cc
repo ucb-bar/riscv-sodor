@@ -567,9 +567,12 @@ void dtmxsdb_t::producer_thread()
   xlen = get_xlen();
   resume();
   int exit_code = htif_t::run();
-  if(exit_code != 0)
+  if(exit_code != 0){
+    do_command((req){0x48, 2, 1});
     exit(1);
+  }
   else {
+    do_command((req){0x48, 2, 1});
     printf("Sucess\n");
     exit(0);
   }

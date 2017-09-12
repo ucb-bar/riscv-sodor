@@ -220,6 +220,12 @@ else
 endif
 endif
 
+$(addprefix fpga-, $(global_asm_tests)): fpga-%: $(global_tstdir)/% dtmxsdb
+	./dtmxsdb +p$(port) +loadmem=$<
+
+$(addprefix fpga-debug-, $(global_asm_tests)): fpga-debug-%: $(global_tstdir)/% dtmxsdb
+	./dtmxsdb +p$(port) +verbose +loadmem=$<	
+
 output:
 	mkdir -p $@
 
@@ -280,8 +286,10 @@ run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
 run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
+fpga-asm-tests: $(addprefix fpga-, $(global_asm_tests))
+fpga-bmarks-test: $(addprefix fpga-, $(global_bmarks))
 
-
+fpga-run: fpga-asm-tests fpga-bmarks-test
 run: run-asm-tests run-bmarks-test
 run-debug: run-asm-tests-debug run-bmarks-test-debug
 run-fast: $(addprefix output/, $(addsuffix .run, $(global_asm_tests) $(global_bmarks)))

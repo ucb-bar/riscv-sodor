@@ -76,7 +76,9 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
       (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0))
+      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
+      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)), 
+      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
 
    when(io.core_ports(DPORT).req.bits.fcn === M_XWR){
@@ -89,8 +91,8 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
       (req_typi === MT_B || req_typi === MT_BU) -> 1.U, 
       (req_typi === MT_H || req_typi === MT_HU) -> 3.U))
    tl_data.a.bits.size := MuxCase(2.U,Array(
-      (req_typi === MT_B || req_typi === MT_BU) -> 1.U, 
-      (req_typi === MT_H || req_typi === MT_HU) -> 0.U))
+      (req_typi === MT_B || req_typi === MT_BU) -> 0.U, 
+      (req_typi === MT_H || req_typi === MT_HU) -> 1.U))
    tl_data.a.bits.data := io.core_ports(DPORT).req.bits.data
    /////////////////
    
