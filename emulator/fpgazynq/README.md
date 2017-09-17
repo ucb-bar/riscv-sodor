@@ -20,4 +20,6 @@ $ ./dtmxsdb +verbose +p46677 +loadmem=../../install/riscv-tests/rv32ui-p-add
 to try the automated tests 
 ```bash
 make -i port=<#xsdbserver> fpga-asm-tests
+make -i port=<#xsdbserver> fpga-bmarks-test
+make -i port=<#xsdbserver> fpga-run #to run all bmark and asm tests
 ```
