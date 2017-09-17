@@ -68,11 +68,12 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    io.core_ports(DPORT).req.ready := tl_data.a.ready // for now, no back pressure 
    tl_data.a.bits.address := Mux(io.core_ports(DPORT).req.bits.addr(31),(io.core_ports(DPORT).req.bits.addr & "h1FFFFF".U) | p(ExtMem).base.U,
       io.core_ports(DPORT).req.bits.addr)
-   val req_addri = io.core_ports(DPORT).req.bits.addr
 
    val req_typi = Reg(UInt(3.W))
    req_typi := io.core_ports(DPORT).req.bits.typ
-   val resp_datai = tl_data.d.bits.data
+   val resp_datai = tl_data.d.bits.data >> (tl_data.d.bits.addr_lo << 3.U)
+   val req_addr_lo = io.core_ports(DPORT).req.bits.addr(1,0)
+   val req_wdata = io.core_ports(DPORT).req.bits.data
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
       (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
@@ -88,12 +89,13 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
       tl_data.a.bits.opcode := 4.U
    }
    tl_data.a.bits.mask := MuxCase(15.U,Array(
-      (req_typi === MT_B || req_typi === MT_BU) -> 1.U, 
-      (req_typi === MT_H || req_typi === MT_HU) -> 3.U))
+      (req_typi === MT_B || req_typi === MT_BU) -> (1.U << req_addr_lo), 
+      (req_typi === MT_H || req_typi === MT_HU) -> (3.U << req_addr_lo)))
    tl_data.a.bits.size := MuxCase(2.U,Array(
       (req_typi === MT_B || req_typi === MT_BU) -> 0.U, 
       (req_typi === MT_H || req_typi === MT_HU) -> 1.U))
-   tl_data.a.bits.data := io.core_ports(DPORT).req.bits.data
+   
+   tl_data.a.bits.data := Mux((req_typi === MT_B || req_typi === MT_H),req_wdata << (req_addr_lo << 3.U),req_wdata)
    /////////////////
    
    // DEBUG PORT-------
@@ -117,6 +119,6 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
       ,tl_debug.d.valid,tl_debug.d.bits.data,tl_debug.d.ready)
    printf("MMTLI: AV:%x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x\n",tl_instr.a.valid,tl_instr.a.ready,tl_instr.a.bits.address,tl_instr.a.bits.data
       ,tl_instr.d.valid,tl_instr.d.bits.data,tl_instr.d.ready)
-   printf("MMTLDa: AV:%x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x CPDA:%x\n",tl_data.a.valid,tl_data.a.ready,tl_data.a.bits.address,tl_data.a.bits.data
-      ,tl_data.d.valid,tl_data.d.bits.data,tl_data.d.ready,io.core_ports(DPORT).req.bits.addr)
+   printf("MMTLDa: AV:%x AR:%x AA:%x AD:%x DV:%x DD:%x DR:%x CPDA:%x DAdLo:%x DS:%x\n",tl_data.a.valid,tl_data.a.ready,tl_data.a.bits.address,tl_data.a.bits.data
+      ,tl_data.d.valid,tl_data.d.bits.data,tl_data.d.ready,io.core_ports(DPORT).req.bits.addr,tl_data.d.bits.addr_lo,tl_data.d.bits.size)
 }

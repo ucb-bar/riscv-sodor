@@ -181,7 +181,8 @@ global_bmarks = \
 	qsort \
 	rsort \
 	towers \
-	vvadd 
+	vvadd \
+	dhrystone
 
 # Local benchmarks
 local_bmarkdir = ../../test/riscv-bmarks
@@ -224,6 +225,12 @@ $(addprefix fpga-, $(global_asm_tests)): fpga-%: $(global_tstdir)/% dtmxsdb
 	./dtmxsdb +p$(port) +loadmem=$<
 
 $(addprefix fpga-debug-, $(global_asm_tests)): fpga-debug-%: $(global_tstdir)/% dtmxsdb
+	./dtmxsdb +p$(port) +verbose +loadmem=$<	
+
+$(addprefix fpga-, $(global_bmarks)): fpga-%: $(global_bmarkdir)/%.riscv dtmxsdb
+	./dtmxsdb +p$(port) +loadmem=$<
+
+$(addprefix fpga-debug-, $(global_bmarks)): fpga-debug-%: $(global_bmarkdir)/%.riscv dtmxsdb
 	./dtmxsdb +p$(port) +verbose +loadmem=$<	
 
 output:

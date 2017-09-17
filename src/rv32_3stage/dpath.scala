@@ -244,7 +244,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
-                  (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
+                  (wb_reg_ctrl.wb_sel === WB_PC4) -> (Reg(next=exe_pc) + 4.U),
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   ))
 
