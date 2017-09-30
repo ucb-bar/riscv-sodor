@@ -56,7 +56,7 @@ BPPATH?=$(common)
 CXXFLAGS := $(CXXFLAGS) -O1 -std=c++11  -g
 
 CXXSRCS := SimDTM
-CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(buildIncludeDir)
+CXXFLAGS := $(CXXFLAGS) -I$(srcDir)/emulator/common -I$(srcDir)/riscv-fesvr
 CXXDEBUGFLAGS := -DDEBUG
 
 LDFLAGS := $(LDFLAGS) -L$(buildLibDir) -Wl,-rpath,$(buildLibDir) -L. -lpthread
@@ -98,7 +98,7 @@ VERILATOR_FLAGS := --top-module Top \
   --output-split 20000 \
 	--x-assign unique \
   -I$(srcDir)/vsrc \
-  -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
+  -O3 -CFLAGS "$(CXXFLAGS) $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
 emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
@@ -207,6 +207,8 @@ local_bmarks = \
 #--------------------------------------------------------------------
 # Run assembly tests and benchmarks
 #--------------------------------------------------------------------
+global_asm_out = $(addsuffix .out, $(global_asm_tests))
+global_asm_vcd = $(addsuffix .vcd, $(global_asm_tests))
     
 global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
 global_bmarks_vcd = $(addsuffix .riscv.vcd, $(global_bmarks))
@@ -239,11 +241,11 @@ endif
 output:
 	mkdir -p $@
 
-output/%.vcd: $(global_tstdir)/% emulator-debug
+$(addprefix output/, $(global_asm_vcd)): output/%.vcd: $(global_tstdir)/% emulator-debug
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-output/%.out: $(global_tstdir)/% emulator
+$(addprefix output/, $(global_asm_out)): output/%.out: $(global_tstdir)/% emulator
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)

@@ -27,7 +27,6 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
   val dmem = new MemPortIo(conf.xprlen)
   val ddpath = Flipped(new DebugDPath())
   val dcpath = Flipped(new DebugCPath())
-  val reset = Input(Bool())
 }
 
 class Core(implicit conf: SodorConfiguration) extends Module
