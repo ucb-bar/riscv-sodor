@@ -69,33 +69,35 @@ class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: I
    tl_data.a.bits.address := Mux(io.core_ports(DPORT).req.bits.addr(31),(io.core_ports(DPORT).req.bits.addr & "h1FFFFF".U) | p(ExtMem).base.U,
       io.core_ports(DPORT).req.bits.addr)
 
-   val req_typi = Reg(UInt(3.W))
-   req_typi := io.core_ports(DPORT).req.bits.typ
+   val wire_typd = Wire(UInt(3.W))
+   val reg_typd = Reg(UInt(3.W))
+   reg_typd := io.core_ports(DPORT).req.bits.typ
+   wire_typd := io.core_ports(DPORT).req.bits.typ
    val resp_datai = tl_data.d.bits.data >> (tl_data.d.bits.addr_lo << 3.U)
    val req_addr_lo = io.core_ports(DPORT).req.bits.addr(1,0)
    val req_wdata = io.core_ports(DPORT).req.bits.data
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
-      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
-      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)), 
-      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
+      (reg_typd === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
+      (reg_typd === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
+      (reg_typd === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)), 
+      (reg_typd === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
 
    when(io.core_ports(DPORT).req.bits.fcn === M_XWR){
-      tl_data.a.bits.opcode := Mux((req_typi === MT_W || req_typi === MT_WU),0.U,1.U)
+      tl_data.a.bits.opcode := Mux((wire_typd === MT_W || wire_typd === MT_WU),0.U,1.U)
    }
    when(io.core_ports(DPORT).req.bits.fcn === M_XRD){
       tl_data.a.bits.opcode := 4.U
    }
    tl_data.a.bits.mask := MuxCase(15.U,Array(
-      (req_typi === MT_B || req_typi === MT_BU) -> (1.U << req_addr_lo), 
-      (req_typi === MT_H || req_typi === MT_HU) -> (3.U << req_addr_lo)))
+      (wire_typd === MT_B || wire_typd === MT_BU) -> (1.U << req_addr_lo), 
+      (wire_typd === MT_H || wire_typd === MT_HU) -> (3.U << req_addr_lo)))
    tl_data.a.bits.size := MuxCase(2.U,Array(
-      (req_typi === MT_B || req_typi === MT_BU) -> 0.U, 
-      (req_typi === MT_H || req_typi === MT_HU) -> 1.U))
+      (wire_typd === MT_B || wire_typd === MT_BU) -> 0.U, 
+      (wire_typd === MT_H || wire_typd === MT_HU) -> 1.U))
    
-   tl_data.a.bits.data := Mux((req_typi === MT_B || req_typi === MT_H),req_wdata << (req_addr_lo << 3.U),req_wdata)
+   tl_data.a.bits.data := Mux((wire_typd === MT_B || wire_typd === MT_H),req_wdata << (req_addr_lo << 3.U),req_wdata)
    /////////////////
    
    // DEBUG PORT-------

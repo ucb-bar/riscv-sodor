@@ -140,7 +140,7 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    }
 
    io.imem.req.bits.addr := if_pc_next
-   io.imem.req.valid     := !reset && (once || io.imem.resp.valid) && io.cpu.resp.ready
+   io.imem.req.valid     := !reset.toBool && (once || io.imem.resp.valid) && io.cpu.resp.ready
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
