@@ -2,7 +2,7 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 import RV32_3stage.Constants._
 import Common._
 import Common.Util._
@@ -21,9 +21,9 @@ class Top extends Module
       val success = Output(Bool())
    })
 
-   implicit val sodor_conf = SodorConfiguration()
-   val tile = Module(new SodorTile)
-   val dtm = Module(new SimDTM).connect(clock, reset.toBool, tile.io.dmi, io.success)
+   implicit val sodor_conf = new SodorConfiguration
+   val tile = Module(new SodorTile()(sodor_conf))
+   val dtm = Module(new SimDTM()(sodor_conf)).connect(clock, reset.toBool, tile.io.dmi, io.success)
 }
 
 object elaborate {

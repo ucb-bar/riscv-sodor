@@ -10,7 +10,7 @@ package RV32_3stage
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Common._
 import Common.Instructions._
@@ -37,18 +37,18 @@ class CtrlSignals extends Bundle()
    val exception = Output(Bool())   
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit p: Parameters) extends Bundle() 
 {
    val dcpath = Flipped(new DebugCPath())
    val imem = Flipped(new FrontEndCpuIO())
-   val dmem = new MemPortIo(conf.xprlen)
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtrlSignals()
    override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {
    val io = IO(new CpathIo())
                              //                                     

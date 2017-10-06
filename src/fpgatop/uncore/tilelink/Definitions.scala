@@ -66,8 +66,7 @@ trait HasTileLinkParameters {
   val tlMaxManagerXacts = tlExternal.maxManagerXacts
   val tlClientXactIdBits = log2Up(tlMaxClientXacts*tlMaxClientsPerPort)
   val tlManagerXactIdBits = log2Up(tlMaxManagerXacts)
-  implicit val sodor_conf = SodorConfiguration()
-  val tlBlockAddrBits = sodor_conf.xprlen
+  val tlBlockAddrBits = p(xprlen)
   val tlDataBeats = tlExternal.dataBeats
   val tlDataBits = tlExternal.dataBitsPerBeat
   val tlDataBytes = tlDataBits/8

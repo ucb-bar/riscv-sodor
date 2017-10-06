@@ -6,7 +6,7 @@ package RV32_3stage
 
 import chisel3._
 import chisel3.util._
-
+import config._
 import Common._
 import Constants._
 
@@ -32,19 +32,20 @@ object ALU
 }
 import ALU._
 
-class ALUIO(implicit conf: SodorConfiguration) extends Bundle {
+class ALUIO(implicit p: Parameters) extends Bundle {
+  val xlen = p(xprlen)
   val fn = Input(UInt(SZ_ALU_FN.W))
-  val in2 = Input(UInt(conf.xprlen.W))
-  val in1 = Input(UInt(conf.xprlen.W))
-  val out = Output(UInt(conf.xprlen.W))
-  val adder_out = Output(UInt(conf.xprlen.W))
+  val in2 = Input(UInt(xlen.W))
+  val in1 = Input(UInt(xlen.W))
+  val out = Output(UInt(xlen.W))
+  val adder_out = Output(UInt(xlen.W))
 }
 
-class ALU(implicit conf: SodorConfiguration) extends Module
+class ALU(implicit p: Parameters) extends Module
 {
   val io = IO(new ALUIO)
 
-  val msb = conf.xprlen-1
+  val msb = p(xprlen)-1
 
   // ADD, SUB
   val sum = io.in1 + Mux(isSub(io.fn), -io.in2, io.in2)
@@ -53,7 +54,7 @@ class ALU(implicit conf: SodorConfiguration) extends Module
   val less  =  Mux(io.in1(msb) === io.in2(msb), sum(msb),
               Mux(isSLTU(io.fn), io.in2(msb), io.in1(msb)))
 
-  require(conf.xprlen == 32)
+  require(p(xprlen) == 32)
   // SLL, SRL, SRA
   val shamt = io.in2(4,0).toUInt
   val shin_r = io.in1(31,0)

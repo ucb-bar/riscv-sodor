@@ -21,6 +21,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 import chisel3.experimental._
+import config._
 
 import Constants._
 import Common._
@@ -77,16 +78,16 @@ class SyncMem(val addrWidth : Int) extends BlackBox{
 }
 
 // from the pov of the datapath
-class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
+class MemPortIo(data_width: Int)(implicit p: Parameters) extends Bundle 
 {
    val req    = new DecoupledIO(new MemReq(data_width))
    val resp   = Flipped(new DecoupledIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
-class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
+class MemReq(data_width: Int)(implicit p: Parameters) extends Bundle
 {
-   val addr = Output(UInt(conf.xprlen.W))
+   val addr = Output(UInt(p(xprlen).W))
    val data = Output(UInt(data_width.W))
    val fcn  = Output(UInt(M_X.getWidth.W))  // memory function code
    val typ  = Output(UInt(MT_X.getWidth.W)) // memory type
@@ -103,11 +104,11 @@ class MemResp(data_width: Int) extends Bundle
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
 //for 1,2 and 5 stage need for combinational reads 
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit p: Parameters) extends Module
 {
    val io = IO(new Bundle
    {
-      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
+      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = p(xprlen))) )
       val debug_port = Flipped(new MemPortIo(data_width = 32))
    })
    val num_bytes_per_line = 8
@@ -164,11 +165,11 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    } 
 }
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit p: Parameters) extends Module
 {
    val io = IO(new Bundle
    {
-      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
+      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = p(xprlen))) )
       val debug_port = Flipped(new MemPortIo(data_width = 32))
    })
    val num_bytes_per_line = 8
@@ -226,7 +227,6 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
       sync_data.io.hw.data := io.debug_port.req.bits.data 
       sync_data.io.hw.mask := 15.U
    }
-   //printf("MEM %x %x %x %x",io.debug_port.req.valid,io.debug_port.req.bits.data,io.debug_port.req.bits.addr,io.debug_port.req.bits.fcn) 
 }
 
 }

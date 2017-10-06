@@ -6,6 +6,7 @@ import Common._
 import Common.Util._
 import Util._
 import Constants._
+import config._
 
 object DMConsts{
 
@@ -51,7 +52,7 @@ class DMIResp() extends Bundle {
   *  DebugModule is the consumer of this interface.
   *  Therefore it has the 'flipped' version of this.
   */
-class DMIIO(implicit val conf: SodorConfiguration) extends Bundle {
+class DMIIO(implicit p: Parameters) extends Bundle {
   val req = new  DecoupledIO(new DMIReq(DMConsts.nDMIAddrSize))
   val resp = Flipped(new DecoupledIO(new DMIResp))
 }
@@ -61,7 +62,7 @@ class DMIIO(implicit val conf: SodorConfiguration) extends Bundle {
   *  
   */
 
-class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
+class SimDTM(implicit p: Parameters) extends BlackBox {
   val io = IO(new Bundle {
       val clk = Input(Clock())
       val reset = Input(Bool())
@@ -82,7 +83,7 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   }
 }
 
-class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugDPath(implicit p: Parameters) extends Bundle
 {
   // REG access
   val addr = Output(UInt(5.W))
@@ -92,12 +93,12 @@ class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
   val resetpc = Output(Bool())
 }
 
-class DebugCPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugCPath(implicit p: Parameters) extends Bundle
 {
   val halt = Output(Bool())
 }
 
-class DebugIo(implicit conf: SodorConfiguration) extends Bundle
+class DebugIo(implicit p: Parameters) extends Bundle
 {
   val dmi = Flipped(new DMIIO())
   val ddpath = new DebugDPath()
@@ -106,9 +107,9 @@ class DebugIo(implicit conf: SodorConfiguration) extends Bundle
   val resetcore = Output(Bool())
 }
 
-class DebugModule(implicit val conf: SodorConfiguration) extends Module {
+class DebugModule(implicit p: Parameters) extends Module {
   val io = IO(new DebugIo())
-  
+  val xlen = p(xprlen)
   io.dmi.resp.bits.resp := DMConsts.dmi_RESP_SUCCESS
   val dmstatusReset  = Wire(new DMSTATUSFields())
   dmstatusReset.authenticated := true.B
@@ -127,12 +128,12 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   val abstractcs = Reg(init = abstractcsReset)
   val command = Reg(new ACCESS_REGISTERFields())
   val dmcontrol = Reg(new DMCONTROLFields())
-  val progbuf = Reg(Vec(DMConsts.nProgBuf, UInt(conf.xprlen.W)))
-  val data0 = Reg(UInt(conf.xprlen.W))  //arg0
-  val data1 = Reg(UInt(conf.xprlen.W))  //arg1
-  val data2 = Reg(UInt(conf.xprlen.W))  //arg2
-  val sbaddr = Reg(UInt(conf.xprlen.W))
-  val sbdata = Reg(UInt(conf.xprlen.W))
+  val progbuf = Reg(Vec(DMConsts.nProgBuf, UInt(xlen.W)))
+  val data0 = Reg(UInt(xlen.W))  //arg0
+  val data1 = Reg(UInt(xlen.W))  //arg1
+  val data2 = Reg(UInt(xlen.W))  //arg2
+  val sbaddr = Reg(UInt(xlen.W))
+  val sbdata = Reg(UInt(xlen.W))
   val memreadfire = Reg(init = false.B)
   val coreresetval = Reg(init = true.B)
 
@@ -167,7 +168,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   when(io.debugmem.resp.valid){
     memongoing := false.B
   }
-  val earlyrespond = Wire(UInt(conf.xprlen.W))
+  val earlyrespond = Wire(UInt(xlen.W))
   earlyrespond := Mux1H(for ((k, v) <- read_map) yield decoded_addr(k) -> v)
   val wdata = io.dmi.req.bits.data
   dmstatus.allhalted := dmcontrol.haltreq

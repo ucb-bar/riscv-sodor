@@ -21,27 +21,27 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 import RV32_3stage.Constants._
 import Common._   
 import Common.Util._   
 import RV32_3stage._
 
 
-class SodorTile(implicit val conf: SodorConfiguration) extends Module
+class SodorTile(implicit p: Parameters) extends Module
 {
    val io = IO(new Bundle {
-      val dmi = Flipped(new DMIIO())
+      val dmi = Flipped(new DMIIO()(p))
    })
 
-   val core   = Module(new Core())
-   val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS)) 
-   val debug = Module(new DebugModule())
+   val core   = Module(new Core()(p))
+   val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS)(p)) 
+   val debug = Module(new DebugModule()(p))
    core.reset := debug.io.resetcore | reset.toBool
 
    if (NUM_MEMORY_PORTS == 1)
    {
-      val arbiter = Module(new SodorMemArbiter) // only used for single port memory
+      val arbiter = Module(new SodorMemArbiter()(p)) // only used for single port memory
       core.io.imem <> arbiter.io.imem
       core.io.dmem <> arbiter.io.dmem
       arbiter.io.mem <> memory.io.core_ports(0)

@@ -21,8 +21,7 @@ trait HasCoherenceAgentParameters {
   val nReleaseTransactors = 1
   val nAcquireTransactors = p(NAcquireTransactors)
   val nTransactors = nReleaseTransactors + nAcquireTransactors
-  implicit val sodor_conf = SodorConfiguration()
-  val blockAddrBits = sodor_conf.xprlen
+  val blockAddrBits = p(xprlen)
   val outerTLId = p(OuterTLId)
   val outerTLParams = p(TLKey(outerTLId))
   val outerDataBeats = outerTLParams.dataBeats

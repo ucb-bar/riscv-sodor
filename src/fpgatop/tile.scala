@@ -32,12 +32,12 @@ import Common._
 import Common.Util._   
 import RV32_3stage._
 
-class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends Bundle(){
+class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters) extends Bundle(){
    val dmi = new DMIIO()
    val tl_in = outer.slaveDebug.bundleIn
 }
 
-class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfiguration) extends LazyModuleImp(outer){
+class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters) extends LazyModuleImp(outer){
    val io = new TLToDMIBundle(outer)
    val edge_in = outer.slaveDebug.edgesIn.head
    val tl_in = io.tl_in.head
@@ -66,7 +66,7 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters, conf: SodorConfi
 }
 
 
-class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModule{
+class TLToDMI(implicit p: Parameters) extends LazyModule{
   lazy val module = new TLToDMIModule(this)
   val config = p(DebugAddrSlave) //temporary
   val slaveDebug = TLManagerNode(Seq(TLManagerPortParameters(
@@ -82,12 +82,12 @@ class TLToDMI(implicit p: Parameters, conf: SodorConfiguration) extends LazyModu
       minLatency = 1)))
 }
 
-class SodorTileBundle(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends Bundle {
+class SodorTileBundle(outer: SodorTile)(implicit p: Parameters) extends Bundle {
    val mem_axi4 = outer.mem_axi4.bundleOut
    val ps_slave = outer.ps_slave.bundleIn
 }
 
-class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p: Parameters) extends LazyModuleImp(outer){
+class SodorTileModule(outer: SodorTile)(implicit p: Parameters) extends LazyModuleImp(outer){
    val io = new SodorTileBundle(outer)
    val core   = Module(new Core())
    val memory = outer.memory.module 
@@ -114,7 +114,7 @@ class SodorTileModule(outer: SodorTile)(implicit val conf: SodorConfiguration,p:
 }
 
 
-class SodorTile(implicit val conf: SodorConfiguration,p: Parameters) extends LazyModule
+class SodorTile(implicit p: Parameters) extends LazyModule
 {
    val memory = LazyModule(new MemAccessToTL(num_core_ports=2))
    val tldmi = LazyModule(new TLToDMI())

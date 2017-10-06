@@ -14,39 +14,30 @@ import Common._
 import Common.Util._
 
 
-class MemAccessToTL(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration,p: Parameters) extends LazyModule {
+class MemAccessToTL(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit p: Parameters) extends LazyModule {
    val masterInstr = TLClientNode(TLClientParameters(name = s"Core Instr"))
    val masterData = TLClientNode(TLClientParameters(name = s"Core Data"))
    val masterDebug = TLClientNode(TLClientParameters(name = s"Debug MemAccess"))
    lazy val module = new MemAccessToTLModule(this,num_core_ports)
 }
 
-class MemAccessToTLBundle(outer: MemAccessToTL,num_core_ports: Int)(implicit conf: SodorConfiguration,p: Parameters) extends Bundle(){
-   val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
-   val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))  
+class MemAccessToTLBundle(outer: MemAccessToTL,num_core_ports: Int)(implicit p: Parameters) extends Bundle(){
+   val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = p(xprlen))) )
+   val debug_port = Flipped(new MemPortIo(data_width = p(xprlen)))  
    val tl_data = outer.masterData.bundleOut
    val tl_instr = outer.masterInstr.bundleOut 
    val tl_debug = outer.masterDebug.bundleOut  
 }
 
-class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration,p: Parameters) extends LazyModuleImp(outer) with Common.MemoryOpConstants
+class MemAccessToTLModule(outer: MemAccessToTL,num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit p: Parameters) extends LazyModuleImp(outer) with Common.MemoryOpConstants
 {
    val io = new MemAccessToTLBundle(outer,num_core_ports)
 
-   val edge_debug = outer.masterDebug.edgesOut.head
    val tl_debug = io.tl_debug.head
-   val edge_data = outer.masterData.edgesOut.head
    val tl_data = io.tl_data.head
-   val edge_instr = outer.masterInstr.edgesOut.head
    val tl_instr = io.tl_instr.head
 
    ///////////// IPORT
-   /*val once = Reg(init = true.B)
-   when(tl_instr.a.ready && tl_instr.a.valid){
-      once := false.B
-   } .elsewhen(tl_instr.d.valid) { 
-      once := true.B
-   }*/
    if (num_core_ports == 2){
       tl_instr.d.ready := true.B
       tl_instr.a.bits.address := (io.core_ports(IPORT).req.bits.addr & "h1FFFFF".U) | p(ExtMem).base.U

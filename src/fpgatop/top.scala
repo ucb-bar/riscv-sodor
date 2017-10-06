@@ -34,14 +34,15 @@ class WithZynqAdapter extends Config((site, here, up) => {
   case DebugAddrSlave => MasterConfig(base= 0x40000000L, size= 0x10000000L, beatBytes= 4, idBits= 4)
   case TLMonitorBuilder => (args: TLMonitorArgs) => None
   case TLCombinationalCheck => false
+  case Common.xprlen => 32
+  case Common.usingUser => false
   //case UnitTests => Seq(new TLMulticlientXbarTest(1,2))(this)
 })
 
 class Top extends Module {
-  implicit val sodor_conf = SodorConfiguration()
   val inParams = new WithZynqAdapter
   inParams.alterPartial({case UnitTests => new TLMulticlientXbarTest(1,2)(inParams)})
-  val tile = LazyModule(new SodorTile()(sodor_conf,inParams)).module
+  val tile = LazyModule(new SodorTile()(inParams)).module
   val io = IO(new Bundle {
     val ps_axi_slave = Flipped(tile.io.ps_slave.cloneType)
     val mem_axi = tile.io.mem_axi4.cloneType

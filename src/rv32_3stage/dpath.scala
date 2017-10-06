@@ -17,13 +17,13 @@ package RV32_3stage
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Constants._
 import Common._
 import Common.Constants._
 
-class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DatToCtlIo(implicit p: Parameters) extends Bundle() 
 {
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
@@ -32,25 +32,25 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DpathIo(implicit p: Parameters) extends Bundle() 
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = Flipped(new FrontEndCpuIO())
-   val dmem = new MemPortIo(conf.xprlen)
+   val dmem = new MemPortIo(p(xprlen))
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Module 
+class DatPath(implicit p: Parameters) extends Module 
 {
    val io = IO(new DpathIo())
-
+   val xlen = p(xprlen)
 
    //**********************************
    // Pipeline State Registers
    val wb_reg_valid    = Reg(init=false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
-   val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
+   val wb_reg_alu      = Reg(UInt(xlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
    val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
    
@@ -58,9 +58,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Instruction Fetch Stage
-   val exe_brjmp_target    = Wire(UInt(conf.xprlen.W))
-   val exe_jump_reg_target = Wire(UInt(conf.xprlen.W))
-   val exception_target    = Wire(UInt(conf.xprlen.W))
+   val exe_brjmp_target    = Wire(UInt(xlen.W))
+   val exe_jump_reg_target = Wire(UInt(xlen.W))
+   val exception_target    = Wire(UInt(xlen.W))
 
    io.imem.resp.ready := !wb_hazard_stall // stall IF if we detect a WB->EXE hazard
 
@@ -83,7 +83,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_rs2_addr = exe_inst(RS2_MSB, RS2_LSB)
    val exe_wbaddr   = exe_inst(RD_MSB,  RD_LSB)
                        
-   val wb_wbdata    = Wire(UInt(conf.xprlen.W))
+   val wb_wbdata    = Wire(UInt(xlen.W))
 
    // Hazard Stall Logic 
    if(NUM_MEMORY_PORTS == 1) {
@@ -108,7 +108,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
 
    // Register File
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(UInt(xlen.W), 32)
 
    //// DebugModule
    io.ddpath.rdata := regfile(io.ddpath.addr)
@@ -122,8 +122,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
 
-   val rf_rs1_data = Mux((exe_rs1_addr != 0.U) , regfile(exe_rs1_addr), 0.asUInt(conf.xprlen.W))
-   val rf_rs2_data = Mux((exe_rs2_addr != 0.U) , regfile(exe_rs2_addr), 0.asUInt(conf.xprlen.W))
+   val rf_rs1_data = Mux((exe_rs1_addr != 0.U) , regfile(exe_rs1_addr), 0.asUInt(xlen.W))
+   val rf_rs2_data = Mux((exe_rs2_addr != 0.U) , regfile(exe_rs2_addr), 0.asUInt(xlen.W))
    
    
    // immediates
@@ -251,7 +251,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    //**********************************
    // Printout
 
-   val irt_reg = Reg(init=0.asUInt(conf.xprlen.W))
+   val irt_reg = Reg(init=0.asUInt(xlen.W))
    when (wb_reg_valid) { irt_reg := irt_reg + 1.U }
 
    val debug_wb_pc = Wire(UInt(32.W))

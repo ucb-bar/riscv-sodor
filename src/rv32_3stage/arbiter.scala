@@ -9,24 +9,25 @@ package RV32_3stage
 
 import chisel3._
 import chisel3.util._
-
+import config._
 import Common._
 
 // arbitrates memory access
-class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
+class SodorMemArbiter(implicit p: Parameters) extends Module
 {
+  val xlen = p(xprlen)
    val io = IO(new Bundle
       {
          // TODO I need to come up with better names... this is too confusing 
          // from the point of view of the other modules
-         val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
-         val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
-         val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
+         val imem = Flipped(new MemPortIo(xlen)) // instruction fetch
+         val dmem = Flipped(new MemPortIo(xlen)) // load/store 
+         val mem  = new MemPortIo(xlen)      // the single-ported memory
       }) 
 
    //***************************
-   val i1reg = Reg(UInt(conf.xprlen.W))
-   val d1reg = Reg(UInt(conf.xprlen.W))
+   val i1reg = Reg(UInt(xlen.W))
+   val d1reg = Reg(UInt(xlen.W))
    val nextdreq = Reg(init = true.B)
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
