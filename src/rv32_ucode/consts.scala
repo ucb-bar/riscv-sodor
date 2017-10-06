@@ -15,13 +15,6 @@ import chisel3.util._
 
 import Common._
 
-trait SodorProcConstants
-{
-
-   //************************************
-   // Machine Parameters
-}
-
 trait ScalarOpConstants extends MemoryOpConstants
 {
    //************************************

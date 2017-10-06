@@ -8,32 +8,33 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Constants._
 import Common._
 
-class RFileIo(implicit conf: SodorConfiguration) extends Bundle()
+class RFileIo(implicit p: Parameters) extends Bundle()
 {
+   val xlen = p(xprlen)
    val rs1_addr = Input(UInt(5.W))
-   val rs1_data = Output(UInt(conf.xprlen.W))
+   val rs1_data = Output(UInt(xlen.W))
    val rs2_addr = Input(UInt(5.W))
-   val rs2_data = Output(UInt(conf.xprlen.W))
+   val rs2_data = Output(UInt(xlen.W))
    val dm_addr = Input(UInt(5.W))
-   val dm_rdata = Output(UInt(conf.xprlen.W))
-   val dm_wdata = Input(UInt(conf.xprlen.W))
+   val dm_rdata = Output(UInt(xlen.W))
+   val dm_wdata = Input(UInt(xlen.W))
    val dm_en = Input(Bool())
     
    val waddr    = Input(UInt(5.W))
-   val wdata    = Input(UInt(conf.xprlen.W))
+   val wdata    = Input(UInt(xlen.W))
    val wen      = Input(Bool())
 }
 
-class RegisterFile(implicit conf: SodorConfiguration) extends Module
+class RegisterFile(implicit p: Parameters) extends Module
 {
    val io = IO(new RFileIo())
 
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(UInt(p(xprlen).W), 32)
 
    when (io.wen && (io.waddr != 0.U))
    {

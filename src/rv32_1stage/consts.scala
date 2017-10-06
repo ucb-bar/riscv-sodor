@@ -12,14 +12,6 @@ package constants
 import chisel3._
 import chisel3.util._
 
-
-trait SodorProcConstants
-{
-   // for debugging, print out the commit information.
-   // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
-   val PRINT_COMMIT_LOG = false
-}
-
 trait ScalarOpConstants
 {
    //************************************

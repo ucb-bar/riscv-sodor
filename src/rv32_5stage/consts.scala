@@ -12,18 +12,6 @@ package constants
 import chisel3._
 import chisel3.util._
 
-
-trait SodorProcConstants
-{
-
-   //************************************
-   // Machine Parameters
-   val USE_FULL_BYPASSING = true  // turn on full bypassing (only stalls
-                                  // on load-use). Otherwise rely
-                                  // entirely on interlocking to handle
-                                  // pipeline hazards.
-}
-
 trait ScalarOpConstants
 {
 

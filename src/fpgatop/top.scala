@@ -17,6 +17,7 @@ import junctions.NastiConstants._
 import uncore.tilelink2._
 import config.{Parameters, Field}
 import RV32_3stage._
+import RV32_3stage.Constants._
 
 object ReferenceChipBackend {
   val initMap = new HashMap[Module, Bool]()
@@ -36,6 +37,9 @@ class WithZynqAdapter extends Config((site, here, up) => {
   case TLCombinationalCheck => false
   case Common.xprlen => 32
   case Common.usingUser => false
+  case NUM_MEMORY_PORTS => 2
+  case PREDICT_PCP4 => true
+  case PRINT_COMMIT_LOG => false
   //case UnitTests => Seq(new TLMulticlientXbarTest(1,2))(this)
 })
 
@@ -342,10 +346,10 @@ class TopTests extends SteppedHWIOTester {
     poke(device_under_test.io.mem_axi(0).w.ready , 1)
     poke(device_under_test.io.mem_axi(0).ar.ready , 1)
     
-    checkDCPath
+    //checkDCPath
     //checkDebugMem
     //checkLWSW
-    //checkJump
+    checkJump
 }
 
 class TestHarnessTester(dut: TestHarness) extends PeekPokeTester(dut) {

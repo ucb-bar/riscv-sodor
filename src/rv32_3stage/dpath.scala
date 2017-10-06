@@ -86,7 +86,7 @@ class DatPath(implicit p: Parameters) extends Module
    val wb_wbdata    = Wire(UInt(xlen.W))
 
    // Hazard Stall Logic 
-   if(NUM_MEMORY_PORTS == 1) {
+   if(p(NUM_MEMORY_PORTS) == 1) {
       // stall for more cycles incase of store after load with read after write conflict
       val count = Reg(init = 1.asUInt(2.W))
       when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
@@ -193,7 +193,7 @@ class DatPath(implicit p: Parameters) extends Module
    }
    io.dmem.req.valid     := io.ctl.dmem_val && once
    io.dmem.resp.ready := once | Reg(next = io.ctl.dmem_fcn)
-   if(NUM_MEMORY_PORTS == 1) 
+   if(p(NUM_MEMORY_PORTS) == 1) 
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else   
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & (!wb_hazard_stall | once) & exe_valid 
@@ -240,7 +240,7 @@ class DatPath(implicit p: Parameters) extends Module
    // Note: I'm relying on the fact that the EXE stage is holding the
    // instruction behind our jal, which assumes we always predict PC+4, and we
    // don't clear the "mispredicted" PC when we jump.
-   require (PREDICT_PCP4==true)
+   require (p(PREDICT_PCP4)==true)
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
@@ -285,7 +285,7 @@ class DatPath(implicit p: Parameters) extends Module
    // for debugging, print out the commit information.
    // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
    // use "sed" to parse out "@@@" from the other printf code above.
-   if (PRINT_COMMIT_LOG)
+   if (p(PRINT_COMMIT_LOG))
    {
       when (wb_reg_valid)
       {

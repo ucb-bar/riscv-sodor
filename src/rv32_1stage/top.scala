@@ -10,7 +10,11 @@ import Common.Util._
 import ReferenceChipBackend._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
+import config._
 
+// for debugging, print out the commit information.
+   // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
+case object PRINT_COMMIT_LOG extends Field[Boolean]
 
 object ReferenceChipBackend {
   val initMap = new HashMap[Module, Bool]()
@@ -22,9 +26,11 @@ class Top extends Module
       val success = Output(Bool())
     })
 
-   implicit val sodor_conf = SodorConfiguration()
-   val tile = Module(new SodorTile)
-   val dtm = Module(new SimDTM).connect(clock, reset, tile.io.dmi, io.success)
+   implicit val sodor_conf = (new SodorConfiguration).alterPartial {
+        case PRINT_COMMIT_LOG => false
+   }
+   val tile = Module(new SodorTile()(sodor_conf))
+   val dtm = Module(new SimDTM()(sodor_conf)).connect(clock, reset.toBool, tile.io.dmi, io.success)
 }
 
 object elaborate extends ChiselFlatSpec{

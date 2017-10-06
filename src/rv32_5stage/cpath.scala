@@ -13,7 +13,7 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Constants._
 import Common._
@@ -44,21 +44,21 @@ class CtlToDatIo extends Bundle()
    val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
+class CpathIo(implicit p: Parameters) extends Bundle()
 {
    val dcpath = Flipped(new DebugCPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
 
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {
-  val io = IO(new CpathIo())
-
+   val io = IO(new CpathIo())
+   val xlen = p(xprlen)
    val csignals =
       ListLookup(io.dat.dec_inst,
                              List(N, BR_N  , OP1_X , OP2_X    , OEN_0, OEN_0, ALU_X   , WB_X  ,  REN_0, MEN_0, M_X  , MT_X, CSR.N, N),
@@ -216,7 +216,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    // Stall signal stalls instruction fetch & decode stages,
    // inserts NOP into execute stage,  and drains execute, memory, and writeback stages
    // stalls on I$ misses and on hazards
-   if (USE_FULL_BYPASSING)
+   if (p(USE_FULL_BYPASSING))
    {
       // stall for load-use hazard
       stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr != 0.U) && dec_rs1_oen) ||

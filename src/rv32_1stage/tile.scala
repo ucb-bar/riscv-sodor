@@ -12,9 +12,10 @@ import chisel3.util._
 import Constants._
 import Common._   
 import Common.Util._   
+import config._
 
 
-class SodorTile(implicit val conf: SodorConfiguration) extends Module
+class SodorTile(implicit p: Parameters) extends Module
 {
    val io = IO(new Bundle {
       val dmi = Flipped(new DMIIO())

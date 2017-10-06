@@ -10,7 +10,7 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Constants._
 import Common._
@@ -26,36 +26,36 @@ class DatToCtlIo extends Bundle()
 }
 
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DpathIo(implicit p: Parameters) extends Bundle() 
 {
    val ddpath = Flipped(new DebugDPath())
-   val mem  = new MemPortIo(conf.xprlen)
+   val mem  = new MemPortIo(p(xprlen))
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
 }  
 
 
-class DatPath(implicit conf: SodorConfiguration) extends Module
+class DatPath(implicit p: Parameters) extends Module
 {
    val io = IO(new DpathIo())
-
+   val xlen = p(xprlen)
 
    // forward declarations
-   val imm       = Wire(UInt(conf.xprlen.W))
-   val alu       = Wire(UInt(conf.xprlen.W))
-   val reg_rdata = Wire(UInt(conf.xprlen.W))
-   val csr_rdata = Wire(UInt(conf.xprlen.W))
-   val exception_target = Wire(UInt(conf.xprlen.W))
+   val imm       = Wire(UInt(xlen.W))
+   val alu       = Wire(UInt(xlen.W))
+   val reg_rdata = Wire(UInt(xlen.W))
+   val csr_rdata = Wire(UInt(xlen.W))
+   val exception_target = Wire(UInt(xlen.W))
 
    // The Bus 
    // (this is a bus-based RISCV implementation, so all data movement goes
    // across this wire)
    val bus = MuxCase(0.U, Array(
-               (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
-               (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0), 
+               (io.ctl.en_imm)                  -> imm(xlen-1,0),
+               (io.ctl.en_alu)                  -> alu(xlen-1,0), 
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
-                 (io.ctl.reg_sel != RS_CR))     -> reg_rdata(conf.xprlen-1,0),
-               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(conf.xprlen-1,0),
+                 (io.ctl.reg_sel != RS_CR))     -> reg_rdata(xlen-1,0),
+               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(xlen-1,0),
                (io.ctl.en_reg & ~io.ctl.reg_wr & 
                   (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
@@ -63,20 +63,20 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
 
    // IR Register
-   val ir    = Reg(init=0.asUInt(conf.xprlen.W))
+   val ir    = Reg(init=0.asUInt(xlen.W))
    when (io.ctl.ld_ir) { ir := bus }
    io.dat.inst := ir
     
    // A Register
-   val reg_a = Reg(init="haaaa".asUInt(conf.xprlen.W))
+   val reg_a = Reg(init="haaaa".asUInt(xlen.W))
    when (io.ctl.ld_a) { reg_a := bus }
      
    // B Register
-   val reg_b = Reg(init="hbbbb".asUInt(conf.xprlen.W))
+   val reg_b = Reg(init="hbbbb".asUInt(xlen.W))
    when (io.ctl.ld_b) { reg_b := bus }
     
    // MA Register
-   val reg_ma  = Reg(init="heeee".asUInt(conf.xprlen.W))
+   val reg_ma  = Reg(init="heeee".asUInt(xlen.W))
    when (io.ctl.ld_ma) { reg_ma := bus }
 
    // IR Immediate
@@ -120,7 +120,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // This is a hack to make it look like the CSRFile is part of the regfile
    reg_rdata :=  MuxCase(regfile(reg_addr), Array(
                     (io.ctl.reg_sel === RS_CR) -> csr_rdata,
-                    (reg_addr === 0.U)     -> 0.asUInt(conf.xprlen.W)))
+                    (reg_addr === 0.U)     -> 0.asUInt(xlen.W)))
                     
    // CSR addr Register
    val csr_addr = Reg(init=0.asUInt(12.W))
@@ -128,7 +128,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
      csr_addr := bus
    }
 
-   val csr_wdata = Reg(init=0.asUInt(conf.xprlen.W))
+   val csr_wdata = Reg(init=0.asUInt(xlen.W))
    when(io.ctl.reg_wr & (io.ctl.reg_sel === RS_CR)) {
      csr_wdata := bus
    }
@@ -162,7 +162,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_DEC_A_4) ->  (reg_a  -  4.U),
               (io.ctl.alu_op === ALU_ADD)     ->  (reg_a  +  reg_b),
               (io.ctl.alu_op === ALU_SUB)     ->  (reg_a  -  reg_b),
-              (io.ctl.alu_op === ALU_SLL)     -> ((reg_a << alu_shamt)(conf.xprlen-1,0)),
+              (io.ctl.alu_op === ALU_SLL)     -> ((reg_a << alu_shamt)(xlen-1,0)),
               (io.ctl.alu_op === ALU_SRL)     ->  (reg_a >> alu_shamt),
               (io.ctl.alu_op === ALU_SRA)     ->  (reg_a.toSInt >> alu_shamt).toUInt,
               (io.ctl.alu_op === ALU_AND)     ->  (reg_a & reg_b),
@@ -171,7 +171,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.toSInt < reg_b.toSInt).toUInt,
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
               (io.ctl.alu_op === ALU_INIT_PC) ->  START_ADDR,
-              (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
+              (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(xlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))
   
@@ -182,7 +182,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.mem.req.bits.addr := reg_ma.toUInt
    io.mem.req.bits.data := bus
    // Retired Instruction Counter 
-   val irt_reg = Reg(init=0.asUInt(conf.xprlen.W))
+   val irt_reg = Reg(init=0.asUInt(xlen.W))
    when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + 1.U }
 
    // Printout

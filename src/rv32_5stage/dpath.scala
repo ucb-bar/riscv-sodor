@@ -12,14 +12,14 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 
 import Constants._
 import Common._
 
-class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
+class DatToCtlIo(implicit p: Parameters) extends Bundle()
 {
-   val dec_inst    = Output(UInt(conf.xprlen.W))
+   val dec_inst    = Output(UInt(p(xprlen).W))
    val exe_br_eq   = Output(Bool())
    val exe_br_lt   = Output(Bool())
    val exe_br_ltu  = Output(Bool())
@@ -31,19 +31,19 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
+class DpathIo(implicit p: Parameters) extends Bundle()
 {
    val ddpath = Flipped(new DebugDPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Module
+class DatPath(implicit p: Parameters) extends Module
 {
    val io = IO(new DpathIo())
-
+   val xlen = p(xprlen)
    //**********************************
    // Pipeline State Registers
 
@@ -52,17 +52,17 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Instruction Decode State
    val dec_reg_inst          = Reg(init=BUBBLE)
-   val dec_reg_pc            = Reg(init=0.asUInt(conf.xprlen.W))
+   val dec_reg_pc            = Reg(init=0.asUInt(xlen.W))
 
    // Execute State
    val exe_reg_inst          = Reg(init=BUBBLE)
-   val exe_reg_pc            = Reg(init=0.asUInt(conf.xprlen.W))
+   val exe_reg_pc            = Reg(init=0.asUInt(xlen.W))
    val exe_reg_wbaddr        = Reg(UInt(5.W))
    val exe_reg_rs1_addr      = Reg(UInt(5.W))
    val exe_reg_rs2_addr      = Reg(UInt(5.W))
-   val exe_reg_op1_data      = Reg(UInt(conf.xprlen.W))
-   val exe_reg_op2_data      = Reg(UInt(conf.xprlen.W))
-   val exe_reg_rs2_data      = Reg(UInt(conf.xprlen.W))
+   val exe_reg_op1_data      = Reg(UInt(xlen.W))
+   val exe_reg_op2_data      = Reg(UInt(xlen.W))
+   val exe_reg_rs2_data      = Reg(UInt(xlen.W))
    val exe_reg_ctrl_br_type  = Reg(init=BR_N)
    val exe_reg_ctrl_op2_sel  = Reg(UInt())
    val exe_reg_ctrl_alu_fun  = Reg(UInt())
@@ -74,15 +74,15 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_csr_cmd  = Reg(init=CSR.N)
 
    // Memory State
-   val mem_reg_pc            = Reg(UInt(conf.xprlen.W))
-   val mem_reg_inst          = Reg(UInt(conf.xprlen.W))
+   val mem_reg_pc            = Reg(UInt(xlen.W))
+   val mem_reg_inst          = Reg(UInt(xlen.W))
    val mem_reg_alu_out       = Reg(Bits())
    val mem_reg_wbaddr        = Reg(UInt())
    val mem_reg_rs1_addr      = Reg(UInt())
    val mem_reg_rs2_addr      = Reg(UInt())
-   val mem_reg_op1_data      = Reg(UInt(conf.xprlen.W))
-   val mem_reg_op2_data      = Reg(UInt(conf.xprlen.W))
-   val mem_reg_rs2_data      = Reg(UInt(conf.xprlen.W))
+   val mem_reg_op1_data      = Reg(UInt(xlen.W))
+   val mem_reg_op2_data      = Reg(UInt(xlen.W))
+   val mem_reg_rs2_data      = Reg(UInt(xlen.W))
    val mem_reg_ctrl_rf_wen   = Reg(init=false.B)
    val mem_reg_ctrl_mem_val  = Reg(init=false.B)
    val mem_reg_ctrl_mem_fcn  = Reg(init=M_X)
@@ -92,7 +92,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Writeback State
    val wb_reg_wbaddr         = Reg(UInt())
-   val wb_reg_wbdata         = Reg(UInt(conf.xprlen.W))
+   val wb_reg_wbdata         = Reg(UInt(xlen.W))
    val wb_reg_ctrl_rf_wen    = Reg(init=false.B)
 
 
@@ -108,7 +108,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       if_reg_pc := if_pc_next
    }
 
-   val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))
+   val if_pc_plus4 = (if_reg_pc + 4.asUInt(xlen.W))
 
    if_pc_next := Mux(io.ctl.exe_pc_sel === PC_4,      if_pc_plus4,
                  Mux(io.ctl.exe_pc_sel === PC_BRJMP,  exe_brjmp_target,
@@ -198,14 +198,14 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
 
    // Bypass Muxes
-   val exe_alu_out  = Wire(UInt(conf.xprlen.W))
-   val mem_wbdata   = Wire(UInt(conf.xprlen.W))
+   val exe_alu_out  = Wire(UInt(xlen.W))
+   val mem_wbdata   = Wire(UInt(xlen.W))
 
-   val dec_op1_data = Wire(UInt(conf.xprlen.W))
-   val dec_op2_data = Wire(UInt(conf.xprlen.W))
-   val dec_rs2_data = Wire(UInt(conf.xprlen.W))
+   val dec_op1_data = Wire(UInt(xlen.W))
+   val dec_op2_data = Wire(UInt(xlen.W))
+   val dec_rs2_data = Wire(UInt(xlen.W))
 
-   if (USE_FULL_BYPASSING)
+   if (p(USE_FULL_BYPASSING))
    {
       // roll the OP1 mux into the bypass mux logic
       dec_op1_data := MuxCase(rf_rs1_data, Array(
@@ -296,7 +296,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // ALU
    val alu_shamt     = exe_alu_op2(4,0).toUInt
-   val exe_adder_out = (exe_alu_op1 + exe_alu_op2)(conf.xprlen-1,0)
+   val exe_adder_out = (exe_alu_op1 + exe_alu_op2)(xlen-1,0)
 
    //only for debug purposes right now until debug() works
    exe_alu_out := MuxCase(exe_reg_inst.toUInt, Array(
@@ -307,7 +307,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (exe_reg_ctrl_alu_fun === ALU_XOR)  -> (exe_alu_op1 ^ exe_alu_op2).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SLT)  -> (exe_alu_op1.toSInt < exe_alu_op2.toSInt).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SLTU) -> (exe_alu_op1 < exe_alu_op2).toUInt,
-                  (exe_reg_ctrl_alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(xlen-1, 0)).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SRA)  -> (exe_alu_op1.toSInt >> alu_shamt).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).toUInt,
                   (exe_reg_ctrl_alu_fun === ALU_COPY_1)-> exe_alu_op1,
@@ -319,7 +319,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    exe_brjmp_target    := exe_reg_pc + brjmp_offset
    exe_jump_reg_target := exe_adder_out
 
-   val exe_pc_plus4    = (exe_reg_pc + 4.U)(conf.xprlen-1,0)
+   val exe_pc_plus4    = (exe_reg_pc + 4.U)(xlen-1,0)
 
    when (io.ctl.pipeline_kill)
    {

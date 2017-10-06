@@ -164,7 +164,7 @@ class CtlPath(implicit p: Parameters) extends Module
    io.ctl.csr_cmd    := Mux(!ctrl_valid, CSR.N, csr_cmd)
    
    // Memory Requests
-   if(NUM_MEMORY_PORTS == 1)
+   if(p(NUM_MEMORY_PORTS) == 1)
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
    else 
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid

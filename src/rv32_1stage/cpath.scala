@@ -14,6 +14,7 @@ import chisel3.util._
 import Common._
 import Common.Instructions._
 import Constants._
+import config._
 
 class CtlToDatIo extends Bundle() 
 {
@@ -28,18 +29,18 @@ class CtlToDatIo extends Bundle()
    val exception = Output(Bool())
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit p: Parameters) extends Bundle() 
 {
    val dcpath = Flipped(new DebugCPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {                                                                                                                   
   val io = IO(new CpathIo())                                                                                            
                                                                                                                     

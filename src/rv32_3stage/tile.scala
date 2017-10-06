@@ -35,11 +35,11 @@ class SodorTile(implicit p: Parameters) extends Module
    })
 
    val core   = Module(new Core()(p))
-   val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS)(p)) 
+   val memory = Module(new SyncScratchPadMemory(num_core_ports = p(NUM_MEMORY_PORTS))(p)) 
    val debug = Module(new DebugModule()(p))
    core.reset := debug.io.resetcore | reset.toBool
 
-   if (NUM_MEMORY_PORTS == 1)
+   if (p(NUM_MEMORY_PORTS) == 1)
    {
       val arbiter = Module(new SodorMemArbiter()(p)) // only used for single port memory
       core.io.imem <> arbiter.io.imem
