@@ -21,21 +21,15 @@ import config.{Parameters, Field}
 import RV32_3stage._
 import RV32_3stage.Constants._
 
-/** This includes the clock and reset as these are passed through the
-  *  hierarchy until the Debug Module is actually instantiated. 
-  *  
-  */
-
-class SimDTMonAXI4(implicit p: Parameters) extends BlackBox {
+class SimDTM(implicit p: Parameters) extends BlackBox {
   val io = IO(new Bundle {
       val clk = Input(Clock())
       val reset = Input(Bool())
-      val debug = AXI4BlindInputNode(Seq(AXI4MasterPortParameters(
-    masters = Seq(AXI4MasterParameters(name = "AXI4 periphery"))))).bundleIn(0)
+      val debug = new DMIIO()
       val exit = Output(UInt(32.W))
     })
 
-  def connect(tbclk: Clock, tbreset: Bool, dutio: io.debug.cloneType, tbsuccess: Bool) = {
+  def connect(tbclk: Clock, tbreset: Bool, dutio: DMIIO, tbsuccess: Bool) = {
     io.clk := tbclk
     io.reset := tbreset
     dutio <> io.debug 
@@ -48,19 +42,58 @@ class SimDTMonAXI4(implicit p: Parameters) extends BlackBox {
   }
 }
 
-class SimTop extends Module {
+/** This includes the clock and reset as these are passed through the
+  *  hierarchy until the Debug Module is actually instantiated. 
+  *  
+  */
+
+class AXI4toDMI(top: Top)(implicit p: Parameters) extends Module {
+  val io = IO(new Bundle {
+    val ps_axi_slave = top.tile.io.ps_slave.cloneType
+    val dmi = Flipped(new DMIIO())
+    val success = Output(Bool())
+  })
+  when(io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){
+    io.ps_axi_slave(0).aw.valid := io.dmi.req.valid 
+    io.ps_axi_slave(0).w.valid := io.dmi.req.valid
+    io.dmi.req.ready := io.ps_axi_slave(0).aw.ready && io.ps_axi_slave(0).w.ready
+  }
+  when(io.dmi.req.bits.op === DMConsts.dmi_OP_READ){
+    io.ps_axi_slave(0).ar.valid := io.dmi.req.valid
+    io.dmi.req.ready := io.ps_axi_slave(0).ar.ready
+  }
+  io.ps_axi_slave(0).aw.bits.addr := io.dmi.req.bits.addr
+  io.ps_axi_slave(0).aw.bits.size := 2.U
+  io.ps_axi_slave(0).aw.bits.len := 0.U
+  io.ps_axi_slave(0).aw.bits.id := 0.U
+  io.ps_axi_slave(0).w.bits.data := io.dmi.req.bits.data
+  io.ps_axi_slave(0).w.bits.last := 1.U
+
+  io.ps_axi_slave(0).ar.bits.addr := io.dmi.req.bits.addr
+  io.ps_axi_slave(0).ar.bits.size := 2.U
+  io.ps_axi_slave(0).ar.bits.len := 0.U
+  io.ps_axi_slave(0).ar.bits.id := 0.U
+
+  io.dmi.resp.valid := (io.ps_axi_slave(0).r.valid | io.ps_axi_slave(0).b.valid)
+  io.dmi.resp.bits.data := io.ps_axi_slave(0).r.bits.data
+  io.ps_axi_slave(0).r.ready := io.dmi.resp.ready
+  io.ps_axi_slave(0).b.ready := io.dmi.resp.ready
+}
+
+class Top extends Module {
   implicit val inParams = new WithZynqAdapter
-  val tileouter = LazyModule(new SodorTile()(inParams))
-  val tile = tileouter.module
+  val tile = LazyModule(new SodorTile()(inParams)).module
   val io = IO(new Bundle {
     val success = Output(Bool())
   })
-  val dtm = Module(new SimDTMonAXI4()(inParams)).connect(clock, reset.toBool, tile.io.ps_slave, io.success)
+  val axi4todmi = Module(new AXI4toDMI(this)(inParams))
+  tile.io.ps_slave <> axi4todmi.io.ps_axi_slave
+  io.success := axi4todmi.io.success
+  val dtm = Module(new SimDTM()(inParams)).connect(clock, reset.toBool, axi4todmi.io.dmi, io.success)
 }
 
 object elaborate extends ChiselFlatSpec{
   def main(args: Array[String]): Unit = {
-    implicit val inParams = new WithZynqAdapter
-    chisel3.Driver.execute(args, () => new SimTop)
+    chisel3.Driver.execute(args, () => new Top)
   }
 }

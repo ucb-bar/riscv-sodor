@@ -83,12 +83,11 @@ class TLToDMI(implicit p: Parameters) extends LazyModule{
 }
 
 class SodorTileBundle(outer: SodorTile)(implicit p: Parameters) extends Bundle {
-//   val mem_axi4 = outer.mem_axi4.bundleOut
-   val ps_slave = outer.ps_slave.bundleIn
+    val ps_slave = outer.ps_slave.bundleIn
 }
 
 class SodorTileModule(outer: SodorTile)(implicit p: Parameters) extends LazyModuleImp(outer){
-   val io = new SodorTileBundle(outer)
+   val io = IO(new SodorTileBundle(outer))
    val core   = Module(new Core())
    val memory = outer.memory.module 
    val tldmi = outer.tldmi.module
@@ -104,9 +103,9 @@ class SodorTileModule(outer: SodorTile)(implicit p: Parameters) extends LazyModu
    debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> tldmi.io.dmi
 
-   printf("STM: PS ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WR:%x WD:%x RV:%x RD:%x BV:%x AWADDR:%x\n",io.ps_slave(0).ar.valid,io.ps_slave(0).ar.ready,io.ps_slave(0).aw.valid,
+/*   printf("STM: PS ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WR:%x WD:%x RV:%x RD:%x BV:%x AWADDR:%x\n",io.ps_slave(0).ar.valid,io.ps_slave(0).ar.ready,io.ps_slave(0).aw.valid,
     io.ps_slave(0).aw.ready,io.ps_slave(0).w.valid,io.ps_slave(0).w.ready,io.ps_slave(0).w.bits.data,io.ps_slave(0).r.valid,io.ps_slave(0).r.bits.data,
-    io.ps_slave(0).b.valid, io.ps_slave(0).aw.bits.addr)
+    io.ps_slave(0).b.valid, io.ps_slave(0).aw.bits.addr)*/
 }
 
 
