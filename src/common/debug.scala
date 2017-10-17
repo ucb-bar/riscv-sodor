@@ -69,7 +69,7 @@ class SimDTM(implicit p: Parameters) extends BlackBox {
       val debug = new DMIIO()
       val exit = Output(UInt(32.W))
     })
-
+  
   def connect(tbclk: Clock, tbreset: Bool, dutio: DMIIO, tbsuccess: Bool) = {
     io.clk := tbclk
     io.reset := tbreset
@@ -128,7 +128,6 @@ class DebugModule(implicit p: Parameters) extends Module {
   val abstractcs = Reg(init = abstractcsReset)
   val command = Reg(new ACCESS_REGISTERFields())
   val dmcontrol = Reg(new DMCONTROLFields())
-  val progbuf = Reg(Vec(DMConsts.nProgBuf, UInt(xlen.W)))
   val data0 = Reg(UInt(xlen.W))  //arg0
   val data1 = Reg(UInt(xlen.W))  //arg1
   val data2 = Reg(UInt(xlen.W))  //arg2
@@ -148,10 +147,6 @@ class DebugModule(implicit p: Parameters) extends Module {
     DMI_RegAddrs.DMI_DATA0 -> data0,
     (DMI_RegAddrs.DMI_DATA0 + 1) -> data1,
     (DMI_RegAddrs.DMI_DATA0 + 2) -> data2,
-    DMI_RegAddrs.DMI_PROGBUF0 -> progbuf(0),
-    DMI_RegAddrs.DMI_PROGBUF1 -> progbuf(1),
-    DMI_RegAddrs.DMI_PROGBUF2 -> progbuf(2),
-    DMI_RegAddrs.DMI_PROGBUF3 -> progbuf(3),
     DMI_RegAddrs.DMI_AUTHDATA -> 0.U,
     DMI_RegAddrs.DMI_SERCS -> 0.U,
     DMI_RegAddrs.DMI_SBCS -> sbcs.asUInt,
@@ -174,7 +169,7 @@ class DebugModule(implicit p: Parameters) extends Module {
   dmstatus.allhalted := dmcontrol.haltreq
   dmstatus.allrunning := dmcontrol.resumereq 
   io.dcpath.halt := dmstatus.allhalted && !dmstatus.allrunning
-  when (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){ 
+  when ((io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE) && io.dmi.req.valid){ 
     when(decoded_addr(DMI_RegAddrs.DMI_ABSTRACTCS)) { 
       val tempabstractcs = new ABSTRACTCSFields().fromBits(wdata)
       abstractcs.cmderr := tempabstractcs.cmderr 
@@ -186,7 +181,7 @@ class DebugModule(implicit p: Parameters) extends Module {
         command.regno := tempcommand.regno
         command.transfer := tempcommand.transfer
         command.write := tempcommand.write
-        abstractcs.cmderr := Mux(io.dmi.req.valid,1.U,0.U)
+        abstractcs.cmderr := 1.U
       } .otherwise {
         abstractcs.cmderr := 2.U
       }
@@ -198,6 +193,12 @@ class DebugModule(implicit p: Parameters) extends Module {
       dmcontrol.hartreset := tempcontrol.hartreset
       dmcontrol.ndmreset := tempcontrol.ndmreset
       dmcontrol.dmactive := tempcontrol.dmactive
+      // Support only for single core sodor
+      when(tempcontrol.hartsel =/= 0.U){
+        dmstatus.anynonexistent := true.B
+      } .otherwise {
+        dmstatus.anynonexistent := false.B
+      }
     }
     when(decoded_addr(DMI_RegAddrs.DMI_SBCS)){
       val tempsbcs = new SBCSFields().fromBits(wdata)
@@ -208,32 +209,31 @@ class DebugModule(implicit p: Parameters) extends Module {
       sbcs.sberror := tempsbcs.sberror
     }
     when(decoded_addr(DMI_RegAddrs.DMI_SBADDRESS0)) { 
-      when(io.dmi.req.valid){
-        sbaddr := wdata
-      }
-    }
-    when(decoded_addr(DMI_RegAddrs.DMI_SBDATA0)) {
-      sbdata := wdata
-      io.debugmem.req.bits.addr := sbaddr
-      io.debugmem.req.bits.data := sbdata
-      io.debugmem.req.bits.fcn :=  M_XWR
-      when(io.dmi.req.valid && !memongoing){
-        dwreqval := true.B
-      } 
-      when(io.debugmem.req.ready && dwreqval){
-        dwreqval := false.B
-      }
-      io.debugmem.req.valid := dwreqval
-      when(sbcs.sbautoincrement && io.debugmem.resp.valid)
-      {
-        sbaddr := sbaddr + 4.U
-      }
-      firstreaddone := false.B
+      sbaddr := wdata
     }
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) ( data0 := wdata )
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0+1)) ( data1 := wdata )
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0+2)) ( data2 := wdata )
-  } 
+  }
+
+  when(decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE)) {
+    sbdata := wdata
+    io.debugmem.req.bits.addr := sbaddr
+    io.debugmem.req.bits.data := sbdata
+    io.debugmem.req.bits.fcn :=  M_XWR
+    when(io.dmi.req.valid && !memongoing){
+      dwreqval := true.B
+    } 
+    when(io.debugmem.req.ready && dwreqval){
+      dwreqval := false.B
+    }
+    io.debugmem.req.valid := dwreqval
+    when(sbcs.sbautoincrement && io.debugmem.resp.valid)
+    {
+      sbaddr := sbaddr + 4.U
+    }
+    firstreaddone := false.B
+  }
 
   /// abstract cs command regfile access
   io.ddpath.addr := command.regno & "hfff".U
@@ -259,7 +259,7 @@ class DebugModule(implicit p: Parameters) extends Module {
     memongoing -> io.debugmem.resp.valid,
     !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
   ))
-  //printf("DEG1 frdd:%x mo:%x nosbd:%x\n",firstreaddone,memongoing,!decoded_addr(DMI_RegAddrs.DMI_SBDATA0))  
+
   io.dmi.resp.bits.data := Mux(firstreaddone, sbdata , earlyrespond)
   val once = Reg(init = true.B)
   when ((decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_READ)) || (sbcs.sbautoread && firstreaddone)){
@@ -297,12 +297,21 @@ class DebugModule(implicit p: Parameters) extends Module {
 
   io.resetcore := coreresetval
 
-  when((io.dmi.req.bits.addr === "h44".U) && io.dmi.req.valid){
+  when (io.dmi.req.bits.addr === "h44".U && io.dmi.req.valid) {
     coreresetval := false.B
-  }
-  when((io.dmi.req.bits.addr === "h48".U) && io.dmi.req.valid){
+    dmstatus.allhalted := false.B
+    dmstatus.anyhalted := false.B
+    dmstatus.allrunning := true.B
+    dmstatus.anyrunning := true.B
+    dmstatus.allresumeack := true.B
+    dmstatus.anyresumeack := true.B
+  } .elsewhen (io.dmi.req.bits.addr === "h48".U && io.dmi.req.valid) {
     coreresetval := true.B
+    dmstatus.allhalted := true.B
+    dmstatus.anyhalted := true.B
+    dmstatus.allrunning := false.B
+    dmstatus.anyrunning := false.B
+    dmstatus.allresumeack := false.B
+    dmstatus.anyresumeack := false.B
   }
-  printf("DEBG: DREQ:%x DREV:%x DR:%x DD:%x DA:%x DO:%x SBD:%x SBA:%x IDMRV:%x IDMRsV:%x OIDMRsV:%x FRRD:%x RESPVAL:%x DMIRD:%x dwreqval:%x\n",io.dmi.req.valid,io.dmi.resp.valid,io.dmi.req.ready,io.dmi.req.bits.data,io.dmi.req.bits.addr,io.dmi.req.bits.op
-    ,sbdata,sbaddr,io.debugmem.req.valid,io.debugmem.resp.valid,Reg(next= io.debugmem.resp.valid),firstreaddone,io.debugmem.resp.bits.data,io.dmi.resp.bits.data,memongoing)
 }

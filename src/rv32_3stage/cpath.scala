@@ -28,13 +28,11 @@ class CtrlSignals extends Bundle()
    val wb_sel    = Output(UInt(2.W)) 
    val rf_wen    = Output(Bool()) 
    val bypassable = Output(Bool())     // instruction's result can be bypassed
-   val csr_cmd   = Output(UInt(CSR.SZ)) 
-
+   val dmem_fcn  = Output(UInt(1.W))
    val dmem_val  = Output(Bool())
-   val dmem_fcn  = Output(UInt(M_X.getWidth))
    val dmem_typ  = Output(UInt(3.W))
- 
    val exception = Output(Bool())   
+   val csr_cmd   = Output(UInt(CSR.SZ)) 
 }
 
 class CpathIo(implicit p: Parameters) extends Bundle() 

@@ -1,7 +1,8 @@
-package zynqsimSimTop
+package zynqsimtop
 
 import chisel3._
 import zynq._
+//import zynqsimtop._
 import chisel3.util._
 import chisel3.iotesters._
 import chisel3.testers._
@@ -23,10 +24,10 @@ import RV32_3stage.Constants._
 
 class SimDTM(implicit p: Parameters) extends BlackBox {
   val io = IO(new Bundle {
-      val clk = Input(Clock())
-      val reset = Input(Bool())
-      val debug = new DMIIO()
       val exit = Output(UInt(32.W))
+      val debug = new DMIIO()
+      val reset = Input(Bool())
+      val clk = Input(Clock())
     })
 
   def connect(tbclk: Clock, tbreset: Bool, dutio: DMIIO, tbsuccess: Bool) = {
@@ -53,23 +54,27 @@ class AXI4toDMI(top: Top)(implicit p: Parameters) extends Module {
     val dmi = Flipped(new DMIIO())
     val success = Output(Bool())
   })
+  val debugtlbase = p(DebugAddrSlave).base.U
   when(io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){
     io.ps_axi_slave(0).aw.valid := io.dmi.req.valid 
     io.ps_axi_slave(0).w.valid := io.dmi.req.valid
+    io.ps_axi_slave(0).ar.valid := false.B
     io.dmi.req.ready := io.ps_axi_slave(0).aw.ready && io.ps_axi_slave(0).w.ready
   }
   when(io.dmi.req.bits.op === DMConsts.dmi_OP_READ){
+    io.ps_axi_slave(0).aw.valid := false.B
+    io.ps_axi_slave(0).w.valid := false.B
     io.ps_axi_slave(0).ar.valid := io.dmi.req.valid
     io.dmi.req.ready := io.ps_axi_slave(0).ar.ready
   }
-  io.ps_axi_slave(0).aw.bits.addr := io.dmi.req.bits.addr
+  io.ps_axi_slave(0).aw.bits.addr := (debugtlbase | (io.dmi.req.bits.addr << 2))
   io.ps_axi_slave(0).aw.bits.size := 2.U
   io.ps_axi_slave(0).aw.bits.len := 0.U
   io.ps_axi_slave(0).aw.bits.id := 0.U
   io.ps_axi_slave(0).w.bits.data := io.dmi.req.bits.data
   io.ps_axi_slave(0).w.bits.last := 1.U
 
-  io.ps_axi_slave(0).ar.bits.addr := io.dmi.req.bits.addr
+  io.ps_axi_slave(0).ar.bits.addr := (debugtlbase | (io.dmi.req.bits.addr << 2))
   io.ps_axi_slave(0).ar.bits.size := 2.U
   io.ps_axi_slave(0).ar.bits.len := 0.U
   io.ps_axi_slave(0).ar.bits.id := 0.U
@@ -81,7 +86,9 @@ class AXI4toDMI(top: Top)(implicit p: Parameters) extends Module {
 }
 
 class Top extends Module {
-  implicit val inParams = new WithZynqAdapter
+  implicit val inParams = (new WithZynqAdapter).alterPartial {
+    case ExtMem => MasterConfig(base= 0x10000000L, size= 0x200000L, beatBytes= 4, idBits= 4)
+  }
   val tile = LazyModule(new SodorTile()(inParams)).module
   val io = IO(new Bundle {
     val success = Output(Bool())
