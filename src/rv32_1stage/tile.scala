@@ -32,7 +32,8 @@ class SodorTile(implicit p: Parameters) extends Module
    core.reset := debug.io.resetcore | reset.toBool
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
-   debug.io.dmi <> io.dmi
+   debug.io.dmi.req <> Queue(io.dmi.req)
+   io.dmi.resp <> Queue(debug.io.dmi.resp)
 }
 
 }

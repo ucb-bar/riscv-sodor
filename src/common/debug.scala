@@ -251,12 +251,14 @@ class DebugModule(implicit p: Parameters) extends Module {
 
   io.dmi.req.ready := MuxCase(false.B, Array(
     memongoing -> io.debugmem.resp.valid,
+    (io.debugmem.req.valid && io.debugmem.req.ready && (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE) && io.dmi.req.valid) -> io.debugmem.resp.valid, // Async Mem Write
     firstreaddone -> (Reg(next = io.debugmem.resp.valid) || temp),
     !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
   ))  
   io.dmi.resp.valid := MuxCase(false.B, Array(
     firstreaddone -> (Reg(next = io.debugmem.resp.valid) || temp),
     memongoing -> io.debugmem.resp.valid,
+    (io.debugmem.req.valid && io.debugmem.req.ready && (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE) && io.dmi.req.valid) -> io.debugmem.resp.valid, // Async Mem Write
     !decoded_addr(DMI_RegAddrs.DMI_SBDATA0) -> io.dmi.req.valid
   ))
 
@@ -265,7 +267,7 @@ class DebugModule(implicit p: Parameters) extends Module {
   when ((decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_READ)) || (sbcs.sbautoread && firstreaddone)){
     io.debugmem.req.bits.addr :=  sbaddr
     io.debugmem.req.bits.fcn := M_XRD
-    io.debugmem.req.valid := io.dmi.req.valid && !memongoing
+    io.debugmem.req.valid := io.dmi.req.valid && !memongoing && !Reg(next = io.debugmem.resp.valid)
     // for async data readily available
     // so capture it in reg
     when(io.debugmem.resp.valid){
@@ -314,4 +316,5 @@ class DebugModule(implicit p: Parameters) extends Module {
     dmstatus.allresumeack := false.B
     dmstatus.anyresumeack := false.B
   }
+
 }

@@ -56,7 +56,8 @@ class SodorTile(implicit p: Parameters) extends Module
    debug.io.debugmem <> memory.io.debug_port
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
-   debug.io.dmi <> io.dmi
+   debug.io.dmi.req <> Queue(io.dmi.req)
+   io.dmi.resp <> Queue(debug.io.dmi.resp)
 }
  
 }
