@@ -24,6 +24,7 @@ class Top extends Module
    implicit val sodor_conf = new SodorConfiguration
    val tile = Module(new SodorTile()(sodor_conf))
    val dtm = Module(new SimDTM()(sodor_conf)).connect(clock, reset.toBool, tile.io.dmi, io.success)
+
 }
 
 object elaborate {

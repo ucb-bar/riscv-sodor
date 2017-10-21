@@ -26,6 +26,7 @@ class Top extends Module
 
    val tile = Module(new SodorTile()(sodor_conf))
    val dtm = Module(new SimDTM()(sodor_conf)).connect(clock, reset.toBool, tile.io.dmi, io.success)
+
 }
 
 object elaborate {

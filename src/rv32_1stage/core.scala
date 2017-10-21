@@ -28,7 +28,6 @@ class CoreIo(implicit p: Parameters) extends Bundle
   val dmem = new MemPortIo(p(xprlen))
   val ddpath = Flipped(new DebugDPath())
   val dcpath = Flipped(new DebugCPath())
-  val reset = Input(Bool())
 }
 
 class Core(implicit p: Parameters) extends Module

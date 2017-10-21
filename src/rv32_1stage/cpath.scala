@@ -26,7 +26,7 @@ class CtlToDatIo extends Bundle()
    val wb_sel    = Output(UInt(WB_X.getWidth.W)) 
    val rf_wen    = Output(Bool()) 
    val csr_cmd   = Output(UInt(CSR.SZ)) 
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
 class CpathIo(implicit p: Parameters) extends Bundle() 
@@ -116,7 +116,7 @@ class CtlPath(implicit p: Parameters) extends Module
                         
    // Branch Logic   
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.ctl.exception      ,  PC_EXC,
+                         io.ctl.illegal      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -137,7 +137,7 @@ class CtlPath(implicit p: Parameters) extends Module
    io.ctl.op2_sel  := cs_op2_sel
    io.ctl.alu_fun  := cs_alu_fun
    io.ctl.wb_sel   := cs_wb_sel
-   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, false.B, cs_rf_wen)
+   io.ctl.rf_wen   := Mux(stall || io.ctl.illegal, false.B, cs_rf_wen)
   
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
@@ -157,11 +157,10 @@ class CtlPath(implicit p: Parameters) extends Module
    
    // Exception Handling ---------------------
    // We only need to check if the instruction is illegal (or unsupported)
-   // or if the CSR file wants us to be interrupted.
    // Other exceptions are detected later in the pipeline by passing the
    // instruction to the CSR File and letting it redirect the PC as it sees
-   // fit.
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid) 
+   // fit using csr_eret
+   io.ctl.illegal := (!cs_val_inst && io.imem.resp.valid) 
  
 }
 

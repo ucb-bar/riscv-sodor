@@ -63,6 +63,9 @@ object MicrocodeCompiler
       return inst_list
    }
 
+   //only those labels from microcode make it to instruction dispatch table 
+   //which are valid instruction as table is referred to get initial microcode 
+   //address after every instruction fetch 
    def generateDispatchTable (labelTargets: Map[String,Int]): Array[(BitPat, UInt)]=
    {
       println("Generating Opcode Dispatch Table...");
@@ -123,7 +126,7 @@ object MicrocodeCompiler
    
    def emitRomBits(uop_lines: Array[MicroOp], labelTargets: Map[String,Int], label_sz: Int): Array[Bits] =
    {
-      //printf("Building Microcode ROM...\n");
+      println("Building Microcode ROM...\n");
       
       var buf = ArrayBuffer[Bits]();
 

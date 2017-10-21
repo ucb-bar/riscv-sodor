@@ -30,6 +30,7 @@ class Top extends Module
    require(sodor_conf(PREDICT_PCP4)==true)
    val tile = Module(new SodorTile()(sodor_conf))
    val dtm = Module(new SimDTM()(sodor_conf)).connect(clock, reset.toBool, tile.io.dmi, io.success)
+
 }
 
 object elaborate {

@@ -82,7 +82,7 @@ class DatPath(implicit p: Parameters) extends Module
    // Register File
    val regfile = Mem(UInt(xlen.W), 32)
 
-   when (io.ctl.rf_wen && (wb_addr != 0.U) && !io.ctl.exception)
+   when (io.ctl.rf_wen && (wb_addr != 0.U) && !io.ctl.illegal)
    {
       regfile(wb_addr) := wb_data
    }
@@ -160,7 +160,7 @@ class DatPath(implicit p: Parameters) extends Module
    csr.io.rw.wdata := alu_out
 
    csr.io.retire    := !io.ctl.stall
-   csr.io.exception := io.ctl.exception 
+   csr.io.illegal := io.ctl.illegal 
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
@@ -199,7 +199,7 @@ class DatPath(implicit p: Parameters) extends Module
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
       , wb_addr
       , wb_data
-      , Mux(csr.io.exception, Str("E"), Str(" ")) // EXC -> E
+      , Mux(csr.io.illegal, Str("E"), Str(" ")) // EXC -> E
       , io.ctl.wb_sel
       , io.dmem.resp.bits.data
       , io.dmem.req.bits.data
