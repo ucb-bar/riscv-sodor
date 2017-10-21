@@ -24,23 +24,23 @@ MK_TARGET_PROC?=rv32_1stage
 RV64_MODE?="false"
 SUPERVISOR_MODE?="false"
 
-# ifneq ($(shell which pkg-config),)
-# 	ifneq ($(shell pkg-config --variable=includedir verilator),)
-# 		VERILATOR_INCLUDE=$(shell pkg-config --variable=includedir verilator)
-# 	else
-# 		ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
-# 			VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
-# 		else
-# 			$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
-# 		endif
-# 	endif
-# else
-# 	ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
-# 		VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
-# 	else
-# 		$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
-# 	endif
-# endif
+ifneq ($(shell which pkg-config),)
+	ifneq ($(shell pkg-config --variable=includedir verilator),)
+		VERILATOR_INCLUDE=$(shell pkg-config --variable=includedir verilator)
+	else
+		ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
+			VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
+		else
+			$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
+		endif
+	endif
+else
+	ifneq ($(wildcard $(VERILATOR_ROOT)/include/vltstd/vpi_user.h),)
+		VERILATOR_INCLUDE=$(VERILATOR_ROOT)/include/
+	else
+		$(error VERILATOR_ROOT is set to $(VERILATOR_ROOT) but not finding expected_file in there.)
+	endif
+endif
  
 #riscv-pk is relative to top of sodor
 #pk_hex is relative to emulator/proc directory
