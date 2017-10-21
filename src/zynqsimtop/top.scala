@@ -22,26 +22,6 @@ import config.{Parameters, Field}
 import RV32_3stage._
 import RV32_3stage.Constants._
 
-class SimDTM(implicit p: Parameters) extends BlackBox {
-  val io = IO(new Bundle {
-      val exit = Output(UInt(32.W))
-      val debug = new DMIIO()
-      val reset = Input(Bool())
-      val clk = Input(Clock())
-    })
-
-  def connect(tbclk: Clock, tbreset: Bool, dutio: DMIIO, tbsuccess: Bool) = {
-    io.clk := tbclk
-    io.reset := tbreset
-    dutio <> io.debug 
-
-    tbsuccess := io.exit === 1.U
-    when (io.exit >= 2.U) {
-      printf("*** FAILED *** (exit code = %d)\n", io.exit >> 1.U)
-      //stop(1)
-    }
-  }
-}
 
 /** This includes the clock and reset as these are passed through the
   *  hierarchy until the Debug Module is actually instantiated. 
