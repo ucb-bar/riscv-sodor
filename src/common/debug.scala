@@ -278,7 +278,7 @@ class DebugModule(implicit p: Parameters) extends Module {
     firstreaddone := true.B
   }
   
-  when(memreadfire && io.debugmem.resp.valid)
+  when((memreadfire && io.debugmem.resp.valid) || (io.debugmem.req.valid && io.debugmem.resp.valid))
   {  // following is for sync data available in 
     // next cycle memreadfire a reg allows 
     // entering this reg only in next
