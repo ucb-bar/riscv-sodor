@@ -145,8 +145,8 @@ class CtlPath(implicit p: Parameters) extends Module
                      ))))))))))
                            
    io.imem.req.valid := (!(ctrl_pc_sel === PC_4) && ctrl_valid) || (take_evec && Reg(next = ctrl_valid))
-   //printf("CPATH: MRV:%x IV:%x\n",io.imem.req.valid,ctrl_valid)
-   io.ctl.exe_kill   := take_evec
+
+   io.ctl.exe_kill   := take_evec 
    io.ctl.pc_sel     := ctrl_pc_sel
    io.ctl.brjmp_sel  := cs_brjmp_sel.toBool
    io.ctl.op1_sel    := cs_op1_sel

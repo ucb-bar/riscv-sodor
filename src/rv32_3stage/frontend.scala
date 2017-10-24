@@ -156,7 +156,7 @@ class FrontEnd(implicit p: Parameters) extends Module
          exe_reg_valid := !(io.cpu.req.valid || redirect)   // true.B //if_reg_valid && 
          exe_reg_inst  := io.imem.resp.bits.data
       } .otherwise {
-         exe_reg_valid := respavail
+         exe_reg_valid := respavail && !io.cpu.req.valid
          respavail := false.B
          exe_reg_inst := instrreg
       }

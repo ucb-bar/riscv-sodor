@@ -162,7 +162,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       async_data.io.hw.addr := io.debug_port.req.bits.addr
       async_data.io.hw.data := io.debug_port.req.bits.data 
       async_data.io.hw.mask := 15.U
-   } 
+   }
 }
 
 class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit p: Parameters) extends Module
@@ -214,7 +214,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    ////////////
 
    // DEBUG PORT-------
-   io.debug_port.req.ready := Reg(next = io.debug_port.req.valid) // for now, no back pressure
+   io.debug_port.req.ready := io.debug_port.req.valid // for now, no back pressure
    io.debug_port.resp.valid := Mux(io.debug_port.req.bits.fcn === M_XWR,io.debug_port.req.valid,
                               Reg(next = io.debug_port.req.valid))
    // asynchronous read
