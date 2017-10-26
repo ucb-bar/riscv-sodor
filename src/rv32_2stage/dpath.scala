@@ -182,7 +182,7 @@ class DatPath(implicit p: Parameters) extends Module
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
-   csr.io.retire    := !io.ctl.stall // TODO verify this works properly
+   csr.io.retire    := !io.ctl.stall && !io.ctl.if_kill
    csr.io.illegal := io.ctl.illegal
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
@@ -221,7 +221,6 @@ class DatPath(implicit p: Parameters) extends Module
    val irt_reg = Reg(init=0.asUInt(xlen.W))
    when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + 1.U }
         
-   
    // Printout
    printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] PC= (0x%x,0x%x) [%x,%x] %c%c%c Exe: DASM(%x)\n"
       , tsc_reg(31,0)
