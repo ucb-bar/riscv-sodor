@@ -87,8 +87,11 @@ class DatPath(implicit p: Parameters) extends Module
 
    // Hazard Stall Logic 
    if(p(NUM_MEMORY_PORTS) == 1) {
-      // stall for more cycles incase of store after load with read after write conflict
+      // io.ctl.dmem_val && !RegNext(wb_hazard_stall) 
+      // Stall for single cycle if mem instruction in execute stage
       val count = Reg(init = 1.asUInt(2.W))
+      // io.ctl.dmem_val && (count =/= 2.U)
+      // Stall for more cycles incase of store after load with read after write conflict
       when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
       {
          count := 0.U
@@ -185,6 +188,8 @@ class DatPath(implicit p: Parameters) extends Module
    io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
     
    // datapath to data memory outputs
+   // send valid access request to bus only once
+   // valid access request when both valid and ready are high
    val once = Reg(init = true.B)
    when(io.dmem.req.ready && io.dmem.req.valid){
       once := false.B
@@ -192,6 +197,10 @@ class DatPath(implicit p: Parameters) extends Module
       once := true.B
    }
    io.dmem.req.valid     := io.ctl.dmem_val && once
+   // once -> To acknowledge the response only in the wb stage of load  
+   //           instruction so that the data is available on io.dmem.resp.bits.data
+   //          memory instructions are halted in exe stage until a response arrives 
+   // Reg(next = io.ctl.dmem_fcn) -> Ack for response due to store instructions
    io.dmem.resp.ready := once | Reg(next = io.ctl.dmem_fcn)
    if(p(NUM_MEMORY_PORTS) == 1) 
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
