@@ -299,6 +299,9 @@ class DebugModule(implicit p: Parameters) extends Module {
 
   io.resetcore := coreresetval
 
+  // Following are two non-standard address used 
+  // 0x44 pull it out of reset
+  // 0x48 put it into reset
   when (io.dmi.req.bits.addr === "h44".U && io.dmi.req.valid) {
     coreresetval := false.B
     dmstatus.allhalted := false.B

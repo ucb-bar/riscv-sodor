@@ -1,7 +1,4 @@
-You need to make sure the board files for pynq z1 are present
-they can be downloaded from https://codeload.github.com/cathalmccabe/pynq-z1_board_files/zip/master 
-the board file should be present in Xilinx/Vivado/<version>/data/boards/board_files/ 
-that is from the copy the folder pynq-z1_board_files-master/pynq-z1 to the above mentioned folder in vivado installation directory 
+You need to make sure the board files for pynq z1 are present. They can be downloaded from https://codeload.github.com/cathalmccabe/pynq-z1_board_files/zip/master . The board file should be present in Xilinx/Vivado/<version>/data/boards/board_files/ that is from the copy the folder pynq-z1_board_files-master/pynq-z1 to the above mentioned folder in vivado installation directory 
 
 ```bash
 make bitstream

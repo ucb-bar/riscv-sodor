@@ -24,4 +24,5 @@ mwr 0x1000001C 0x0030a023
 mwr 0x10000020 0xfe419ae3
 mwr 0x10000024 0x0040a023
 mwr 0x10000028 0xfe4196e3
-mwr -force 0x40000110 1
+#To pull sodor out of reset
+mwr -force 0x40000110 1 

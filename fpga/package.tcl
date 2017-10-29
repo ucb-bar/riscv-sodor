@@ -6,28 +6,6 @@ set hdl_files [glob $root/hdl/*]
 puts $hdl_files
 create_project -force $design $projdir -part $partname
 set_property target_language Verilog [current_project]
-# create_peripheral user.org user sodor_temp 1.0 -dir $root/ip_repo
-# add_peripheral_interface S00_AXI -interface_mode slave -axi_type full [ipx::find_open_core user.org:user:sodor_temp:1.0]
-# add_peripheral_interface M00_AXI -interface_mode master -axi_type full [ipx::find_open_core user.org:user:sodor_temp:1.0]
-# generate_peripheral -force [ipx::find_open_core user.org:user:sodor_temp:1.0]
-# write_peripheral [ipx::find_open_core user.org:user:sodor_temp:1.0]
-# set_property  ip_repo_paths  $root/ip_repo/sodor_temp_1.0 [current_project]
-# update_ip_catalog -rebuild
-# ipx::edit_ip_in_project -upgrade true -directory $root/ip_repo $root/ip_repo/sodor_temp_1.0/component.xml
-# remove_files  $root/ip_repo/sodor_temp_1.0/hdl/sodor_temp_v1_0_S00_AXI.v
-# remove_files  $root/ip_repo/sodor_temp_1.0/hdl/sodor_temp_v1_0_M00_AXI.v
-# add_files -norecurse -copy_to $root/ip_repo/sodor_temp_1.0/src /home/kritik/github/riscv-sodor/Top.v
-# update_compile_order -fileset sources_1
-# update_files -from_files /home/kritik/pynq/sodor/fpga/sodor_temp_v1_0.v -to_files $root/ip_repo/sodor_temp_1.0/hdl/sodor_temp_v1_0.v -filesets [get_filesets *]
-# update_compile_order -fileset sources_1
-# ipx::merge_project_changes files [ipx::current_core]
-# ipx::merge_project_changes hdl_parameters [ipx::current_core]
-# set_property core_revision 2 [ipx::current_core]
-# ipx::create_xgui_files [ipx::current_core]
-# ipx::update_checksums [ipx::current_core]
-# ipx::save_core [ipx::current_core]
-# update_ip_catalog -rebuild
-# #close_project -delete
 
 if {[string equal [get_filesets -quiet sources_1] ""]} {
     create_fileset -srcset sources_1
