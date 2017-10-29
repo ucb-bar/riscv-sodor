@@ -32,7 +32,7 @@ class SodorMemArbiter(implicit p: Parameters) extends Module
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
    val d_fire = Wire(Bool()) 
-   io.imem.req.ready := d_fire
+   io.imem.req.ready := !d_fire
    //***************************
    // hook up requests
    // 3 cycle FSM on LW , SW , FENCE in exe stage
@@ -50,7 +50,7 @@ class SodorMemArbiter(implicit p: Parameters) extends Module
         nextdreq := false.B // allow only instr in next cycle
         io.imem.resp.valid := io.mem.resp.valid
    }
-   .elsewhen(io.dmem.req.valid && !nextdreq)
+   .elsewhen(!nextdreq)
    {
         d_fire := false.B
         nextdreq := true.B  // allow any future data request
@@ -88,7 +88,7 @@ class SodorMemArbiter(implicit p: Parameters) extends Module
       i1reg := io.mem.resp.bits.data
    }
 
-   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
+   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
    io.dmem.resp.bits.data := d1reg
 }
  
