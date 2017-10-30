@@ -1,13 +1,10 @@
 package Sodor
 
 import chisel3._
-import chisel3.util._
 import config._
 import Constants._
 import Common._
-import Common.Util._
 import ReferenceChipBackend._
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 
 

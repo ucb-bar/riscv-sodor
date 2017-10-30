@@ -1,22 +1,14 @@
 package zynq
 
 import chisel3._
-import chisel3.util._
 import chisel3.iotesters._
-import chisel3.testers._
 import config._
 import Common._
 import diplomacy._
-import Common.Util._
-import ReferenceChipBackend._
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import junctions._
 import unittest._
-import junctions.NastiConstants._
 import uncore.tilelink2._
-import config.{Parameters, Field}
-import RV32_3stage._
 import RV32_3stage.Constants._
 
 object ReferenceChipBackend {
@@ -40,7 +32,6 @@ class WithZynqAdapter extends Config((site, here, up) => {
   case NUM_MEMORY_PORTS => 2
   case PREDICT_PCP4 => true
   case PRINT_COMMIT_LOG => false
-  //case UnitTests => Seq(new TLMulticlientXbarTest(1,2))(this)
 })
 
 class Top extends Module {
@@ -116,33 +107,32 @@ class TopTests extends SteppedHWIOTester {
   }
 
   def checkDCPath = {
-      reqW(0x40000110L,0x1L)
+      reqW(0x40000110L,0x1L) // Pull sodor out of reset
     step(1)
       resetWReq
     step(1)
       checkWResp
     step(1)
-      memReadResp(0x10000000L,0x00002097L,1)
-      //memReadResp(0x10000000L,0x400000b7L,1)
+      memReadResp(0x10000000L,0x00002097L,1) // auipc   ra, 0x2
     step(1)
       memResetReadResp
     step(2)
-      memReadResp(0x10000004L,0x0aa10113L,1)
+      memReadResp(0x10000004L,0x0aa10113L,1) // addi    sp, sp, 170
     step(1)
       memResetReadResp
     step(2)
-      memReadResp(0x10000008L,0x0020a023L,1)
+      memReadResp(0x10000008L,0x0020a023L,1) // sw      sp, 0(ra)
     step(1)
       memResetReadResp
     step(2)
-      memReadResp(0x1000000CL,0x0000af03L,1)
+      memReadResp(0x1000000CL,0x0000af03L,1) // lw      t5, 0(ra)
     step(1)
       memResetReadResp
       memWriteResp(0x10002000L,0xaaL,2)
     step(1)
       memResetWriteResp
     step(1)
-      memReadResp(0x10000010L,0x0aae8e93L,1)
+      memReadResp(0x10000010L,0x0aae8e93L,1) // addi    t4, t4, 170
     step(1)
       memReadResp(0x10002000L,0xaaL,2)
     step(1)
@@ -150,12 +140,12 @@ class TopTests extends SteppedHWIOTester {
     step(6)
   }
   def checkDebugMem = {
-      reqW(0x400000E4,0x10002000L)
+      reqW(0x400000E4,0x10002000L) // System Bus Address
     step(1)
       resetWReq
     step(1)
       checkWResp
-      reqW(0x400000F0,1)
+      reqW(0x400000F0,1) // System Bus Data
     step(1)
       resetWReq
     step(2)
@@ -205,46 +195,12 @@ class TopTests extends SteppedHWIOTester {
       resetWReq
     step(1)
       checkWResp
-      reqR(0x400000E0)
+      reqR(0x400000E0) // System Bus Access Control and Status
     step(1)
       resetRReq
     step(2)
       checkRResp(0x040404L)
 
-  }
-  def checkLWSW = {
-    reqW(0x40000110L,0x1L)
-    step(1)
-      resetWReq
-    step(1)
-      checkWResp
-    step(1)
-      memReadResp(0x10000000L,0x400000b7L,1)
-    step(1)
-      memResetReadResp
-    step(2)
-      memReadResp(0x10000004L,0x00c0a103L,1)
-    step(1)
-      memResetReadResp
-    step(2)
-      memReadResp(0x10000008L,0x0080a103L,1)
-    step(1)
-      memReadResp(0x4000000CL,0xaL,2)
-    step(1)
-      memResetReadResp
-    step(1)
-      memReadResp(0x1000000CL,0x0020a023L,1)
-    step(1)
-      memResetReadResp
-    step(1)
-      memReadResp(0x40000008L,0xbL,2)
-    step(1)
-      memResetReadResp
-    step(2)
-      memWriteResp(0x40000000L,0xbL,2)
-    step(1)
-      memResetWriteResp
-    step(6)
   }
   def checkJump = {
 /*
@@ -303,9 +259,7 @@ class TopTests extends SteppedHWIOTester {
       memReadResp(0x40000008L,0x0L,2)
     step(1)
       memResetReadResp
-//      poke(device_under_test.io.mem_axi(0).ar.ready , 0)
     step(1)
-//      poke(device_under_test.io.mem_axi(0).ar.ready , 1)
       memReadResp(0x1000001CL,0x0030a023L,1)  // sw gp,0(ra)
     step(1)
       memResetReadResp
@@ -348,7 +302,6 @@ class TopTests extends SteppedHWIOTester {
     
     //checkDCPath
     //checkDebugMem
-    //checkLWSW
     checkJump
 }
 
@@ -363,11 +316,6 @@ object elaborate extends ChiselFlatSpec{
     implicit val inParams = new WithZynqAdapter
     if(!args.isEmpty && args(0) == "testtop")
       assertTesterPasses(new TopTests,additionalVResources = Seq("/SyncMem.sv"))
-/*    else if(!args.isEmpty && args(0) == "testxbar"){
-      chisel3.iotesters.Driver(() => new TestHarness()(inParams),"firrtl") {
-        c => new TestHarnessTester(c)
-      }should be(true)
-    }*/
     else 
       chisel3.Driver.execute(args, () => new Top)
   }

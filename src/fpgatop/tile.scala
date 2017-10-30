@@ -5,31 +5,17 @@
 // Christopher Celio
 // 2013 Jun 28
 //
-// Describes a RISCV 3-stage processor, heavily optimized for low-area. This
-// core is designed to be the one "realistic" core within Sodor.
-// Features:
-// - Configurable number of ports to memory (Princeton vs Harvard)
-// - synchronous memory
-// - RV32IS
-// - No div/mul/rem
-// - No FPU
-// - implements supervisor mode (can trap to handle the above instructions)
-//
 
 package zynq
 {
 
 import chisel3._
-import chisel3.util._
 import uncore.tilelink2._
 import diplomacy._
-import zynq._
 import util._
 import uncore.axi4._
 import config._
-import RV32_3stage.Constants._
 import Common._   
-import Common.Util._   
 import RV32_3stage._
 
 class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters) extends Bundle(){
@@ -54,10 +40,6 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters) extends LazyModu
    tl_in.d.bits := Mux(io.dmi.req.valid && io.dmi.resp.valid ,edge_in.AccessAck(tl_in.a.bits, 0.U),edge_in.AccessAck(areq, 0.U))
    tl_in.d.bits.data := io.dmi.resp.bits.data
    tl_in.d.bits.opcode := Mux(((areq.opcode === 4.U) && !temp3) || tl_in.a.bits.opcode === 4.U , TLMessages.AccessAckData, TLMessages.AccessAck)
-   printf("TLDMI: AV:%x AR:%x AD:%x DV:%x DR:%x DO:%x DD:%x DMIRD:%x DMIRsD:%x DMIRsV:%x AREQO:%x NO:%x V:%x DMIAddr:%x T3:%x\n",tl_in.a.valid,tl_in.a.ready,tl_in.a.bits.data,
-      tl_in.d.valid,tl_in.d.ready,
-    tl_in.d.bits.opcode,tl_in.d.bits.data,io.dmi.req.bits.data,io.dmi.resp.bits.data,io.dmi.resp.valid,areq.opcode,tl_in.a.bits.opcode,
-    io.dmi.req.valid && io.dmi.resp.valid,tl_in.a.bits.address,temp3)
 
    // Tie off unused channels
    tl_in.b.valid := false.B
@@ -103,14 +85,6 @@ class SodorTileModule(outer: SodorTile)(implicit p: Parameters) extends LazyModu
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> tldmi.io.dmi
-
-   printf("STM: MEM ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WVR:%x WD:%x RV:%x RD:%x AR:%x AW:%x MM:%x AWL:%x AWS:%x BV:%x\n",io.mem_axi4(0).ar.valid,io.mem_axi4(0).ar.ready,io.mem_axi4(0).aw.valid,
-    io.mem_axi4(0).aw.ready,io.mem_axi4(0).w.valid,io.mem_axi4(0).w.ready,io.mem_axi4(0).w.bits.data,io.mem_axi4(0).r.valid,io.mem_axi4(0).r.bits.data,
-    io.mem_axi4(0).ar.bits.addr,io.mem_axi4(0).aw.bits.addr,io.mem_axi4(0).w.bits.strb,io.mem_axi4(0).aw.bits.len,io.mem_axi4(0).aw.bits.size,
-    io.mem_axi4(0).b.valid)
-   printf("STM: PS ARV:%x ARR:%x AWV:%x AWR:%x WV:%x WR:%x WD:%x RV:%x RD:%x BV:%x AWADDR:%x\n",io.ps_slave(0).ar.valid,io.ps_slave(0).ar.ready,io.ps_slave(0).aw.valid,
-    io.ps_slave(0).aw.ready,io.ps_slave(0).w.valid,io.ps_slave(0).w.ready,io.ps_slave(0).w.bits.data,io.ps_slave(0).r.valid,io.ps_slave(0).r.bits.data,
-    io.ps_slave(0).b.valid, io.ps_slave(0).aw.bits.addr)
 }
 
 

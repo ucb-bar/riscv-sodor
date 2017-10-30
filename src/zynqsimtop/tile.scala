@@ -24,12 +24,9 @@ import chisel3.util._
 import uncore.tilelink2._
 import diplomacy._
 import zynq._
-import util._
 import uncore.axi4._
 import config._
-import RV32_3stage.Constants._
 import Common._   
-import Common.Util._   
 import RV32_3stage._
 
 class TLToDMIBundle(val outer: TLToDMI)(implicit p: Parameters) extends Bundle(){

@@ -1,25 +1,11 @@
 package zynqsimtop
 
 import chisel3._
-import zynq._
-//import zynqsimtop._
-import chisel3.util._
 import chisel3.iotesters._
-import chisel3.testers._
-import config._
+import zynq._
 import Common._
 import diplomacy._
-import Common.Util._
-import ReferenceChipBackend._
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.HashMap
-import junctions._
-import uncore.axi4._
-import unittest._
-import junctions.NastiConstants._
-import uncore.tilelink2._
 import config.{Parameters, Field}
-import RV32_3stage._
 import RV32_3stage.Constants._
 
 
@@ -68,6 +54,7 @@ class AXI4toDMI(top: Top)(implicit p: Parameters) extends Module {
 class Top extends Module {
   implicit val inParams = (new WithZynqAdapter).alterPartial {
     case ExtMem => MasterConfig(base= 0x10000000L, size= 0x200000L, beatBytes= 4, idBits= 4)
+    case NUM_MEMORY_PORTS => 2
   }
   val tile = LazyModule(new SodorTile()(inParams)).module
   val io = IO(new Bundle {

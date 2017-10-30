@@ -10,8 +10,6 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Constants._
 import Common._
 import Common.Constants._
@@ -188,7 +186,7 @@ class DatPath(implicit p: Parameters) extends Module
    // datapath to data memory outputs
    io.dmem.req.bits.addr  := alu_out
    io.dmem.req.bits.data := rs2_data.toUInt 
-   
+
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.

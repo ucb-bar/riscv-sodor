@@ -11,7 +11,6 @@ package RV32_3stage
 import chisel3._
 import chisel3.util._
 import config._
-
 import Common._
 import Common.Instructions._
 import Constants._

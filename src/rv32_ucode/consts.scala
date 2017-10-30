@@ -11,8 +11,6 @@ package constants
 {
 
 import chisel3._
-import chisel3.util._
-
 import Common._
 
 trait ScalarOpConstants extends MemoryOpConstants

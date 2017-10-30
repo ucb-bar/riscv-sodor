@@ -26,8 +26,6 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Common.Instructions._
 import scala.collection.mutable.ArrayBuffer
 

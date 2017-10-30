@@ -3,7 +3,6 @@ package Common
 import chisel3._
 import chisel3.util._
 import Common._
-import Common.Util._
 import Util._
 import Constants._
 import config._

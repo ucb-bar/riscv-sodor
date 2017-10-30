@@ -1,19 +1,14 @@
 package Sodor
 
 import chisel3._
-import chisel3.util._
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
-
-import Constants._
 import Common._
-import Common.Util._
 import ReferenceChipBackend._
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import config._
 
 // for debugging, print out the commit information.
-   // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
+// can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
 case object PRINT_COMMIT_LOG extends Field[Boolean]
 
 object ReferenceChipBackend {

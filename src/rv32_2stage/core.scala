@@ -16,9 +16,7 @@ package Sodor
 {
 
 import chisel3._
-import chisel3.util._
 import config._
-
 import Common._
 
 class CoreIo(implicit p: Parameters) extends Bundle 

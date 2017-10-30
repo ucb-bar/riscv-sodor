@@ -7,9 +7,7 @@ package Sodor
 {
 
 import chisel3._
-import chisel3.util._
 import config._
-
 import Constants._
 import Common._
 
