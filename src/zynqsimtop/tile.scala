@@ -4,17 +4,6 @@
 //
 // Christopher Celio
 // 2013 Jun 28
-//
-// Describes a RISCV 3-stage processor, heavily optimized for low-area. This
-// core is designed to be the one "realistic" core within Sodor.
-// Features:
-// - Configurable number of ports to memory (Princeton vs Harvard)
-// - synchronous memory
-// - RV32IS
-// - No div/mul/rem
-// - No FPU
-// - implements supervisor mode (can trap to handle the above instructions)
-//
 
 package zynqsimtop
 {
@@ -47,9 +36,9 @@ class TLToDMIModule(val outer: TLToDMI)(implicit p: Parameters) extends LazyModu
    tl_in.d.valid := io.dmi.resp.valid 
    io.dmi.resp.ready := tl_in.d.ready
    io.dmi.req.bits.op := Mux(tl_in.a.bits.opcode === 4.U, DMConsts.dmi_OP_READ, DMConsts.dmi_OP_WRITE)
-   temp3 := tl_in.a.valid && io.dmi.resp.valid
    tl_in.d.bits := Mux(io.dmi.req.valid && io.dmi.resp.valid ,edge_in.AccessAck(tl_in.a.bits, 0.U),edge_in.AccessAck(areq, 0.U))
    tl_in.d.bits.data := io.dmi.resp.bits.data
+   temp3 := tl_in.a.valid && io.dmi.resp.valid
    tl_in.d.bits.opcode := Mux(((areq.opcode === 4.U) && !temp3) || tl_in.a.bits.opcode === 4.U , TLMessages.AccessAckData, TLMessages.AccessAck)
 
    // Tie off unused channels

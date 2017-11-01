@@ -8,13 +8,7 @@ import diplomacy._
 import config.{Parameters, Field}
 import RV32_3stage.Constants._
 
-
-/** This includes the clock and reset as these are passed through the
-  *  hierarchy until the Debug Module is actually instantiated. 
-  *  
-  */
-
-class AXI4toDMI(top: Top)(implicit p: Parameters) extends Module {
+class DMItoAXI4(top: Top)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val ps_axi_slave = top.tile.io.ps_slave.cloneType
     val dmi = Flipped(new DMIIO())
@@ -60,7 +54,7 @@ class Top extends Module {
   val io = IO(new Bundle {
     val success = Output(Bool())
   })
-  val axi4todmi = Module(new AXI4toDMI(this)(inParams))
+  val axi4todmi = Module(new DMItoAXI4(this)(inParams))
   tile.io.ps_slave <> axi4todmi.io.ps_axi_slave
   io.success := axi4todmi.io.success
   val dtm = Module(new SimDTM()(inParams)).connect(clock, reset.toBool, axi4todmi.io.dmi, io.success)

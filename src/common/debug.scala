@@ -246,7 +246,7 @@ class DebugModule(implicit p: Parameters) extends Module {
     abstractcs.cmderr := 0.U
   }
 
-  val temp = Wire(init = false.B)
+  val temp = Wire(init = false.B) // Async Mem Read
 
   io.dmi.req.ready := MuxCase(false.B, Array(
     memongoing -> io.debugmem.resp.valid,
