@@ -157,6 +157,8 @@ class CSRFileIO(implicit p: Parameters) extends Bundle {
 class CSRFile(implicit p: Parameters) extends Module
 {
   val io = IO(new CSRFileIO)
+  io.evec := 0.U 
+  io.singleStep := false.B
   val xlen = p(xprlen)
   val reset_mstatus = Wire(init=new MStatus().fromBits(0))
   reset_mstatus.mpp := PRV.M

@@ -109,12 +109,18 @@ class DebugIo(implicit p: Parameters) extends Bundle
 class DebugModule(implicit p: Parameters) extends Module {
   val io = IO(new DebugIo())
   val xlen = p(xprlen)
+  // Following initializations are incase no "when" conditions are true
+  io.debugmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+  io.debugmem.req.bits.typ := MT_W
+  io.debugmem.req.valid := false.B
   io.dmi.resp.bits.resp := DMConsts.dmi_RESP_SUCCESS
   val dmstatusReset  = Wire(new DMSTATUSFields())
+  dmstatusReset := (new DMSTATUSFields()).fromBits(0.U)
   dmstatusReset.authenticated := true.B
   dmstatusReset.versionlo := "b10".U
   val dmstatus = Reg(init = dmstatusReset)
   val sbcsreset = Wire(new SBCSFields())
+  sbcsreset := (new SBCSFields()).fromBits(0.U)
   sbcsreset.sbaccess := 2.U
   sbcsreset.sbasize := 32.U
   sbcsreset.sbaccess32 := true.B
@@ -122,6 +128,7 @@ class DebugModule(implicit p: Parameters) extends Module {
   sbcsreset.sbaccess8 := false.B
   val sbcs = Reg(init = sbcsreset)
   val abstractcsReset = Wire(new ABSTRACTCSFields())
+  abstractcsReset := (new ABSTRACTCSFields()).fromBits(0.U)
   abstractcsReset.datacount := DMConsts.nDataCount.U
   abstractcsReset.progsize := DMConsts.nProgBuf.U
   val abstractcs = Reg(init = abstractcsReset)
@@ -155,7 +162,8 @@ class DebugModule(implicit p: Parameters) extends Module {
   val reqval = Reg(init = false.B)
   val dwreqval = Reg(init = false.B)
   val memongoing = Reg(init = false.B)
-  val firstreaddone = Reg(init = false.B) 
+  val firstreaddone = Reg(init = false.B)
+  io.debugmem.resp.ready := true.B 
   when(io.debugmem.req.valid && io.debugmem.req.ready){
     memongoing := true.B
   }
@@ -235,6 +243,9 @@ class DebugModule(implicit p: Parameters) extends Module {
   }
 
   /// abstract cs command regfile access
+  io.ddpath.resetpc := 0.U
+  io.ddpath.wdata := 0.U
+  io.ddpath.validreq := false.B
   io.ddpath.addr := command.regno & "hfff".U
   when(command.transfer && (abstractcs.cmderr === 1.U)){
     when(command.write){

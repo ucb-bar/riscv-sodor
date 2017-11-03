@@ -7,8 +7,8 @@ object BuildSettings extends Build {
   val buildScalaVersion = "2.11.11"
   val chiselVersion = System.getProperty("chiselVersion", "latest.release")
   val defaultVersions = Map(
-    "chisel3" -> "3.0-SNAPSHOT_2017-10-06",//3.0-SNAPSHOT",
-    "chisel-iotesters" -> "1.1-SNAPSHOT_2017-10-06"//"1.1-SNAPSHOT"
+    "chisel3" -> "latest.release",//3.0-SNAPSHOT",
+    "chisel-iotesters" -> "latest.release"//"1.1-SNAPSHOT"
     )
 
   val buildSettings = Defaults.defaultSettings ++ Seq (

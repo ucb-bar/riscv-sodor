@@ -37,6 +37,11 @@ class DpathIo(implicit p: Parameters) extends Bundle()
 class DatPath(implicit p: Parameters) extends Module
 {
    val io = IO(new DpathIo())
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.dmem.req.valid := false.B
+   io.dmem.resp.ready := true.B
+   io.imem.resp.ready := true.B
    val xlen = p(xprlen)
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
