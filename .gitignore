@@ -10,8 +10,6 @@ emulator/*/generated-src-debug
 emulator/*/*.o
 emulator/*/*.a
 emulator/*/output/
-project/build.properties
-prefix.mk
 *.tar.gz
 install/share
 *.pyc

@@ -19,7 +19,7 @@ integer pipelines written in [Chisel](http://chisel.eecs.berkeley.edu):
 * "bus"-based micro-coded implementation
 
 All of the cores implement the RISC-V 32b integer base user-level ISA (RV32I)
-version 2.0. None of the cores support virtual memory, and thus only implement
+version 2.2. None of the cores support virtual memory, and thus only implement
 the Machine-level (M-mode) of the Privileged ISA v1.10 .
 
 All processors talk to a simple scratchpad memory (asynchronous,
@@ -61,7 +61,7 @@ available on the local system.  Thus, RISC-V unit tests and benchmarks were
 compiled and committed to the sodor repository in the ./install directory (as are the .dump files).
 
 Install verilator using any of the following possible ways
-For Ubuntu 17.04
+For Ubuntu 17.04 and above
 ```bash
 sudo apt install pkg-config verilator
 #optionally gtkwave to view waveform dumps
@@ -133,46 +133,43 @@ Have fun!
 The riscv-test Collection
 =========================
 
-Sodor includes a submodule link to the "riscv-tests" repository. To help Sodor
-users, the tests and benchmarks have been pre-compiled and placed in the
-./install directory.
+Sodor includes a submodule link to the "riscv-tests" repository. 
 
-Building a RV32I Toolchain
+Building RISC-V Toolchain
 --------------------------
 
 If you would like to compile your own tests, you will need to build an
-RV32I compiler. Set $RISCV to where you would like to install RISC-V related
-tools, and make sure that $RISCV/bin is in your path.
+RISC-V compiler. Set $RISCV to where you would like to install RISC-V related
+tools generally `/opt/riscv`, and make sure that $RISCV/bin is in your path.
 ```bash
-git clone git@github.com:riscv/riscv-gnu-toolchain.git
+git clone https://github.com/riscv/riscv-gnu-toolchain.git
 cd riscv-gnu-toolchain
 mkdir build; cd build
-../configure --prefix=$RISCV --with-arch=rv32i
-make install
+../configure --prefix=$RISCV --enable-multilib
+make -j4
 ```
-This will install a compiler named riscv32-unknown-elf-gcc, complete with
-newlib libraries that will only emit integer instructions. More advanced users
-will want to consult the riscv-gnu-toolchain README regarding multilib support
-for different base ISAs.
+This will install a compiler named riscv64-unknown-elf-gcc
+
+### Alternative 
+Sifive also provides prebuilt toolchain found here [tools](https://www.sifive.com/products/tools/) which can be used to generate ELF's for Sodor
 
 Compiling the tests yourself
 ----------------------------
+Append to line in [isa/Makefile:33](https://github.com/riscv/riscv-tests/blob/6f7ebb610d6bb8817a9592cc06a7d108381f1761/isa/Makefile#L33)  `-march=rv32i -mabi=ilp32`
 ```bash
     cd riscv-tests/isa
-    make
+    make rv32ui
+    make rv32mi
 ```
-This will compile ALL RISC-V assembly tests (32b and 64b). Sodor only supports
-the rv32ui-p (user-level) and rv32mi-p (machine-level) physical memory tests.
+Sodor only supports the rv32ui-p (user-level) and rv32mi-p (machine-level) physical memory tests.
+
+Append to line in [benchmarks/Makefile:40](https://github.com/riscv/riscv-tests/blob/6f7ebb610d6bb8817a9592cc06a7d108381f1761/benchmarks/Makefile#L40)  `-march=rv32i -mabi=ilp32`
 ```bash
     cd riscv-tests/benchmarks
-    make
+    make #will fail at compiling mm which is not supported and not needed
+    make dhrystone.riscv
 ```
-You will need to modify the Makefile in riscv-tests/benchmarks to compile RV32I
-binaries.  By default, it will compile RV64G. If you compiled a pure RV32I
-compiler, then you may only need to change the name of the compiler used
-(riscv32-unknown-elf-gcc).  If your toolchain supports multiple ISAs, then you
-may need to specify "-m32 --with-arch=RV32I" for the compiler and linker flags
-as appropriate.
+After compiling the tests and benchmarks, for the tests edit line in [emulator/common/Makefile.include:138](https://github.com/librecores/riscv-sodor/blob/92663cc23f0d52d20e448802c4c5def8a717fa1c/emulator/common/Makefile.include#L138) to indicate the appropriate path to ELF's and similarly for benchmarks by editing [emulator/common/Makefile.include:191](https://github.com/librecores/riscv-sodor/blob/92663cc23f0d52d20e448802c4c5def8a717fa1c/emulator/common/Makefile.include#L191)
 
 Running tests on the ISA simulator
 ----------------------------------
@@ -181,9 +178,8 @@ If you would like to run tests yourself, you can use the Spike ISA simulator
 (found in riscv-tools on the riscv.org webpage). By default, Spike executes in
 RV64G mode. To execute RV32I binaries, for example:
 
-    cd ./install
-    spike --ISA=RV32I rv32ui-p-simple
-    spike --ISA=RV32I dhrystone.riscv
+    spike --isa=RV32I rv32ui-p-simple
+    spike --isa=RV32I dhrystone.riscv
 
 The generated assembly code looks too complex!
 ----------------------------------------------
@@ -212,7 +208,7 @@ be found at the [CS152 website](http://inst.eecs.berkeley.edu/~cs152/sp12/handou
 
 *How do I generate Verilog code for use on a FPGA?*
 
-Chisel3 outputs verilog by default which can be generated by
+Chisel3/Firrtl outputs verilog by default which can be generated by
 ```bash
 cd emulator/rv32_1stage
 make generated-src/Top.v
