@@ -45,7 +45,6 @@ Getting the repo
 git clone https://github.com/ucb-bar/riscv-sodor.git
 cd riscv-sodor
 git submodule update --init --recursive
-./configure
 ```
 
 Building the processor emulators
@@ -98,7 +97,6 @@ make install
 
 Build the sodor emulators
 ```bash
-./configure
 make
 # To run the all the stages with the given tests available in ./install
 make run-emulator
