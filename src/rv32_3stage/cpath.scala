@@ -48,6 +48,11 @@ class CpathIo(implicit p: Parameters) extends Bundle()
 class CtlPath(implicit p: Parameters) extends Module
 {
    val io = IO(new CpathIo())
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new FrontEndReq(p(xprlen)).fromBits(0.U)
+   io.dmem.req.valid := false.B
+   io.imem.resp.ready := true.B
+   io.dmem.resp.ready := true.B
                              //                                     
                              //   inst val?                                                                                mem flush/sync
                              //   |    br type                      alu fcn                 bypassable?                    |

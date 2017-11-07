@@ -51,6 +51,8 @@ class CpathIo(implicit p: Parameters) extends Bundle()
 class CtlPath(implicit p: Parameters) extends Module
 {
    val io = IO(new CpathIo())
+   io.mem.resp.ready := true.B
+   io.mem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
 
    // Compile the Micro-code down into a ROM 
   val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)

@@ -43,6 +43,7 @@ class DpathIo(implicit p: Parameters) extends Bundle()
 class DatPath(implicit p: Parameters) extends Module 
 {
    val io = IO(new DpathIo())
+   io.imem.req.valid := false.B
    val xlen = p(xprlen)
 
    //**********************************

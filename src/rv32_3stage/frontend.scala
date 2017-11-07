@@ -79,7 +79,8 @@ class FrontEndCpuIO(implicit p: Parameters) extends Bundle
 class FrontEnd(implicit p: Parameters) extends Module
 {
    val io = IO(new FrontEndIO)
-
+   io.imem.resp.ready := true.B
+   io.imem.req.bits.data := 0.U
 
    //**********************************
    // Pipeline State Registers

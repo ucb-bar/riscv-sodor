@@ -41,8 +41,13 @@ class CpathIo(implicit p: Parameters) extends Bundle()
 
 class CtlPath(implicit p: Parameters) extends Module
 {
-  val io = IO(new CpathIo())
-
+   val io = IO(new CpathIo())
+   //Initialize IO
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.resp.ready := true.B
+   io.dmem.resp.ready := true.B
+   
    val csignals =
       ListLookup(io.dat.inst,
                             List(N, BR_N  , OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, MEN_0, M_X   ,MT_X,  CSR.N),

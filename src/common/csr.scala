@@ -322,6 +322,7 @@ class CSRFile(implicit p: Parameters) extends Module
   when(insn_break){
     io.evec := "h80000004".U
     reg_mcause := Causes.breakpoint
+    reg_mepc := io.pc
   }
 
 

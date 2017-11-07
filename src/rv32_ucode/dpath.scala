@@ -37,6 +37,11 @@ class DpathIo(implicit p: Parameters) extends Bundle()
 class DatPath(implicit p: Parameters) extends Module
 {
    val io = IO(new DpathIo())
+   //Initialize IO
+   io.mem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.mem.req.valid := false.B
+   io.mem.resp.ready := true.B
+   io.ddpath.rdata := 0.U
    val xlen = p(xprlen)
 
    // forward declarations
@@ -170,7 +175,6 @@ class DatPath(implicit p: Parameters) extends Module
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(xlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))
-  
    // Output Signals to the Control Path
    io.dat.alu_zero := (alu === 0.U)
    
