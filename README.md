@@ -98,7 +98,8 @@ make install
 Build the sodor emulators
 ```bash
 make
-# To run the all the stages with the given tests available in ./install
+# To run the all the stages with the tests available in ./install
+# Compile tests using instructions given below
 make run-emulator
 # To install the executables on the local system
 make install
@@ -153,7 +154,7 @@ This will install a compiler named riscv64-unknown-elf-gcc
 ### Alternative 
 Sifive also provides prebuilt toolchain found here [tools](https://www.sifive.com/products/tools/) which can be used to generate ELF's for Sodor
 
-Compiling the tests yourself
+Compiling the tests
 ----------------------------
 Append to line in [isa/Makefile:33](https://github.com/riscv/riscv-tests/blob/6f7ebb610d6bb8817a9592cc06a7d108381f1761/isa/Makefile#L33)  `-march=rv32i -mabi=ilp32`
 ```bash
