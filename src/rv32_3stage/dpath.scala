@@ -20,7 +20,6 @@ import chisel3.util._
 import config._
 import Constants._
 import Common._
-import Common.Constants._
 
 class DatToCtlIo(implicit p: Parameters) extends Bundle() 
 {

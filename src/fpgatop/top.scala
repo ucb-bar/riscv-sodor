@@ -28,7 +28,7 @@ class WithZynqAdapter extends Config((site, here, up) => {
   case Common.usingUser => false
   case NUM_MEMORY_PORTS => 2
   case PREDICT_PCP4 => true
-  case PRINT_COMMIT_LOG => false
+  case Common.PRINT_COMMIT_LOG => false
 })
 
 class Top extends Module {

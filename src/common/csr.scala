@@ -1,6 +1,5 @@
 // See LICENSE for license details.
 
-// TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
 // NOTE: This is mostly a copy from the Berkeley Rocket-chip csr file. It is
 //       overkill for a small, embedded processor. 
 

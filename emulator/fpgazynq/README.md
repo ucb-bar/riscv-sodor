@@ -7,6 +7,7 @@ xsdb% targets 2
 xsdb% source ps7_init.tcl
 xsdb% ps7_init
 xsdb% ps7_post_config
+# jumper JP4 should be on jtag
 xsdb% fpga -f <BITSTREAM>
 xsdb% xsdbserver start
 #port number for server will be printed

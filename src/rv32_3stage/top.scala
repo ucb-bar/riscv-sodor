@@ -23,7 +23,6 @@ class Top extends Module
    implicit val sodor_conf = (new SodorConfiguration).alterPartial {
       case NUM_MEMORY_PORTS => 2
       case PREDICT_PCP4 => true
-      case PRINT_COMMIT_LOG => false
    }
    require(sodor_conf(PREDICT_PCP4)==true)
    val tile = Module(new SodorTile()(sodor_conf))

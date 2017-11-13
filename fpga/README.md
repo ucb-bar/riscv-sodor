@@ -9,15 +9,16 @@ Open xsdb console
 source ps7_init.tcl
 ps7_init
 ps7_post_config
+# jumper JP4 should be on jtag
 fpga -f myproj/project_1.runs/impl_1/design_1_wrapper.bit
 source sample.tcl
 ```
 
 To compile an assembly file using the following 
-riscv32-unknown-elf-gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -Ttext 0x10000000 temp.S 
+`riscv32-unknown-elf-gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -Ttext 0x10000000 temp.S `
 
 To verify disassemble using 
-riscv32-unknown-elf-objdump -d a.out
+`riscv32-unknown-elf-objdump -d a.out`
 
 ### Reference for this script
 http://eliaskousk.teamdac.com/entry/automation-of-vivado-with-tcl-week-3-of-gsoc-2016

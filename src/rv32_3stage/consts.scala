@@ -113,5 +113,4 @@ object Constants extends
    // relative to the JAL.
    // no BTB, etc, added yet
    case object PREDICT_PCP4 extends Field[Boolean]
-   case object PRINT_COMMIT_LOG extends Field[Boolean]
 }

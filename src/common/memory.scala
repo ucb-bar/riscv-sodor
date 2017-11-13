@@ -1,12 +1,11 @@
 //**************************************************************************
-// Scratchpad Memory (asynchronous)
+// Scratchpad Memory (asynchronous/synchronous)
 //--------------------------------------------------------------------------
 //
 // Christopher Celio
 // 2013 Jun 12
 //
-// Provides a variable number of ports to the core, and one port to the HTIF
-// (host-target interface).
+// Provides a variable number of ports to the core, and one port to the Debug Module
 //
 // Assumes that if the port is ready, it will be performed immediately.
 // For now, don't detect write collisions.
@@ -63,9 +62,9 @@ class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
 
 class d2h2i1(val addrWidth : Int) extends Bundle{
    val dataInstr = Vec(2,new  Rport(addrWidth,32))
-   val hw = new  Wport(addrWidth,32)
-   val dw = new  Wport(addrWidth,32)
-   val hr = new  Rport(addrWidth,32)
+   val hw = new  Wport(addrWidth,32) // Debug Module Write
+   val dw = new  Wport(addrWidth,32) // Data write
+   val hr = new  Rport(addrWidth,32) // Debug Module Read
    val clk = Input(Clock()) 
 }
 
@@ -111,9 +110,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = p(xprlen))) )
       val debug_port = Flipped(new MemPortIo(data_width = 32))
    })
-   val num_bytes_per_line = 8
-   val num_lines = num_bytes / num_bytes_per_line
-   println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
+   println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_bytes/1024 + " kB\n")
    val async_data = Module(new AsyncReadMem(log2Ceil(num_bytes)))
    async_data.io.clk := clock
    for (i <- 0 until num_core_ports)
@@ -172,9 +169,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
       val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = p(xprlen))) )
       val debug_port = Flipped(new MemPortIo(data_width = 32))
    })
-   val num_bytes_per_line = 8
-   val num_lines = num_bytes / num_bytes_per_line
-   println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
+   println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_bytes/1024 + " kB\n")
    val sync_data = Module(new SyncMem(log2Ceil(num_bytes)))
    sync_data.io.clk := clock
    for (i <- 0 until num_core_ports)

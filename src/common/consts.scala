@@ -22,7 +22,6 @@ trait RISCVConstants
    // location of the fifth bit in the shamt (for checking for illegal ops for SRAIW,etc.)
    val SHAMT_5_BIT = 25
    val LONGEST_IMM_SZ = 20
-   val X0 = 0.U
 
    // The Bubble Instruction (Machine generated NOP)
    // Insert (XOR x0,x0,x0) which is different from software compiler
@@ -52,4 +51,11 @@ trait AddressConstants
 
 }
 
+
+object Constants extends
+   constants.AddressConstants with
+   MemoryOpConstants with
+   constants.PrivilegedConstants
+{
+}
 
