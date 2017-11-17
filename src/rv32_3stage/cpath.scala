@@ -31,7 +31,7 @@ class CtrlSignals extends Bundle()
    val csr_cmd   = Output(UInt(CSR.SZ)) 
 
    val dmem_val  = Output(Bool())
-   val dmem_fcn  = Output(UInt(M_X.getWidth))
+   val dmem_fcn  = Output(UInt(1.W))
    val dmem_typ  = Output(UInt(3.W))
  
    val illegal = Output(Bool())   
