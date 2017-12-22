@@ -4,11 +4,11 @@ import Keys._
 object BuildSettings extends Build {
   val buildOrganization = "berkeley"
   val buildVersion = "2.0"
-  val buildScalaVersion = "2.11.11"
+  val buildScalaVersion = "2.11.12"
   val chiselVersion = System.getProperty("chiselVersion", "latest.release")
   val defaultVersions = Map(
-    "chisel3" -> "latest.release",//3.0-SNAPSHOT",
-    "chisel-iotesters" -> "latest.release"//"1.1-SNAPSHOT"
+    "chisel3" -> "3.0.1",//3.0-SNAPSHOT",
+    "chisel-iotesters" -> "1.1.1"//"1.1-SNAPSHOT"
     )
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
@@ -17,8 +17,8 @@ object BuildSettings extends Build {
     scalaVersion := buildScalaVersion,
     traceLevel   := 15,
     resolvers ++= Seq(
-      "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases"
     ),
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value),
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),

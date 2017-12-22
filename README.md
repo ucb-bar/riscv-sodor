@@ -143,7 +143,7 @@ If you would like to compile your own tests, you will need to build an
 RISC-V compiler. Set $RISCV to where you would like to install RISC-V related
 tools generally `/opt/riscv`, and make sure that $RISCV/bin is in your path.
 ```bash
-git clone https://github.com/riscv/riscv-gnu-toolchain.git
+git clone --recursive https://github.com/riscv/riscv-gnu-toolchain.git
 cd riscv-gnu-toolchain
 mkdir build; cd build
 ../configure --prefix=$RISCV --enable-multilib
