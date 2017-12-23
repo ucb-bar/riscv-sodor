@@ -1,7 +1,7 @@
-include ../prefix.mk
+srcDir          := $(abspath ..)
+SBT := java -Xmx4096M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
 
-
-hdl/Top.v: $(srcDir)/src/fpgatop/*.scala $(srcDir)/src/common/*.scala
+hdl/Top.v: $(srcDir)/src/fpgatop/$(wildcard *.scala) $(srcDir)/src/common/$(wildcard *.scala)
 	cd $(srcDir) && $(SBT) "project fpgatop" "run -td fpga/hdl"
 	echo "\`ifndef SYNTHESIS\n\`define SYNTHESIS\n\`endif\n" > hdl/temp
 	cat hdl/Top.v >> hdl/temp
