@@ -9,11 +9,10 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Common._
 import Common.Instructions._
 import Constants._
+import config._
 
 class CtlToDatIo extends Bundle() 
 {
@@ -25,24 +24,27 @@ class CtlToDatIo extends Bundle()
    val wb_sel    = Output(UInt(WB_X.getWidth.W)) 
    val rf_wen    = Output(Bool()) 
    val csr_cmd   = Output(UInt(CSR.SZ)) 
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit p: Parameters) extends Bundle() 
 {
    val dcpath = Flipped(new DebugCPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
-{                                                                                                                   
-  val io = IO(new CpathIo())                                                                                            
-                                                                                                                    
+class CtlPath(implicit p: Parameters) extends Module
+{
+   val io = IO(new CpathIo())                                                                                            
+   io.dmem.resp.ready := true.B
+   io.imem.resp.ready := true.B
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)                                                                                                                    
    val csignals =                                                                                                   
       ListLookup(io.dat.inst,                                                                                       
                              List(N, BR_N  , OP1_X  ,  OP2_X  , ALU_X   , WB_X   , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
@@ -115,7 +117,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                         
    // Branch Logic   
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.ctl.exception      ,  PC_EXC,
+                         io.ctl.illegal      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -136,7 +138,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.op2_sel  := cs_op2_sel
    io.ctl.alu_fun  := cs_alu_fun
    io.ctl.wb_sel   := cs_wb_sel
-   io.ctl.rf_wen   := Mux(stall || io.ctl.exception, false.B, cs_rf_wen)
+   io.ctl.rf_wen   := Mux(stall || io.ctl.illegal, false.B, cs_rf_wen)
   
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
@@ -156,11 +158,10 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    
    // Exception Handling ---------------------
    // We only need to check if the instruction is illegal (or unsupported)
-   // or if the CSR file wants us to be interrupted.
    // Other exceptions are detected later in the pipeline by passing the
    // instruction to the CSR File and letting it redirect the PC as it sees
-   // fit.
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid) 
+   // fit using csr_eret
+   io.ctl.illegal := (!cs_val_inst && io.imem.resp.valid) 
  
 }
 

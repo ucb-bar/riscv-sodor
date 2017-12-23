@@ -47,8 +47,6 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Constants._
 import Common._ 
  
@@ -73,8 +71,7 @@ object Microcode
   
 
    /* ILLEGAL-OP       */
-   /* UBr to FETCH     */,Label("ILLEGAL"),  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_N), "X")
-                         ,                   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC  , RWR_1, REN_1, LDA_X, LDB_X, ALU_EVEC      , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
+   /* UBr to FETCH     */,Label("ILLEGAL"),  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC  , RWR_1, REN_1, LDA_X, LDB_X, ALU_EVEC      , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
                   
    /* UNIMPLEMENTED    */
    /* UBr to FETCH     */,Label("UNIMP"),   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_X, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_J), "FETCH")
@@ -268,9 +265,9 @@ object Microcode
    /* PC <- A + B      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_0, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
                                
    /* JALR             */ 
-   /* A  <- PC         */,Label("JALR"),    Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* Reg[rd] <- A     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_A,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* B  <- PC         */,Label("JALR"),    Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_0, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* A  <- Reg[rs1]   */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* Reg[rd] <- B     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_B,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* B  <- Sext(Imm12)*/,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_0, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_I  , IEN_1, UBR_N),  "X") 
    /* PC,A <- A + B    */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_1, LDB_0, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
       

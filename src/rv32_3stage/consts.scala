@@ -5,32 +5,12 @@
 // Christopher Celio
 // 2011 May 28
 
-package Sodor
+package RV32_3stage
+import config._
 package constants
 {
 
 import chisel3._
-import chisel3.util._
-
-
-trait SodorProcConstants
-{
-   //************************************
-   // Machine Parameters
-
-   val NUM_MEMORY_PORTS = 2;
-
-   // if the front-end ONLY predicts PC+4, this simplifies quite a bit of logic.
-   // First, the PC select mux never needs to compute ExePC + 4 on a branch
-   // redirect (since PC+4 is always predicted).
-   // Second, JAL can write-back to rd the ExePC, since it will already be PC+4
-   // relative to the JAL.
-   val PREDICT_PCP4 = true; require(PREDICT_PCP4==true) // no BTB, etc, added yet
-
-   //************************************
-   // Debugging
-   val PRINT_COMMIT_LOG = false
-}
 
 trait ScalarOpConstants
 {
@@ -119,3 +99,18 @@ trait ScalarOpConstants
 
 }
 
+object Constants extends
+   RV32_3stage.constants.ScalarOpConstants with
+   Common.constants.RISCVConstants with
+   Common.MemoryOpConstants with
+   Common.constants.PrivilegedConstants
+{
+   case object NUM_MEMORY_PORTS extends Field[Int]
+   // if the front-end ONLY predicts PC+4, this simplifies quite a bit of logic.
+   // First, the PC select mux never needs to compute ExePC + 4 on a branch
+   // redirect (since PC+4 is always predicted).
+   // Second, JAL can write-back to rd the ExePC, since it will already be PC+4
+   // relative to the JAL.
+   // no BTB, etc, added yet
+   case object PREDICT_PCP4 extends Field[Boolean]
+}

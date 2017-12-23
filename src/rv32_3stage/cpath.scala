@@ -5,13 +5,12 @@
 // cpath must check io.imem.resp.valid to verify it's decoding an actual
 // instruction. Otherwise, it is in charge of muxing off ctrl signals.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._
 import chisel3.util._
-
-
+import config._
 import Common._
 import Common.Instructions._
 import Constants._
@@ -28,29 +27,32 @@ class CtrlSignals extends Bundle()
    val wb_sel    = Output(UInt(2.W)) 
    val rf_wen    = Output(Bool()) 
    val bypassable = Output(Bool())     // instruction's result can be bypassed
-   val csr_cmd   = Output(UInt(CSR.SZ)) 
-
+   val dmem_fcn  = Output(UInt(1.W))
    val dmem_val  = Output(Bool())
-   val dmem_fcn  = Output(UInt(M_X.getWidth))
    val dmem_typ  = Output(UInt(3.W))
- 
-   val exception = Output(Bool())   
+   val csr_cmd   = Output(UInt(CSR.SZ)) 
+   val illegal = Output(Bool())   
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit p: Parameters) extends Bundle() 
 {
    val dcpath = Flipped(new DebugCPath())
    val imem = Flipped(new FrontEndCpuIO())
-   val dmem = new MemPortIo(conf.xprlen)
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtrlSignals()
    override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {
    val io = IO(new CpathIo())
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new FrontEndReq(p(xprlen)).fromBits(0.U)
+   io.dmem.req.valid := false.B
+   io.imem.resp.ready := true.B
+   io.dmem.resp.ready := true.B
                              //                                     
                              //   inst val?                                                                                mem flush/sync
                              //   |    br type                      alu fcn                 bypassable?                    |
@@ -146,9 +148,9 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
                            
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid 
+   io.imem.req.valid := (!(ctrl_pc_sel === PC_4) && ctrl_valid) || (take_evec && Reg(next = ctrl_valid))
 
-   io.ctl.exe_kill   := take_evec
+   io.ctl.exe_kill   := take_evec 
    io.ctl.pc_sel     := ctrl_pc_sel
    io.ctl.brjmp_sel  := cs_brjmp_sel.toBool
    io.ctl.op1_sel    := cs_op1_sel
@@ -164,7 +166,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.ctl.csr_cmd    := Mux(!ctrl_valid, CSR.N, csr_cmd)
    
    // Memory Requests
-   if(NUM_MEMORY_PORTS == 1)
+   if(p(NUM_MEMORY_PORTS) == 1)
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
    else 
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid
@@ -174,8 +176,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    //-------------------------------
    // Exception Handling
-   io.ctl.exception := !cs_inst_val && io.imem.resp.valid
-   take_evec        := Reg(next=io.ctl.exception) || io.dat.csr_eret 
+   io.ctl.illegal := !cs_inst_val && io.imem.resp.valid
+   take_evec        := Reg(next=io.ctl.illegal) || io.dat.csr_eret 
 
 
 }

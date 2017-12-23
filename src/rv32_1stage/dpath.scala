@@ -10,13 +10,12 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Constants._
 import Common._
 import Common.Constants._
+import config._
 
-class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DatToCtlIo(implicit p: Parameters) extends Bundle() 
 {
    val inst   = Output(UInt(32.W))
    val br_eq  = Output(Bool())
@@ -26,19 +25,24 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DpathIo(implicit p: Parameters) extends Bundle() 
 {
    val ddpath = Flipped(new DebugDPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Module
+class DatPath(implicit p: Parameters) extends Module
 {
    val io = IO(new DpathIo())
-      
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.dmem.req.valid := false.B
+   io.dmem.resp.ready := true.B
+   io.imem.resp.ready := true.B
+   val xlen = p(xprlen)
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
    val pc_plus4         = Wire(UInt(32.W))
@@ -63,7 +67,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       pc_reg := pc_next
    }
 
-   pc_plus4 := (pc_reg + 4.asUInt(conf.xprlen.W))               
+   pc_plus4 := (pc_reg + 4.asUInt(xlen.W))               
 
    
    io.imem.req.bits.addr := pc_reg
@@ -76,12 +80,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val rs2_addr = inst(RS2_MSB, RS2_LSB)
    val wb_addr  = inst(RD_MSB,  RD_LSB)
    
-   val wb_data = Wire(UInt(conf.xprlen.W))
+   val wb_data = Wire(UInt(xlen.W))
  
    // Register File
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(UInt(xlen.W), 32)
 
-   when (io.ctl.rf_wen && (wb_addr != 0.U) && !io.ctl.exception)
+   when (io.ctl.rf_wen && (wb_addr != 0.U) && !io.ctl.illegal)
    {
       regfile(wb_addr) := wb_data
    }
@@ -93,8 +97,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    ///
 
-   val rs1_data = Mux((rs1_addr != 0.U), regfile(rs1_addr), 0.asUInt(conf.xprlen.W))
-   val rs2_data = Mux((rs2_addr != 0.U), regfile(rs2_addr), 0.asUInt(conf.xprlen.W))
+   val rs1_data = Mux((rs1_addr != 0.U), regfile(rs1_addr), 0.asUInt(xlen.W))
+   val rs2_data = Mux((rs2_addr != 0.U), regfile(rs2_addr), 0.asUInt(xlen.W))
    
    
    // immediates
@@ -129,7 +133,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
 
    // ALU
-   val alu_out   = Wire(UInt(conf.xprlen.W))
+   val alu_out   = Wire(UInt(xlen.W))
 
    val alu_shamt = alu_op2(4,0).toUInt
 
@@ -141,7 +145,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.alu_fun === ALU_XOR)  -> (alu_op1 ^ alu_op2).toUInt,
                   (io.ctl.alu_fun === ALU_SLT)  -> (alu_op1.toSInt < alu_op2.toSInt).toUInt,
                   (io.ctl.alu_fun === ALU_SLTU) -> (alu_op1 < alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
+                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(xlen-1, 0)).toUInt,
                   (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.toSInt >> alu_shamt).toUInt,
                   (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).toUInt,
                   (io.ctl.alu_fun === ALU_COPY1)-> alu_op1
@@ -159,7 +163,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := alu_out
 
    csr.io.retire    := !io.ctl.stall
-   csr.io.exception := io.ctl.exception 
+   csr.io.illegal := io.ctl.illegal 
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
@@ -187,7 +191,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // datapath to data memory outputs
    io.dmem.req.bits.addr  := alu_out
    io.dmem.req.bits.data := rs2_data.toUInt 
-   
+
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
@@ -198,7 +202,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
       , wb_addr
       , wb_data
-      , Mux(csr.io.exception, Str("E"), Str(" ")) // EXC -> E
+      , Mux(csr.io.illegal, Str("E"), Str(" ")) // EXC -> E
       , io.ctl.wb_sel
       , io.dmem.resp.bits.data
       , io.dmem.req.bits.data
@@ -212,7 +216,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , inst
       )
 
-   if (PRINT_COMMIT_LOG)
+   if (p(PRINT_COMMIT_LOG))
    {
       when (!io.ctl.stall)
       {

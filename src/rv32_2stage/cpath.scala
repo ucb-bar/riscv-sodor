@@ -9,8 +9,7 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
+import config._
 import Common._
 import Common.Instructions._
 import Constants._
@@ -26,24 +25,29 @@ class CtlToDatIo extends Bundle()
    val wb_sel   = Output(UInt(2.W))
    val rf_wen   = Output(Bool())
    val csr_cmd  = Output(UInt(CSR.SZ))
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
+class CpathIo(implicit p: Parameters) extends Bundle()
 {
    val dcpath = Flipped(new DebugCPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
 
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {
-  val io = IO(new CpathIo())
-
+   val io = IO(new CpathIo())
+   //Initialize IO
+   io.dmem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
+   io.imem.resp.ready := true.B
+   io.dmem.resp.ready := true.B
+   
    val csignals =
       ListLookup(io.dat.inst,
                             List(N, BR_N  , OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, MEN_0, M_X   ,MT_X,  CSR.N),
@@ -117,7 +121,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Branch Logic
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.ctl.exception     , PC_EXC,
+                         io.ctl.illegal     , PC_EXC,
                      Mux(cs_br_type === BR_N , PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
                      Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
@@ -160,7 +164,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    io.dmem.req.bits.typ := cs_msk_sel
 
    // Exception Handling ---------------------
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
+   io.ctl.illegal := (!cs_val_inst && io.imem.resp.valid)
 
 
 }

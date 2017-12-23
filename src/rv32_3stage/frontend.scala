@@ -24,21 +24,20 @@
 // reader for now...
 
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._
 import chisel3.util._
-
-
+import config._
 import Constants._
 import Common._
 
 
-class FrontEndIO(implicit conf: SodorConfiguration) extends Bundle
+class FrontEndIO(implicit p: Parameters) extends Bundle
 {
    val cpu  = new FrontEndCpuIO
-   val imem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
   
    override def cloneType = { new FrontEndIO().asInstanceOf[this.type] }
 }
@@ -67,20 +66,21 @@ class FrontEndDebug(xprlen: Int) extends Bundle
    override def cloneType = { new FrontEndDebug(xprlen).asInstanceOf[this.type] }
 }   
 
-class FrontEndCpuIO(implicit conf: SodorConfiguration) extends Bundle
+class FrontEndCpuIO(implicit p: Parameters) extends Bundle
 {
-   val req = Flipped(new ValidIO(new FrontEndReq(conf.xprlen)))
-   val resp = new DecoupledIO(new FrontEndResp(conf.xprlen))
+   val req = Flipped(new ValidIO(new FrontEndReq(p(xprlen))))
+   val resp = new DecoupledIO(new FrontEndResp(p(xprlen)))
  
-   val debug = new FrontEndDebug(conf.xprlen)
+   val debug = new FrontEndDebug(p(xprlen))
  
    override def cloneType = { new FrontEndCpuIO().asInstanceOf[this.type] }
 }
 
-class FrontEnd(implicit conf: SodorConfiguration) extends Module
+class FrontEnd(implicit p: Parameters) extends Module
 {
    val io = IO(new FrontEndIO)
-
+   io.imem.resp.ready := true.B
+   io.imem.req.bits.data := 0.U
 
    //**********************************
    // Pipeline State Registers
@@ -88,26 +88,31 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
    val if_reg_pc     = Reg(init= START_ADDR - 4.U)
     
    val exe_reg_valid = Reg(init = false.B)
-   val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
-   val exe_reg_inst  = Reg(UInt(conf.xprlen.W))
+   val exe_reg_pc    = Reg(UInt(p(xprlen).W))
+   val exe_reg_inst  = Reg(UInt(p(xprlen).W))
 
    //**********************************
    // Next PC Stage (if we can call it that)
-   val if_pc_next = Wire(UInt(conf.xprlen.W))
+   val if_pc_next = Wire(UInt(p(xprlen).W))
    val if_val_next = Wire(init = true.B) // for now, always true. But instruction
                                 // buffers, etc., could make that not the case.
    
-   val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))               
+   val if_pc_plus4 = (if_reg_pc + 4.asUInt(p(xprlen).W))               
+   val redirect = Reg(init = false.B)
+   val redirectpc = Reg(UInt(32.W))
 
+   when ((io.cpu.req.valid && !io.imem.resp.valid) && !(io.imem.req.ready && io.imem.req.valid))
+   {
+      redirect := true.B
+      redirectpc := io.cpu.req.bits.pc
+   } .elsewhen (io.imem.req.ready && io.imem.req.valid) {
+      redirect := false.B
+   } 
    // stall IF/EXE if backend not ready
    when (io.cpu.resp.ready)
    {
-      if_pc_next := if_pc_plus4
-      when (io.cpu.req.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         if_pc_next := io.cpu.req.bits.pc
-      }
+      if_pc_next := Mux(io.cpu.req.valid,io.cpu.req.bits.pc,
+            Mux(redirect,redirectpc,if_pc_plus4))
    }
    .otherwise
    {
@@ -116,23 +121,48 @@ class FrontEnd(implicit conf: SodorConfiguration) extends Module
 
    when (io.cpu.resp.ready)
    {
-      if_reg_pc    := if_pc_next
-      if_reg_valid := if_val_next
+      when(io.imem.req.ready && io.imem.req.valid){
+         if_reg_pc    := if_pc_next
+         if_reg_valid := true.B
+      } .elsewhen(io.imem.resp.valid) {
+         if_reg_valid := false.B
+      }
    }
 
    // set up outputs to the instruction memory
+
+   val once = Reg(init = true.B)
+   when(io.imem.req.ready && io.imem.req.valid){
+      once := false.B
+   } .elsewhen(io.imem.resp.valid) { 
+      once := true.B
+   }
+
    io.imem.req.bits.addr := if_pc_next
-   io.imem.req.valid     := if_val_next
+   io.imem.req.valid     := !reset.toBool && (once || io.imem.resp.valid) && io.cpu.resp.ready
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
    //**********************************
    // Inst Fetch/Return Stage
+   val instrreg = Reg(UInt(p(xprlen).W))
+   val respavail = Reg(init = false.B)
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid := if_reg_valid && !io.cpu.req.valid
-      exe_reg_pc    := if_reg_pc
-      exe_reg_inst  := io.imem.resp.bits.data
+      when(!(io.cpu.req.valid || redirect)){
+         exe_reg_pc    := if_reg_pc
+      }
+      when(io.imem.resp.valid) {
+         exe_reg_valid := !(io.cpu.req.valid || redirect)   // true.B //if_reg_valid && 
+         exe_reg_inst  := io.imem.resp.bits.data
+      } .otherwise {
+         exe_reg_valid := respavail && !io.cpu.req.valid
+         respavail := false.B
+         exe_reg_inst := instrreg
+      }
+   } .elsewhen(io.imem.resp.valid) {
+      instrreg := io.imem.resp.bits.data
+      respavail := true.B
    }
 
    //**********************************

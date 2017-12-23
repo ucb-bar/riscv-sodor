@@ -6,19 +6,18 @@ package Sodor
 {
 
 import chisel3._
-import chisel3.util._
-
+import config._
 import Common._
 
-class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
+class CoreIo(implicit p: Parameters) extends Bundle 
 {
    val ddpath = Flipped(new DebugDPath())
    val dcpath = Flipped(new DebugCPath())
-   val imem = new MemPortIo(conf.xprlen)
-   val dmem = new MemPortIo(conf.xprlen)
+   val imem = new MemPortIo(p(xprlen))
+   val dmem = new MemPortIo(p(xprlen))
 }
 
-class Core(resetSignal: Bool = null)(implicit conf: SodorConfiguration) extends Module(_reset = resetSignal)
+class Core(implicit p: Parameters) extends Module
 {
    val io = IO(new CoreIo())
    val c  = Module(new CtlPath())

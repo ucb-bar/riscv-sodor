@@ -8,13 +8,13 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
+import config._
 import Constants._
 import Common._   
 import Common.Util._   
 
 
-class SodorTile(implicit val conf: SodorConfiguration) extends Module
+class SodorTile(implicit p: Parameters) extends Module
 {
    val io = IO(new Bundle {
       val dmi = Flipped(new DMIIO())
@@ -31,7 +31,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    core.reset := debug.io.resetcore | reset.toBool
    debug.io.ddpath <> core.io.ddpath
    debug.io.dcpath <> core.io.dcpath 
-   debug.io.dmi <> io.dmi
+   debug.io.dmi.req <> Queue(io.dmi.req,1)
+   io.dmi.resp <> debug.io.dmi.resp
 }
  
 }

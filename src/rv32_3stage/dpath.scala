@@ -12,18 +12,16 @@
 //
 // Thus, this file covers the Execute and Writeback stages on the 3-stage.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._
 import chisel3.util._
-
-
+import config._
 import Constants._
 import Common._
-import Common.Constants._
 
-class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DatToCtlIo(implicit p: Parameters) extends Bundle() 
 {
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
@@ -32,25 +30,26 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DpathIo(implicit p: Parameters) extends Bundle() 
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = Flipped(new FrontEndCpuIO())
-   val dmem = new MemPortIo(conf.xprlen)
+   val dmem = new MemPortIo(p(xprlen))
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Module 
+class DatPath(implicit p: Parameters) extends Module 
 {
    val io = IO(new DpathIo())
-
+   io.imem.req.valid := false.B
+   val xlen = p(xprlen)
 
    //**********************************
    // Pipeline State Registers
    val wb_reg_valid    = Reg(init=false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
-   val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
+   val wb_reg_alu      = Reg(UInt(xlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
    val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
    
@@ -58,9 +57,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    //**********************************
    // Instruction Fetch Stage
-   val exe_brjmp_target    = Wire(UInt(conf.xprlen.W))
-   val exe_jump_reg_target = Wire(UInt(conf.xprlen.W))
-   val exception_target    = Wire(UInt(conf.xprlen.W))
+   val exe_brjmp_target    = Wire(UInt(xlen.W))
+   val exe_jump_reg_target = Wire(UInt(xlen.W))
+   val exception_target    = Wire(UInt(xlen.W))
 
    io.imem.resp.ready := !wb_hazard_stall // stall IF if we detect a WB->EXE hazard
 
@@ -83,12 +82,15 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val exe_rs2_addr = exe_inst(RS2_MSB, RS2_LSB)
    val exe_wbaddr   = exe_inst(RD_MSB,  RD_LSB)
                        
-   val wb_wbdata    = Wire(UInt(conf.xprlen.W))
+   val wb_wbdata    = Wire(UInt(xlen.W))
 
    // Hazard Stall Logic 
-   if(NUM_MEMORY_PORTS == 1) {
-      // stall for more cycles incase of store after load with read after write conflict
+   if(p(NUM_MEMORY_PORTS) == 1) {
+      // io.ctl.dmem_val && !RegNext(wb_hazard_stall) 
+      // Stall for single cycle if mem instruction in execute stage
       val count = Reg(init = 1.asUInt(2.W))
+      // io.ctl.dmem_val && (count =/= 2.U)
+      // Stall for more cycles incase of store after load with read after write conflict
       when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
       {
          count := 0.U
@@ -102,13 +104,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    else{
       wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) || 
-                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)  
+                         ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
+                         (io.ctl.dmem_val && (!io.dmem.resp.valid || (io.dmem.resp.valid && io.dmem.resp.ready 
+                           && (wb_reg_ctrl.wb_sel === WB_MEM))))
    }
-   
-
 
    // Register File
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(UInt(xlen.W), 32)
 
    //// DebugModule
    io.ddpath.rdata := regfile(io.ddpath.addr)
@@ -122,8 +124,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
 
-   val rf_rs1_data = Mux((exe_rs1_addr != 0.U) , regfile(exe_rs1_addr), 0.asUInt(conf.xprlen.W))
-   val rf_rs2_data = Mux((exe_rs2_addr != 0.U) , regfile(exe_rs2_addr), 0.asUInt(conf.xprlen.W))
+   val rf_rs1_data = Mux((exe_rs1_addr != 0.U) , regfile(exe_rs1_addr), 0.asUInt(xlen.W))
+   val rf_rs2_data = Mux((exe_rs2_addr != 0.U) , regfile(exe_rs2_addr), 0.asUInt(xlen.W))
    
    
    // immediates
@@ -144,10 +146,12 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Bypass Muxes
    // bypass early for branch condition checking, and to prevent needing 3 bypass muxes
    val exe_rs1_data = MuxCase(rf_rs1_data, Array(
-                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu,
+                           (io.dmem.resp.valid && (wb_reg_wbaddr === exe_rs1_addr) && wb_reg_ctrl.rf_wen)  -> io.dmem.resp.bits.data)
                         )
    val exe_rs2_data = MuxCase(rf_rs2_data, Array(
-                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
+                           ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr != 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu,
+                           (io.dmem.resp.valid && (wb_reg_wbaddr === exe_rs2_addr) && wb_reg_ctrl.rf_wen) -> io.dmem.resp.bits.data)
                         )
    
 
@@ -183,11 +187,24 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    io.dat.br_ltu := (exe_rs1_data.toUInt < exe_rs2_data.toUInt)
     
    // datapath to data memory outputs
-   io.dmem.req.valid     := io.ctl.dmem_val
-   if(NUM_MEMORY_PORTS == 1) 
+   // send valid access request to bus only once
+   // valid access request when both valid and ready are high
+   val once = Reg(init = true.B)
+   when(io.dmem.req.ready && io.dmem.req.valid){
+      once := false.B
+   } .elsewhen(io.dmem.resp.valid) { 
+      once := true.B
+   }
+   io.dmem.req.valid     := io.ctl.dmem_val && once
+   // once -> To acknowledge the response only in the wb stage of load  
+   //           instruction so that the data is available on io.dmem.resp.bits.data
+   //          memory instructions are halted in exe stage until a response arrives 
+   // Reg(next = io.ctl.dmem_fcn) -> Ack for response due to store instructions
+   io.dmem.resp.ready := once | Reg(next = io.ctl.dmem_fcn)
+   if(p(NUM_MEMORY_PORTS) == 1) 
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr != 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else   
-      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid 
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & (!wb_hazard_stall | once) & exe_valid 
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
@@ -200,7 +217,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       wb_reg_ctrl.rf_wen    := false.B
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := false.B
-      wb_reg_ctrl.exception := false.B
+      wb_reg_ctrl.illegal := false.B
    }
 
    wb_reg_alu      := exe_alu_out
@@ -219,7 +236,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val wb_csr_out    = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
-   csr.io.exception := Reg(next = io.ctl.exception)
+   csr.io.illegal := Reg(next = io.ctl.illegal)
    csr.io.pc        := exe_pc - 4.U
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
@@ -231,31 +248,31 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // Note: I'm relying on the fact that the EXE stage is holding the
    // instruction behind our jal, which assumes we always predict PC+4, and we
    // don't clear the "mispredicted" PC when we jump.
-   require (PREDICT_PCP4==true)
+   require (p(PREDICT_PCP4)==true)
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
                   (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
-                  (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
+                  (wb_reg_ctrl.wb_sel === WB_PC4) -> (Reg(next=exe_pc) + 4.U),
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   ))
 
    //**********************************
    // Printout
 
-   val irt_reg = Reg(init=0.asUInt(conf.xprlen.W))
+   val irt_reg = Reg(init=0.asUInt(xlen.W))
    when (wb_reg_valid) { irt_reg := irt_reg + 1.U }
 
    val debug_wb_pc = Wire(UInt(32.W))
    debug_wb_pc := Mux(Reg(next=wb_hazard_stall), 0.U, Reg(next=exe_pc))
    val debug_wb_inst = Reg(next=Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
-   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%d,%d], WB: DASM(%x)\n"
+   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%x,%x], WB: DASM(%x)\n"
       , csr.io.time(31,0)
       , exe_alu_op1
       , exe_alu_op2
       , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))
       , wb_reg_wbaddr
       , wb_wbdata
-      , Mux(io.ctl.exception, Str("E"), Str("_"))
+      , Mux(io.ctl.illegal, Str("I"), Str("_"))
       , io.imem.resp.bits.inst
       , irt_reg(11,0)
       , Mux(wb_hazard_stall, Str("H"), Str(" "))  // HAZ -> H
@@ -268,7 +285,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       , exe_pc(31,0)
       , Mux(Reg(next=wb_hazard_stall), 0.U, Reg(next=exe_pc(31,0)))
       , io.imem.debug.if_inst(6,0)
-      , Mux(exe_valid, exe_inst, BUBBLE)(6,0)
+      , Mux(exe_valid, exe_inst, BUBBLE)
       , debug_wb_inst(6,0)
       , debug_wb_inst
       )
@@ -276,7 +293,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // for debugging, print out the commit information.
    // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
    // use "sed" to parse out "@@@" from the other printf code above.
-   if (PRINT_COMMIT_LOG)
+   if (p(PRINT_COMMIT_LOG))
    {
       when (wb_reg_valid)
       {

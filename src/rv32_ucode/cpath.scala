@@ -10,8 +10,7 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
+import config._
 import Common._
 import Common.Instructions._
 import Constants._
@@ -37,21 +36,23 @@ class CtlToDatIo extends Bundle()
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes 
    val upc_is_fetch = Output(Bool()) // for debugging purposes 
-   val exception = Output(Bool())
+   val illegal = Output(Bool())
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit p: Parameters) extends Bundle() 
 {
    val dcpath = Flipped(new DebugCPath())  
-   val mem  = new MemPortIo(conf.xprlen)
+   val mem  = new MemPortIo(p(xprlen))
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit p: Parameters) extends Module
 {
    val io = IO(new CpathIo())
+   io.mem.resp.ready := true.B
+   io.mem.req.bits := new MemReq(p(xprlen)).fromBits(0.U)
 
    // Compile the Micro-code down into a ROM 
   val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)
@@ -117,7 +118,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    
    // Exception Handling ---------------------
-   io.ctl.exception := label_target_map("ILLEGAL").U === upc_state   
+   io.ctl.illegal := label_target_map("ILLEGAL").U === upc_state   
 
    // Cpath Control Interface
    io.ctl.msk_sel := cs.msk_sel

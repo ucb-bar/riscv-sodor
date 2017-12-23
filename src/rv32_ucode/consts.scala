@@ -11,16 +11,7 @@ package constants
 {
 
 import chisel3._
-import chisel3.util._
-
 import Common._
-
-trait SodorProcConstants
-{
-
-   //************************************
-   // Machine Parameters
-}
 
 trait ScalarOpConstants extends MemoryOpConstants
 {
@@ -146,3 +137,9 @@ trait ScalarOpConstants extends MemoryOpConstants
 
 }
 
+object Constants extends
+   Sodor.constants.ScalarOpConstants with
+   Common.constants.RISCVConstants with
+   Common.MemoryOpConstants
+{
+}

@@ -4,34 +4,34 @@
 //
 // Arbitrates instruction and data accesses to a single port memory.
 
-package Sodor
+package RV32_3stage
 {
 
 import chisel3._
-import chisel3.util._
-
+import config._
 import Common._
 
 // arbitrates memory access
-class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
+class SodorMemArbiter(implicit p: Parameters) extends Module
 {
+  val xlen = p(xprlen)
    val io = IO(new Bundle
       {
          // TODO I need to come up with better names... this is too confusing 
          // from the point of view of the other modules
-         val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
-         val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
-         val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
+         val imem = Flipped(new MemPortIo(xlen)) // instruction fetch
+         val dmem = Flipped(new MemPortIo(xlen)) // load/store 
+         val mem  = new MemPortIo(xlen)      // the single-ported memory
       }) 
 
    //***************************
-   val i1reg = Reg(UInt(conf.xprlen.W))
-   val d1reg = Reg(UInt(conf.xprlen.W))
+   val i1reg = Reg(UInt(xlen.W))
+   val d1reg = Reg(UInt(xlen.W))
    val nextdreq = Reg(init = true.B)
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
    val d_fire = Wire(Bool()) 
-   io.imem.req.ready := d_fire
+   io.imem.req.ready := !d_fire
    //***************************
    // hook up requests
    // 3 cycle FSM on LW , SW , FENCE in exe stage
@@ -39,7 +39,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    // CYC 1 : Store inst in reg requested in prev CYC 
    //         make data addr available on MEM PORT
    // CYC 2 : Store data in reg to be used in next CYC
-   // CYC 3 : Default State with data addr on MEM PORT
+   // CYC 3 : Default State with instr addr on MEM PORT
    // nextdreq ensures that data req gets access to bus only
    // for one cycle 
    // alternate between data and instr to avoid starvation
@@ -49,7 +49,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
         nextdreq := false.B // allow only instr in next cycle
         io.imem.resp.valid := io.mem.resp.valid
    }
-   .elsewhen(io.dmem.req.valid && !nextdreq)
+   .elsewhen(!nextdreq)
    {
         d_fire := false.B
         nextdreq := true.B  // allow any future data request
@@ -87,7 +87,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       i1reg := io.mem.resp.bits.data
    }
 
-   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
+   io.imem.resp.bits.data := Mux( !io.imem.resp.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
    io.dmem.resp.bits.data := d1reg
 }
  
