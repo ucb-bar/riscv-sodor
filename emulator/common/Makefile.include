@@ -1,5 +1,14 @@
 all: emulator
 
+RISCV           := /opt/riscv
+srcDir          := $(abspath ../../)
+buildIncludeDir := $(RISCV)/include
+buildLibDir     := $(RISCV)/lib
+buildDir        := $(abspath ../../)
+
+CXX := g++
+SBT := java -Xmx4096M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
+
 common      := $(srcDir)/emulator/common
 install     := $(srcDir)/install
 

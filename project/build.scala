@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings extends Build {
   val buildOrganization = "berkeley"
   val buildVersion = "2.0"
-  val buildScalaVersion = "2.11.7"
+  val buildScalaVersion = "2.11.12"
   val chiselVersion = System.getProperty("chiselVersion", "latest.release")
   val defaultVersions = Map(
     "chisel3" -> "3.0-SNAPSHOT_2017-10-06",//3.0-SNAPSHOT",
@@ -17,8 +17,8 @@ object BuildSettings extends Build {
     scalaVersion := buildScalaVersion,
     traceLevel   := 15,
     resolvers ++= Seq(
-      "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases"
     ),
     //libraryDependencies += "edu.berkeley.cs" %% "chisel" % chiselVersion
     libraryDependencies ++= (Seq("chisel3","chisel-iotesters").map {
@@ -26,17 +26,17 @@ object BuildSettings extends Build {
   )
 
   lazy val common = Project("common", file("common"), settings = buildSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/common")))
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/common"))
   lazy val rv32_1stage = Project("rv32_1stage", file("rv32_1stage"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_1stage"))) dependsOn(common)
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/rv32_1stage")) dependsOn(common)
   lazy val rv32_2stage = Project("rv32_2stage", file("rv32_2stage"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_2stage"))) dependsOn(common)
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/rv32_2stage")) dependsOn(common)
   lazy val rv32_3stage = Project("rv32_3stage", file("rv32_3stage"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_3stage"))) dependsOn(common)
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/rv32_3stage")) dependsOn(common)
   lazy val rv32_5stage = Project("rv32_5stage", file("rv32_5stage"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_5stage"))) dependsOn(common)
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/rv32_5stage")) dependsOn(common)
   lazy val rv32_ucode  = Project("rv32_ucode", file("rv32_ucode"), settings = buildSettings ++ chipSettings
-    ++Seq(scalaSource in Compile := file("@abs_top_srcdir@/src/rv32_ucode"))) dependsOn(common)
+    ++Seq(scalaSource in Compile := baseDirectory.value / "../src/rv32_ucode")) dependsOn(common)
 
   val elaborateTask = InputKey[Unit]("elaborate", "convert chisel components into backend source code")
   val makeTask = InputKey[Unit]("make", "trigger backend-specific makefile command")

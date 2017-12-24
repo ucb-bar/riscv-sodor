@@ -8,7 +8,7 @@
 # Many different processors are provided. To switch between which processor(s)
 # you would like to build, simply set the $(targets) variable as appropriate. 
 
-all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode
+all_targets := rv32_1stage rv32_2stage rv32_3stage rv32_5stage rv32_ucode 
 targets     := $(all_targets)
  
 # To switch between which processor the Makefile would like to build, it will
@@ -18,7 +18,17 @@ targets     := $(all_targets)
 #   "export MK_TARGET_PROC=rv32_5stage"
 #   "export MK_TARGET_PROC=rv32_ucode"
 
-include @top_builddir@/prefix.mk
+RISCV           := /opt/riscv
+srcDir          := $(abspath .)
+buildIncludeDir := $(RISCV)/include
+buildLibDir     := $(RISCV)/lib
+buildDir        := $(abspath .)
+
+# Paths to different source trees
+chiseldir       := 
+
+CXX := g++
+SBT := java -Xmx4096M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
 
 MK_TARGET_PROC?=rv32_1stage
 
