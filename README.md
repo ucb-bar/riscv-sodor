@@ -33,7 +33,28 @@ to Verilator along with a test harness in C++ to generate and run the Sodor emul
 See doc/ for microarchitecture diagrams which can be viewed using [draw.io](https://www.draw.io) using the following example link 
 https://www.draw.io/?url=https://raw.githubusercontent.com/librecores/riscv-sodor/master/doc/1stage.xml wherein master/doc/1stage.xml needs to be changed as needed
 
+Directory Structure
+===================
 
+doc - Microarchitecture diagrams for all stages in XML format to be used with draw.io
+
+emulator - C source used as test harness are fed to verilator to generate emulator
+
+install - Compiled binaries of ISA/BENCHMARK tests
+
+project - Scala configuration files fed to Scala Build Tool(sbt)
+
+riscv-fesvr - Frontend Server for the target to load the binaries and execute any requested syscall. It is a forked version to add support for system-bus access
+
+riscv-tests - Recipe to generate ISA/BENCHMARK tests
+
+sbt - sbt_launch.jar which is fed to java to launch sbt
+
+src - Scala Sources
+
+vsrc - Verilog Sources used for blackbox in chisel
+
+Makefile - To automate building the emulators
 
 Getting the repo
 ================
