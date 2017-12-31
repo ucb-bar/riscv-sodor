@@ -312,12 +312,14 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   when(insn_call){
     io.evec := "h80000004".U
     reg_mcause := reg_mstatus.prv + Causes.user_ecall
+    reg_mepc := io.pc
   }
 
   //EBREAK
   when(insn_break){
     io.evec := "h80000004".U
     reg_mcause := Causes.breakpoint
+    reg_mepc := io.pc
   }
 
 

@@ -355,7 +355,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 
-   csr.io.retire    := !io.ctl.mem_stall && !io.ctl.dec_stall
+   csr.io.retire    := !(Reg(next = mem_reg_inst) === BUBBLE) // can be made better
    csr.io.illegal := io.ctl.mem_illegal
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec

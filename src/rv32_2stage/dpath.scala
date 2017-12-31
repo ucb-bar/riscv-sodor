@@ -182,7 +182,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
-   csr.io.retire    := !io.ctl.stall // TODO verify this works properly
+   csr.io.retire    := !io.ctl.stall && !io.ctl.if_kill
    csr.io.illegal := io.ctl.illegal
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
