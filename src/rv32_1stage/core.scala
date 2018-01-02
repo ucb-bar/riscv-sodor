@@ -33,6 +33,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
 class Core(implicit conf: SodorConfiguration) extends Module
 {
   val io = IO(new CoreIo())
+  io := DontCare
   val c  = Module(new CtlPath())
   val d  = Module(new DatPath())
   c.io.ctl  <> d.io.ctl

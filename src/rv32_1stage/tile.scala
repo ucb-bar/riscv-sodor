@@ -24,6 +24,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    // alive so that the HTIF can load in the program.
    val debug = Module(new DebugModule())
    val core   = Module(new Core())
+   core.io := DontCare
    val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
    core.io.dmem <> memory.io.core_ports(0)
    core.io.imem <> memory.io.core_ports(1)
