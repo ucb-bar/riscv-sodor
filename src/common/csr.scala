@@ -1,6 +1,4 @@
 // See LICENSE for license details.
-
-// TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
 // NOTE: This is mostly a copy from the Berkeley Rocket-chip csr file. It is
 //       overkill for a small, embedded processor. 
 
@@ -56,11 +54,9 @@ class DCSR extends Bundle {
   val stopcycle = Bool()
   val stoptime = Bool()
   val cause = UInt(3.W)
-  // TODO: debugint is not in the Debug Spec v13
-  val debugint = Bool()
-  val zero1 = UInt(2.W)
+  val zero1 = UInt(3.W)
   val step = Bool()
-  val prv = UInt(2.W)
+  val prv = UInt(PRV.SZ.W)
 }
 
 object PRV
@@ -233,26 +229,14 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
                        zip reg_hpmcounter.map(x => x: UInt).padTo(CSR.nHPM, 0.U)) zipWithIndex) {
     read_mapping += (i + CSR.firstHPE) -> e // mhpmeventN
     read_mapping += (i + CSR.firstMHPC) -> c // mhpmcounterN
-    if (conf.usingUser) read_mapping += (i + CSR.firstHPC) -> c // hpmcounterN
     if (conf.xprlen == 32) {
       read_mapping += (i + CSR.firstMHPCH) -> c // mhpmcounterNh
-      if (conf.usingUser) read_mapping += (i + CSR.firstHPCH) -> c // hpmcounterNh
     }
   }
 */
-  if (conf.usingUser) {
-    read_mapping += CSRs.mcounteren -> reg_mcounteren
-    read_mapping += CSRs.cycle -> reg_time
-    read_mapping += CSRs.instret -> reg_instret
-  }
-
   if (conf.xprlen == 32) {
     read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
     read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
-    if (conf.usingUser) {
-      read_mapping += CSRs.cycleh -> 0.U //(reg_time >> 32)
-      read_mapping += CSRs.instreth -> 0.U //(reg_instret >> 32)
-    }
   }
 
   val decoded_addr = read_mapping map { case (k, v) => k -> (io.decode.csr === k) }
@@ -335,7 +319,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
         val new_dcsr = new DCSR().fromBits(wdata)
         reg_dcsr.step := new_dcsr.step
         reg_dcsr.ebreakm := new_dcsr.ebreakm
-        if (conf.usingUser) reg_dcsr.ebreaku := new_dcsr.ebreaku
       }
 
     when (decoded_addr(CSRs.mstatus)) {
@@ -372,14 +355,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(conf.xprlen-1,0) }
     when (decoded_addr(CSRs.medeleg))    { reg_medeleg := wdata(conf.xprlen-1,0) }
 
-    if(conf.usingUser){
-      when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
-      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  
-    }
-  }
-
-  if (!conf.usingUser) {
-    reg_mcounteren := 0
   }
 
   def writeCounter(lo: Int, ctr: WideCounter, wdata: UInt) = {

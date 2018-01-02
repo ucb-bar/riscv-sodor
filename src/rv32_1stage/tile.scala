@@ -21,7 +21,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    })
 
    // notice that while the core is put into reset, the scratchpad needs to be
-   // alive so that the HTIF can load in the program.
+   // alive so that the Debug Module can load in the program.
    val debug = Module(new DebugModule())
    val core   = Module(new Core())
    val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))

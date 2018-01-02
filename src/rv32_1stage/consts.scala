@@ -121,3 +121,10 @@ trait ScalarOpConstants
 
 }
 
+object Constants extends
+   Sodor.constants.SodorProcConstants with
+   Sodor.constants.ScalarOpConstants with
+   Common.constants.RISCVConstants with
+   Common.MemoryOpConstants
+{
+}
