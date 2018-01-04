@@ -59,7 +59,7 @@ Makefile - To automate building the emulators
 Getting the repo
 ================
 ```bash
-git clone --recursive https://github.com/ucb-bar/riscv-sodor.git
+git clone --recursive https://github.com/librecores/riscv-sodor.git
 cd riscv-sodor
 ```
 
