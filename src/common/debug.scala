@@ -83,7 +83,7 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   }
 }
 
-class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugDPath(implicit val conf: SodorConfiguration) extends Bundle
 {
   // REG access
   val addr = Output(UInt(5.W))
@@ -93,12 +93,12 @@ class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
   val resetpc = Output(Bool())
 }
 
-class DebugCPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugCPath(implicit val conf: SodorConfiguration) extends Bundle
 {
   val halt = Output(Bool())
 }
 
-class DebugIo(implicit conf: SodorConfiguration) extends Bundle
+class DebugIo(implicit val conf: SodorConfiguration) extends Bundle
 {
   val dmi = Flipped(new DMIIO())
   val ddpath = new DebugDPath()
