@@ -253,7 +253,7 @@ $(addprefix output/, $(global_asm_tests_vcd)): output/%.vcd: $(global_tstdir)/% 
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-$(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% emulator
+$(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
@@ -265,7 +265,7 @@ $(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/%.ri
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/%.riscv emulator
+$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/%.riscv emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 
@@ -279,7 +279,7 @@ output/%.vpd: output/%.hex emulator-debug
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(global_bmarkdir)/%.riscv emulator
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(global_bmarkdir)/%.riscv emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
 $(addprefix output/, $(global_bmarks_vcd)): output/%.riscv.vcd: $(global_bmarkdir)/%.riscv emulator-debug
@@ -290,7 +290,7 @@ $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator ou
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
 	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
-$(addprefix output/, $(local_bmarks_out)): output/%.riscv.out: $(local_bmarkdir)/%.riscv emulator
+$(addprefix output/, $(local_bmarks_out)): output/%.riscv.out: $(local_bmarkdir)/%.riscv emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
 $(addprefix output/, $(local_bmarks_vcd)): output/%.riscv.vcd: $(local_bmarkdir)/%.riscv emulator-debug
