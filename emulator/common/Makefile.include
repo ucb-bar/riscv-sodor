@@ -183,7 +183,7 @@ global_asm_tests += \
 	rv32mi-p-ma_fetch \
 
 	# Local assembly tests
-local_tstdir = ../../test/riscv-tests
+local_tstdir = ../../test/custom-tests
 
 local_asm_tests := \
 	$(local_asm_tests)
@@ -240,20 +240,34 @@ else
 endif
 endif
 
+global_asm_tests_out = $(addsuffix .out, $(global_asm_tests))
+global_asm_tests_vcd = $(addsuffix .vcd, $(global_asm_tests))
+
+local_asm_tests_out = $(addsuffix .out, $(local_asm_tests))
+local_asm_tests_vcd = $(addsuffix .vcd, $(local_asm_tests))
+
 output:
 	mkdir -p $@
 
-output/%.vcd: $(global_tstdir)/% emulator-debug
+$(addprefix output/, $(global_asm_tests_vcd)): output/%.vcd: $(global_tstdir)/% emulator-debug
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-output/%.out: $(global_tstdir)/% emulator
+$(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% emulator
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
 #	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
 #	rm $(patsubst %.out,%.temp,$@)
+
+$(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/%.riscv emulator-debug
+	mkdir -p output
+	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
+
+$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/%.riscv emulator
+	mkdir -p output
+	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 
 # Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug
@@ -302,12 +316,12 @@ else
 #    
 endif
 
-run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
+run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
 #run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
 run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks) $(local_bmarks)))
 	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
-run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests)))
+run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
 run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks) $(local_bmarks)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
