@@ -21,3 +21,6 @@ install/share
 sbt/*/target
 */target
 *.log
+test/*/*.out
+test/*/*.o
+test/*/*.riscv
