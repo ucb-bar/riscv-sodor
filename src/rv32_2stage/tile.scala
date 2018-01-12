@@ -20,6 +20,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    })
    
    val core   = Module(new Core())
+   core.io := DontCare
    val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
    val debug = Module(new DebugModule())
 

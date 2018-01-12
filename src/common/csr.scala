@@ -155,6 +155,7 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
 class CSRFile(implicit conf: SodorConfiguration) extends Module
 {
   val io = IO(new CSRFileIO)
+  io := DontCare
 
   val reset_mstatus = Wire(init=new MStatus().fromBits(0))
   reset_mstatus.mpp := PRV.M

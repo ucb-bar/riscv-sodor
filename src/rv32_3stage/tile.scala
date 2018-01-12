@@ -34,7 +34,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    })
 
    val core   = Module(new Core())
-   val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS)) 
+   core.io := DontCare
+   val memory = Module(new SyncScratchPadMemory(num_core_ports = NUM_MEMORY_PORTS))
    val debug = Module(new DebugModule())
    core.reset := debug.io.resetcore | reset.toBool
 

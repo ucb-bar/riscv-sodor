@@ -31,7 +31,7 @@ class CtrlSignals extends Bundle()
    val csr_cmd   = Output(UInt(CSR.SZ)) 
 
    val dmem_val  = Output(Bool())
-   val dmem_fcn  = Output(UInt(M_X.getWidth))
+   val dmem_fcn  = Output(UInt(M_X.getWidth.W))
    val dmem_typ  = Output(UInt(3.W))
  
    val exception = Output(Bool())   
@@ -51,7 +51,8 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
-                             //                                     
+   io := DontCare
+                             //
                              //   inst val?                                                                                mem flush/sync
                              //   |    br type                      alu fcn                 bypassable?                    |
                              //   |    |     is jmp?                |        wb sel         |  mem en               csr cmd|

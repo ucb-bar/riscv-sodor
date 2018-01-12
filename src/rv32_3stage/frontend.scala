@@ -80,7 +80,7 @@ class FrontEndCpuIO(implicit conf: SodorConfiguration) extends Bundle
 class FrontEnd(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new FrontEndIO)
-
+   io := DontCare
 
    //**********************************
    // Pipeline State Registers
