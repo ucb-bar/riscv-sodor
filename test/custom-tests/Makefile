@@ -5,22 +5,21 @@ LDFLAGS=-static -nostdlib -nostartfiles -lgcc
 RVTESTS=$(abspath ../../riscv-tests)
 INCLUDE=-I$(RVTESTS)/env/p -I$(RVTESTS)/isa/macros/scalar
 
-PROGRAMS=custom
-EXECUTABLES=$(addsuffix .riscv,$(PROGRAMS))
+PROGRAMS=rv32ui-p-yourinst
 DUMPS=$(addsuffix .dump,$(PROGRAMS))
 
-all: $(EXECUTABLES)
+all: $(PROGRAMS)
 
 dump: $(DUMPS)
 
 %.dump: %
 	$(OBJDUMP) -D $< > $@
 
-%.o: %.S
-	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
-
-%.riscv: %.o
+%: %.o
 	$(CC) $(LDFLAGS) -T $(RVTESTS)/env/p/link.ld $< -o $@
 
+rv32ui-p-%.o: %.S
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
+
 clean:
-	rm -f *.riscv *.o
+	rm -f $(PROGRAMS) *.dump *.o

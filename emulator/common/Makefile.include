@@ -261,11 +261,11 @@ $(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% 
 #	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
 #	rm $(patsubst %.out,%.temp,$@)
 
-$(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/%.riscv emulator-debug
+$(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/% emulator-debug
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/%.riscv emulator $(common)/tracer.py
+$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/% emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 
