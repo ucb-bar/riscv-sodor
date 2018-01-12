@@ -2,7 +2,6 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
 import Constants._
 import Common._
@@ -27,7 +26,7 @@ class Top extends Module
    val dtm = Module(new SimDTM).connect(clock, reset.toBool, tile.io.dmi, io.success)
 }
 
-object elaborate extends ChiselFlatSpec{
+object elaborate {
   def main(args: Array[String]): Unit = {
     chisel3.Driver.execute(args, () => new Top)
   }
