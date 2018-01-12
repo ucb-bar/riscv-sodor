@@ -122,6 +122,10 @@ object Instructions {
   def RDCYCLEH           = BitPat("b11001000000000000010?????1110011")
   def RDTIMEH            = BitPat("b11001000000100000010?????1110011")
   def RDINSTRETH         = BitPat("b11001000001000000010?????1110011")
+
+  /* Custom complex instructions */
+  def MOVN               = BitPat("b?????????????????????????1110111")
+  /* FIXME: add your own custom instruction encoding here */
 }
 object Causes {
   val misaligned_fetch = 0x0

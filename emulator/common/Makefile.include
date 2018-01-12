@@ -10,7 +10,7 @@ ELF         := elf2hex
 disasm_exe := 2>
 which_disasm := $(shell which spike-dasm)
 ifneq ($(which_disasm),)
-	disasm_exe := 3>&1 1>&2 2>&3 | $(which_disasm) $(DISASM_EXTENSION) >
+	disasm_exe := 3>&1 1>&2 2>&3 | $(common)/tracer.py | $(which_disasm) $(DISASM_EXTENSION) >
 endif
  
 
@@ -99,7 +99,7 @@ VERILATOR_FLAGS := --top-module Top \
 	--x-assign unique \
   -I$(srcDir)/vsrc \
   -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
-emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v $(srcDir)/riscv-fesvr/build/libfesvr.so
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
@@ -116,7 +116,7 @@ emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(
 # $(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
 # 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
 
-emulator-debug: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+emulator-debug: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v $(srcDir)/riscv-fesvr/build/libfesvr.so
 	$(VERILATOR) $(VERILATOR_FLAGS) --trace \
 	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
@@ -183,7 +183,7 @@ global_asm_tests += \
 	rv32mi-p-ma_fetch \
 
 	# Local assembly tests
-local_tstdir = ../../test/riscv-tests
+local_tstdir = ../../test/custom-tests
 
 local_asm_tests := \
 	$(local_asm_tests)
@@ -197,12 +197,12 @@ global_bmarks = \
 	qsort \
 	rsort \
 	towers \
+	dhrystone \
 	vvadd 
 
 # Local benchmarks
-local_bmarkdir = ../../test/riscv-bmarks
-local_bmarks = \
-
+local_bmarkdir = ../../test/custom-bmarks
+local_bmarks := $(local_bmarks) \
 
 #--------------------------------------------------------------------
 # Run assembly tests and benchmarks
@@ -212,6 +212,11 @@ global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
 global_bmarks_vcd = $(addsuffix .riscv.vcd, $(global_bmarks))
 global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
 global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
+
+local_bmarks_out = $(addsuffix .riscv.out, $(local_bmarks))
+local_bmarks_vcd = $(addsuffix .riscv.vcd, $(local_bmarks))
+local_bmarks_outgz = $(addsuffix .riscv.out.gz, $(local_bmarks))
+local_bmarks_vpd = $(addsuffix .riscv.vpd, $(local_bmarks))
 
 asm_test_timeout ?=30000
 bmark_timeout ?=1000000
@@ -236,20 +241,34 @@ else
 endif
 endif
 
+global_asm_tests_out = $(addsuffix .out, $(global_asm_tests))
+global_asm_tests_vcd = $(addsuffix .vcd, $(global_asm_tests))
+
+local_asm_tests_out = $(addsuffix .out, $(local_asm_tests))
+local_asm_tests_vcd = $(addsuffix .vcd, $(local_asm_tests))
+
 output:
 	mkdir -p $@
 
-output/%.vcd: $(global_tstdir)/% emulator-debug
+$(addprefix output/, $(global_asm_tests_vcd)): output/%.vcd: $(global_tstdir)/% emulator-debug
 	mkdir -p output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
 
-output/%.out: $(global_tstdir)/% emulator
+$(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 #	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
 #	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
 #	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
 #	rm $(patsubst %.out,%.temp,$@)
+
+$(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/% emulator-debug
+	mkdir -p output
+	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) +loadmem=$< 2> /dev/null
+
+$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/% emulator $(common)/tracer.py
+	mkdir -p output
+	./emulator +max-cycles=$(asm_test_timeout) +loadmem=$< none $(disasm_exe) $@
 
 # Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug
@@ -261,7 +280,7 @@ output/%.vpd: output/%.hex emulator-debug
 
 ifeq ($(SUPERVISOR_MODE),"false")
  
-$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(global_bmarkdir)/%.riscv emulator
+$(addprefix output/, $(global_bmarks_out)): output/%.riscv.out: $(global_bmarkdir)/%.riscv emulator $(common)/tracer.py
 	mkdir -p output
 	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
 $(addprefix output/, $(global_bmarks_vcd)): output/%.riscv.vcd: $(global_bmarkdir)/%.riscv emulator-debug
@@ -271,6 +290,17 @@ $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator ou
 	./emulator +max-cycles=$(bmark_timeout) +verbose $(global_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
 	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +loadmem=$(global_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+ 
+$(addprefix output/, $(local_bmarks_out)): output/%.riscv.out: $(local_bmarkdir)/%.riscv emulator $(common)/tracer.py
+	mkdir -p output
+	./emulator +max-cycles=$(bmark_timeout) +verbose +loadmem=$< none $(disasm_exe) $@
+$(addprefix output/, $(local_bmarks_vcd)): output/%.riscv.vcd: $(local_bmarkdir)/%.riscv emulator-debug
+	mkdir -p output
+	./emulator-debug -v$@ +max-cycles=$(bmark_timeout) +verbose +loadmem=$< 2> /dev/null
+$(addprefix output/, $(local_bmarks_outgz)): output/%.riscv.out.gz: emulator output
+	./emulator +max-cycles=$(bmark_timeout) +verbose $(local_bmarkdir)/$*.$(filetype) none 2>&1 | gzip > $@
+$(addprefix output/, $(local_bmarks_vpd)): output/%.riscv.vpd: emulator-debug output
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- +loadmem=$(local_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
  
 else                                                   
 
@@ -287,14 +317,14 @@ else
 #    
 endif
 
-run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
+run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
 #run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
-run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks)))
+run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks) $(local_bmarks)))
 	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
-run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests)))
+run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
-run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks)))
+run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks) $(local_bmarks)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
 
 
@@ -302,3 +332,6 @@ run: run-asm-tests run-bmarks-test
 run-debug: run-asm-tests-debug run-bmarks-test-debug
 run-fast: $(addprefix output/, $(addsuffix .run, $(global_asm_tests) $(global_bmarks)))
 
+$(srcDir)/riscv-fesvr/build/libfesvr.so: $(srcDir)/riscv-fesvr/configure
+	mkdir -p $(srcDir)/riscv-fesvr/build
+	cd $(srcDir)/riscv-fesvr/build && ../configure && make

@@ -1,3 +1,4 @@
+/config.status
 emulator/*/*.out
 emulator/*/*.out.gz
 emulator/*/emulator
@@ -15,6 +16,11 @@ install/share
 *.vcd
 *.vpd
 .DS_Store
-sbt/*/target
+*/*/target
 */target
 *.log
+test/*/*.out
+test/*/*.o
+test/*/*.riscv
+test/*/*.dump
+test/custom-tests/rv32ui-p-*
