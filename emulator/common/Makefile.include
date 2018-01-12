@@ -10,7 +10,7 @@ ELF         := elf2hex
 disasm_exe := 2>
 which_disasm := $(shell which spike-dasm)
 ifneq ($(which_disasm),)
-	disasm_exe := 3>&1 1>&2 2>&3 | $(which_disasm) $(DISASM_EXTENSION) >
+	disasm_exe := 3>&1 1>&2 2>&3 | $(common)/tracer.py | $(which_disasm) $(DISASM_EXTENSION) >
 endif
  
 
