@@ -35,6 +35,7 @@ SUPERVISOR_MODE?="false"
 # Prioritize Verilator installation from pkg-config
 VERILATOR_INCLUDE := $(shell pkg-config --variable=includedir verilator)
 ifeq ($(VERILATOR_INCLUDE),)
+$(warning Have you sourced "cs152.lab1.bashrc"?)
 ifeq ($(VERILATOR_ROOT),)
 $(error VERILATOR_ROOT is not set)
 endif
@@ -159,18 +160,16 @@ include $(common)/tests.mk
 global_tstdir = $(install)/riscv-tests
 
 # Local assembly tests
-local_tstdir = ../../test/riscv-tests
+local_tstdir = ../../test/custom-tests
 
-local_asm_tests := \
-	$(local_asm_tests)
-	#append any tests set by individual processors
+local_asm_tests ?=
 
 # Globally installed benchmarks
 global_bmarkdir = $(install)/riscv-bmarks
 
 # Local benchmarks
-local_bmarkdir = ../../test/riscv-bmarks
-local_bmarks = \
+local_bmarkdir = ../../test/custom-bmarks
+local_bmarks ?=
 
 
 #--------------------------------------------------------------------
@@ -181,6 +180,11 @@ global_bmarks_out = $(addsuffix .riscv.out, $(global_bmarks))
 global_bmarks_vcd = $(addsuffix .riscv.vcd, $(global_bmarks))
 global_bmarks_outgz = $(addsuffix .riscv.out.gz, $(global_bmarks))
 global_bmarks_vpd = $(addsuffix .riscv.vpd, $(global_bmarks))
+
+local_bmarks_out = $(addsuffix .riscv.out, $(local_bmarks))
+local_bmarks_vcd = $(addsuffix .riscv.vcd, $(local_bmarks))
+local_bmarks_outgz = $(addsuffix .riscv.out.gz, $(local_bmarks))
+local_bmarks_vpd = $(addsuffix .riscv.vpd, $(local_bmarks))
 
 asm_test_timeout ?=30000
 bmark_timeout ?=1000000
@@ -205,18 +209,26 @@ else
 endif
 endif
 
+global_asm_tests_out = $(addsuffix .out, $(global_asm_tests))
+global_asm_tests_vcd = $(addsuffix .vcd, $(global_asm_tests))
+
+local_asm_tests_out = $(addsuffix .out, $(local_asm_tests))
+local_asm_tests_vcd = $(addsuffix .vcd, $(local_asm_tests))
+
 output:
 	mkdir -p $@
 
-output/%.vcd: $(global_tstdir)/% emulator-debug | output
+$(addprefix output/, $(global_asm_tests_vcd)): output/%.vcd: $(global_tstdir)/% emulator-debug | output
 	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) $< 2> /dev/null
 
-output/%.out: $(global_tstdir)/% emulator $(tracer) | output
+$(addprefix output/, $(global_asm_tests_out)): output/%.out: $(global_tstdir)/% emulator $(tracer) | output
 	./emulator +max-cycles=$(asm_test_timeout) $< $(disasm_exe) $@
-#	-./emulator +max-cycles=$(asm_test_timeout) $(seed) +verbose +coremap-random +loadmem=$< none $(disasm_exe) $(patsubst %.out,%.temp,$@)
-#	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.out,%.temp,$@) >$(patsubst %.out,%.commit,$@)
-#	sed -e '/@@@/ d' <$(patsubst %.out,%.temp,$@) >$@
-#	rm $(patsubst %.out,%.temp,$@)
+
+$(addprefix output/, $(local_asm_tests_vcd)): output/%.vcd: $(local_tstdir)/% emulator-debug | output
+	./emulator-debug -v$@ +max-cycles=$(asm_test_timeout) $< 2> /dev/null
+
+$(addprefix output/, $(local_asm_tests_out)): output/%.out: $(local_tstdir)/% emulator $(tracer) | output
+	./emulator +max-cycles=$(asm_test_timeout) $< $(disasm_exe) $@
 
 # Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug | output
@@ -237,6 +249,15 @@ $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator | 
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug | output
 	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
  
+$(addprefix output/, $(local_bmarks_out)): output/%.riscv.out: $(local_bmarkdir)/%.riscv emulator $(tracer) | output
+	./emulator +max-cycles=$(bmark_timeout) +verbose $< $(disasm_exe) $@
+$(addprefix output/, $(local_bmarks_vcd)): output/%.riscv.vcd: $(local_bmarkdir)/%.riscv emulator-debug | output
+	./emulator-debug -v$@ +max-cycles=$(bmark_timeout) +verbose $< 2> /dev/null
+$(addprefix output/, $(local_bmarks_outgz)): output/%.riscv.out.gz: emulator | output
+	./emulator +max-cycles=$(bmark_timeout) +verbose $(local_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
+$(addprefix output/, $(local_bmarks_vpd)): output/%.riscv.vpd: emulator-debug | output
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- $(local_bmarkdir)/$*.$(filetype) none 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+
 else                                                   
 
 # NO SUPERVISOR MODE TESTS FOR NOW
@@ -252,14 +273,14 @@ else
 #    
 endif
 
-run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests)))
+run-asm-tests: $(addprefix output/, $(addsuffix .out, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
 #run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out.gz, $(global_bmarks)))
-run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks)))
+run-bmarks-test: $(addprefix output/, $(addsuffix .riscv.out, $(global_bmarks) $(local_bmarks)))
 	-@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $^; echo;
-run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests)))
+run-asm-tests-debug: $(addprefix output/, $(addsuffix .vcd, $(global_asm_tests) $(local_asm_tests)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
-run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks)))
+run-bmarks-test-debug: $(addprefix output/, $(addsuffix .riscv.vcd, $(global_bmarks) $(local_bmarks)))
 	@echo; perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' $(patsubst %.vpd,%.out,$^); echo;
 
 
