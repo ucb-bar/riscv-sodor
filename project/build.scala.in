@@ -6,10 +6,7 @@ object BuildSettings extends Build {
   val buildVersion = "2.0"
   val buildScalaVersion = "2.11.7"
   val chiselVersion = System.getProperty("chiselVersion", "latest.release")
-  val defaultVersions = Map(
-    "chisel3" -> "latest.release",//3.0-SNAPSHOT",
-    "chisel-iotesters" -> "latest.release"//"1.1-SNAPSHOT"
-    )
+  val defaultVersions = Map("chisel3" -> "latest.release")
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -21,7 +18,7 @@ object BuildSettings extends Build {
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
     ),
     //libraryDependencies += "edu.berkeley.cs" %% "chisel" % chiselVersion
-    libraryDependencies ++= (Seq("chisel3","chisel-iotesters").map {
+    libraryDependencies ++= (Seq("chisel3").map {
   dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) })
   )
 
