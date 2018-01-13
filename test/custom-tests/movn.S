@@ -12,11 +12,18 @@
 #include "riscv_test.h"
 #include "test_macros.h"
 
+#define TEST_MOVN( testnum, result, init, a, b ) \
+  TEST_CASE( testnum, x1, result, \
+    li x1, MASK_XLEN(init); \
+    li x2, MASK_XLEN(a); \
+    li x3, MASK_XLEN(b); \
+    .word 0x003100f7)
+
 RVTEST_RV64U
 RVTEST_CODE_BEGIN
 
-# Add your tests here
-# See the tests in movn.S for examples
+  TEST_MOVN( 2, 0, 0, 1, 0 );
+  TEST_MOVN( 3, 1, 0, 1, 1 );
 
   TEST_PASSFAIL
 

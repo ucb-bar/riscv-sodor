@@ -5,7 +5,7 @@ LDFLAGS=-static -nostdlib -nostartfiles -lgcc
 RVTESTS=$(abspath ../../riscv-tests)
 INCLUDE=-I$(RVTESTS)/env/p -I$(RVTESTS)/isa/macros/scalar
 
-PROGRAMS=rv32ui-p-yourinst
+PROGRAMS=rv32ui-p-yourinst rv32ui-p-movn
 DUMPS=$(addsuffix .dump,$(PROGRAMS))
 
 all: $(PROGRAMS)
