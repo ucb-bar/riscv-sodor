@@ -38,7 +38,8 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
-   
+   io := DontCare
+
    //**********************************
    // Pipeline State Registers
    val if_reg_pc = Reg(init = START_ADDR) 
@@ -177,6 +178,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
+   csr.io := DontCare
    csr.io.decode.csr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := exe_alu_out

@@ -83,7 +83,7 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   }
 }
 
-class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugDPath(implicit val conf: SodorConfiguration) extends Bundle
 {
   // REG access
   val addr = Output(UInt(5.W))
@@ -93,12 +93,12 @@ class DebugDPath(implicit conf: SodorConfiguration) extends Bundle
   val resetpc = Output(Bool())
 }
 
-class DebugCPath(implicit conf: SodorConfiguration) extends Bundle
+class DebugCPath(implicit val conf: SodorConfiguration) extends Bundle
 {
   val halt = Output(Bool())
 }
 
-class DebugIo(implicit conf: SodorConfiguration) extends Bundle
+class DebugIo(implicit val conf: SodorConfiguration) extends Bundle
 {
   val dmi = Flipped(new DMIIO())
   val ddpath = new DebugDPath()
@@ -109,16 +109,18 @@ class DebugIo(implicit conf: SodorConfiguration) extends Bundle
 
 class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   val io = IO(new DebugIo())
-  
+  io := DontCare
 
   io.dmi.req.ready := io.dmi.req.valid
   val dmireq = io.dmi.req.valid
   io.dmi.resp.bits.resp := DMConsts.dmi_RESP_SUCCESS
   val dmstatusReset  = Wire(new DMSTATUSFields())
+  dmstatusReset := DontCare
   dmstatusReset.authenticated := true.B
   dmstatusReset.versionlo := "b10".U
   val dmstatus = Reg(init = dmstatusReset)
   val sbcsreset = Wire(new SBCSFields())
+  sbcsreset := DontCare
   sbcsreset.sbaccess := 2.U
   sbcsreset.sbasize := 32.U
   sbcsreset.sbaccess32 := true.B
@@ -126,6 +128,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   sbcsreset.sbaccess8 := false.B
   val sbcs = Reg(init = sbcsreset)
   val abstractcsReset = Wire(new ABSTRACTCSFields())
+  abstractcsReset := DontCare
   abstractcsReset.datacount := DMConsts.nDataCount.U
   abstractcsReset.progsize := DMConsts.nProgBuf.U
   val abstractcs = Reg(init = abstractcsReset)

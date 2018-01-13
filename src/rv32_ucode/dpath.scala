@@ -38,6 +38,7 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
+   io := DontCare
 
 
    // forward declarations
@@ -132,6 +133,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    
    // Control Status Registers
    val csr = Module(new CSRFile())
+   csr.io := DontCare
    csr.io.decode.csr  := csr_addr
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd

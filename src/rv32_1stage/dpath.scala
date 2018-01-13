@@ -38,7 +38,8 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class DatPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
-      
+   io := DontCare
+
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
    val pc_plus4         = Wire(UInt(32.W))
@@ -154,6 +155,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    val csr = Module(new CSRFile())
+   csr.io := DontCare
    csr.io.decode.csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd 
    csr.io.rw.wdata := alu_out

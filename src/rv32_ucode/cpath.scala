@@ -52,6 +52,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
+  io := DontCare
 
    // Compile the Micro-code down into a ROM 
   val (label_target_map, label_sz) = MicrocodeCompiler.constructLabelTargetMap(Microcode.codes)

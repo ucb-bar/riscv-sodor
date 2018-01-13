@@ -43,6 +43,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 class CtlPath(implicit conf: SodorConfiguration) extends Module
 {
   val io = IO(new CpathIo())
+  io := DontCare
 
    val csignals =
       ListLookup(io.dat.inst,
