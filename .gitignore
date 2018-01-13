@@ -1,3 +1,4 @@
+/config.status
 emulator/*/*.out
 emulator/*/*.out.gz
 emulator/*/emulator
@@ -7,6 +8,7 @@ emulator/*/generated-src-debug
 emulator/*/*.o
 emulator/*/*.a
 emulator/*/output/
+/Makefile
 project/build.scala
 project/plugins.sbt
 project/build.properties
@@ -18,9 +20,11 @@ install/share
 *.vcd
 *.vpd
 .DS_Store
-sbt/*/target
+*/*/target
 */target
 *.log
 test/*/*.out
 test/*/*.o
 test/*/*.riscv
+test/*/*.dump
+test/custom-tests/rv32ui-p-*
