@@ -15,7 +15,7 @@
 RVTEST_RV64U
 RVTEST_CODE_BEGIN
 
-# Add your tests here
+# FIXME: Add your tests here
 # See the tests in movn.S for examples
 
   TEST_PASSFAIL

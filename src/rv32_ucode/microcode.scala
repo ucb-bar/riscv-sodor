@@ -422,6 +422,8 @@ object Microcode
    /* ubr to FETCH     */
    /* Reg[rd] <- A     */,                Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_0, ALU_COPY_A , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J), "FETCH")
    /* ubr to FETCH     */
+
+   /* FIXME: Add the microcode for your custom instruction here */
  ) 
 }
 
