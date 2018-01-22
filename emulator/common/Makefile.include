@@ -99,7 +99,7 @@ VERILATOR_FLAGS := --top-module Top \
 	--x-assign unique \
   -I$(srcDir)/vsrc \
   -O3 -CFLAGS "$(CXXFLAGS) -I$(srcDir)/riscv-fesvr/fesvr $(LDFLAGS) -DVERILATOR -include $(srcDir)/emulator/common/verilator.h"
-emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v $(srcDir)/riscv-fesvr/build/libfesvr.so
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
@@ -116,7 +116,7 @@ emulator: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(
 # $(BP)-debug.o: $(BPPATH)/$(BP).h $(BPPATH)/$(BP).cpp generated-src-debug/Top.h
 # 	$(CXX) -c $(CXXFLAGS) $(BPPATH)/$(BP).cpp -I$(common) -I./generated-src-debug -o $(BP)-debug.o
 
-emulator-debug: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v
+emulator-debug: generated-src/Top.v $(srcDir)/emulator/common/emulator.cpp SimDTM.o $(srcDir)/vsrc/AsyncReadMem.sv $(srcDir)/vsrc/SyncMem.sv $(srcDir)/vsrc/SimDTM.v $(srcDir)/riscv-fesvr/build/libfesvr.so
 	$(VERILATOR) $(VERILATOR_FLAGS) --trace \
 	-o $(generated_dir)/$@ $< $(srcDir)/vsrc/SimDTM.v -LDFLAGS "$(LDFLAGS)" $(srcDir)/emulator/common/emulator.cpp $(srcDir)/riscv-fesvr/build/libfesvr.so $(generated_dir)/SimDTM.o
 	$(MAKE) -C $(generated_dir)/obj_dir -f VTop.mk
@@ -331,3 +331,9 @@ run: run-asm-tests run-bmarks-test
 run-debug: run-asm-tests-debug run-bmarks-test-debug
 run-fast: $(addprefix output/, $(addsuffix .run, $(global_asm_tests) $(global_bmarks)))
 
+$(srcDir)/riscv-fesvr/configure:
+	git submodule update --init $(srcDir)/riscv-fesvr
+
+$(srcDir)/riscv-fesvr/build/libfesvr.so: $(srcDir)/riscv-fesvr/configure
+	mkdir -p $(srcDir)/riscv-fesvr/build
+	cd $(srcDir)/riscv-fesvr/build && ../configure && make
