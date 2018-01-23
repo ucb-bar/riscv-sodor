@@ -331,9 +331,6 @@ run: run-asm-tests run-bmarks-test
 run-debug: run-asm-tests-debug run-bmarks-test-debug
 run-fast: $(addprefix output/, $(addsuffix .run, $(global_asm_tests) $(global_bmarks)))
 
-$(srcDir)/riscv-fesvr/configure:
-	cd $(srcDir) && git submodule update --init $(srcDir)/riscv-fesvr
-
 $(srcDir)/riscv-fesvr/build/libfesvr.so: $(srcDir)/riscv-fesvr/configure
 	mkdir -p $(srcDir)/riscv-fesvr/build
 	cd $(srcDir)/riscv-fesvr/build && ../configure && make
