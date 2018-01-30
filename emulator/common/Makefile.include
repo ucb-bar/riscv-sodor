@@ -201,7 +201,7 @@ global_bmarks = \
 
 # Local benchmarks
 local_bmarkdir = ../../test/custom-bmarks
-local_bmarks = \
+local_bmarks := $(local_bmarks) \
 
 #--------------------------------------------------------------------
 # Run assembly tests and benchmarks
