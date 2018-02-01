@@ -10,8 +10,6 @@ package Sodor
 
 import chisel3._
 import chisel3.util._
-
-
 import Common._
 import Common.Instructions._
 import Constants._
@@ -42,7 +40,6 @@ class CtlToDatIo extends Bundle()
 
 class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val dcpath = Flipped(new DebugCPath())  
    val mem  = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()

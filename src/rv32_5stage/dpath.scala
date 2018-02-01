@@ -33,7 +33,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
 {
-   val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
@@ -162,13 +161,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    regfile.io.waddr := wb_reg_wbaddr
    regfile.io.wdata := wb_reg_wbdata
    regfile.io.wen   := wb_reg_ctrl_rf_wen
-
-   //// DebugModule
-   regfile.io.dm_addr := io.ddpath.addr
-   io.ddpath.rdata := regfile.io.dm_rdata 
-   regfile.io.dm_en := io.ddpath.validreq
-   regfile.io.dm_wdata := io.ddpath.wdata
-   ///
 
    // immediates
    val imm_itype  = dec_reg_inst(31,20)

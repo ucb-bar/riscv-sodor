@@ -26,7 +26,7 @@ object DMConsts{
   def dmi_RESP_RESERVED    = "b11".U
 
   def dmi_haltStatusAddr   = 0x40
-  def nProgBuf = 4
+  def nProgBuf = 0
   def nDataCount = 1
   def hartInfo = "h111bc0".U
 }
@@ -83,26 +83,9 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   }
 }
 
-class DebugDPath(implicit val conf: SodorConfiguration) extends Bundle
-{
-  // REG access
-  val addr = Output(UInt(5.W))
-  val wdata = Output(UInt(32.W))
-  val validreq = Output(Bool())
-  val rdata = Input(UInt(32.W))
-  val resetpc = Output(Bool())
-}
-
-class DebugCPath(implicit val conf: SodorConfiguration) extends Bundle
-{
-  val halt = Output(Bool())
-}
-
 class DebugIo(implicit val conf: SodorConfiguration) extends Bundle
 {
   val dmi = Flipped(new DMIIO())
-  val ddpath = new DebugDPath()
-  val dcpath = new DebugCPath()
   val debugmem = new MemPortIo(data_width = 32)
   val resetcore = Output(Bool())
 }
@@ -114,7 +97,6 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   io.dmi.req.ready := true.B
   io.debugmem.req.valid := false.B
   io.debugmem.req.bits.fcn := M_XRD
-  io.debugmem.req.bits.data := 0.U
   io.debugmem.req.bits.typ := MT_W
   io.dmi.resp.bits.resp := DMConsts.dmi_RESP_SUCCESS
   val dmstatusReset  = Wire(new DMSTATUSFields())
@@ -164,7 +146,6 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   io.dmi.resp.bits.data := Mux1H(for ((k, v) <- read_map) yield decoded_addr(k) -> v)
   dmstatus.allhalted := dmcontrol.haltreq
   dmstatus.allrunning := dmcontrol.resumereq 
-  io.dcpath.halt := dmstatus.allhalted && !dmstatus.allrunning
   when (op === DMConsts.dmi_OP_WRITE && io.dmi.resp.fire()){ 
     when(decoded_addr(DMI_RegAddrs.DMI_ABSTRACTCS)) { 
       val tempabstractcs = new ABSTRACTCSFields().fromBits(wdata)
@@ -202,15 +183,8 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) ( data0 := wdata )
   } 
 
-  /// abstract cs command regfile access
-  io.ddpath.addr := command.regno & "hfff".U
+  /// abstract cs command not supported
   when(command.transfer && abstractcs.cmderr =/= 0.U){
-    when(command.write){
-      io.ddpath.wdata := data0
-      io.ddpath.validreq := true.B     
-    } .otherwise {
-      data0 := io.ddpath.rdata
-    }
     abstractcs.cmderr := 0.U
   }
 

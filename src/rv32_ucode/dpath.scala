@@ -28,7 +28,6 @@ class DatToCtlIo extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val ddpath = Flipped(new DebugDPath())
    val mem  = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()

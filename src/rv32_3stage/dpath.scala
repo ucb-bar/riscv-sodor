@@ -34,7 +34,6 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
 
 class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
 {
-   val ddpath = Flipped(new DebugDPath())
    val imem = Flipped(new FrontEndCpuIO())
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Input(new CtrlSignals())
@@ -110,13 +109,6 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
 
    // Register File
    val regfile = Mem(UInt(conf.xprlen.W), 32)
-
-   //// DebugModule
-   io.ddpath.rdata := regfile(io.ddpath.addr)
-   when(io.ddpath.validreq){
-      regfile(io.ddpath.addr) := io.ddpath.wdata
-   }
-   ///
 
    when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr =/= 0.U))
    {

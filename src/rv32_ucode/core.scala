@@ -19,8 +19,6 @@ import Common._
 
 class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
 {
-  val ddpath = Flipped(new DebugDPath())
-  val dcpath = Flipped(new DebugCPath())
   val mem  = new MemPortIo(conf.xprlen)
 }
 
@@ -39,8 +37,6 @@ class Core(implicit conf: SodorConfiguration) extends Module
   io.mem.req.bits.fcn := c.io.mem.req.bits.fcn
   io.mem.req.bits.typ := c.io.mem.req.bits.typ
   
-  d.io.ddpath <> io.ddpath
-  c.io.dcpath <> io.dcpath
 }
 
 }
