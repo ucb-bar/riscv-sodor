@@ -78,7 +78,6 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
     tbsuccess := io.exit === 1.U
     when (io.exit >= 2.U) {
       printf("*** FAILED *** (exit code = %d)\n", io.exit >> 1.U)
-      //stop(1)
     }
   }
 }
@@ -179,8 +178,8 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
       sbcs.sbautoread := tempsbcs.sbautoread
       sbcs.sberror := tempsbcs.sberror
     }
-    when(decoded_addr(DMI_RegAddrs.DMI_SBADDRESS0)) { sbaddr := wdata}
-    when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) ( data0 := wdata )
+    when(decoded_addr(DMI_RegAddrs.DMI_SBADDRESS0)) { sbaddr := wdata }
+    when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) { data0 := wdata }
   } 
 
   /// abstract cs command not supported
@@ -218,10 +217,8 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     io.debugmem.req.valid := !memongoing
     // for async data readily available
     // so capture it in reg
-    when (sbcs.sbautoincrement && io.debugmem.resp.fire()) {
-      sbdata := io.debugmem.resp.bits.data
-      sbaddr := sbaddr + 4.U
-    }
+    when (io.debugmem.resp.fire()) {  sbdata := io.debugmem.resp.bits.data  }
+    when (sbcs.sbautoincrement && io.debugmem.resp.fire()) {  sbaddr := sbaddr + 4.U  }
   }
 
   io.resetcore := coreresetval
