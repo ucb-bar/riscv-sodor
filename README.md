@@ -202,6 +202,22 @@ The generated assembly code looks too complex!
 For Sodor, the assembly tests rely on macros that can be found in the
 riscv-tests/env/p directory. You can simplify these macros as desired.
 
+Unittests
+----------
+
+Unittests are added to `src/test` directory. Currently tests are for Debug and ScratchpadMemory only
+```bash 
+  $ sbt "project common" shell
+  > testOnly tests.MemoryTester
+  > testOnly tests.DebugTests
+``` 
+or 
+```bash 
+  $ make MK_TARGET_PROC=common shell
+  > testOnly tests.MemoryTester
+  > testOnly tests.DebugTests
+```
+Inorder to write unittests for modules from other projects(eg. rv32_1stage,rv32_ucode) [build.scala](project/build.scala) needs to be modified appropriately
 
 FAQ
 ===
