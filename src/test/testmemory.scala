@@ -14,17 +14,16 @@ class MemoryTests extends SteppedHWIOTester with MemoryOpConstants {
   val req = c.io.core_ports(0).req
   val resp = c.io.core_ports(0).resp
   rnd.setSeed(23L)
+  /// INITIALIZE POKED SIGNALS
+  req.bits.addr := 0.U
+  req.bits.data := 0.U
+  req.bits.fcn := 0.U
+  req.bits.typ := 0.U
+  req.valid := 0.U
 
   var addr = rnd.nextInt(msize)
   enable_all_debug = true
 //  enable_scala_debug = true
-
-  /// INITIALIZE
-  poke(req.bits.addr, 0)
-  poke(req.bits.data, 0)
-  poke(req.bits.fcn, 0)
-  poke(req.bits.typ, 0)
-  poke(req.valid, 0)
 
   /// W MT_B
     step(1)
