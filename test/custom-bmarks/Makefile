@@ -1,6 +1,6 @@
 CC=riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32
 OBJDUMP=riscv64-unknown-elf-objdump
-CFLAGS=-mcmodel=medany -std=gnu99 -O2 -fno-common -fno-builtin-printf -Wall
+CFLAGS=-mcmodel=medany -std=gnu99 -O0 -fno-common -fno-builtin-printf -Wall
 LDFLAGS=-static -nostdlib -nostartfiles -lgcc
 
 PROGRAMS=mix
