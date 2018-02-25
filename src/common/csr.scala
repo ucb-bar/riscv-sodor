@@ -88,7 +88,6 @@ class MIP extends Bundle {
 }
 
 class PerfCounterIO(implicit conf: SodorConfiguration) extends Bundle{
-  //val eventSel = Output(UInt(conf.xprlen.W))
   val inc = Input(UInt(conf.xprlen.W))
   override def cloneType = { new PerfCounterIO().asInstanceOf[this.type] }
 }
@@ -173,8 +172,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_instret = WideCounter(64, io.retire)
 
   val reg_mcounteren = Reg(UInt(32.W))
-  //val reg_hpmevent = io.counters.map(c => Reg(init = 0.asUInt(conf.xprlen.W)))
-  //(io.counters zip reg_hpmevent) foreach { case (c, e) => c.eventSel := e }
   val reg_hpmcounter = io.counters.map(c => WideCounter(CSR.hpmWidth, c.inc, reset = false))
 
   val new_prv = Wire(init = reg_mstatus.prv)
@@ -194,7 +191,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
 
   val read_mstatus = io.status.toBits
   val isa_string = "I"
-  val misa = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
+  val misa = BigInt(0x40000000) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
   val impid = 0x8000 // indicates an anonymous source, which can be used
                      // during development before a Source ID is allocated.
 
@@ -226,15 +223,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     read_mapping += (i + CSR.firstMHPCH) -> reg_hpmcounter(i)
   }
 
-/*  for (((e, c), i) <- (reg_hpmevent.padTo(CSR.nHPM, 0.U)
-                       zip reg_hpmcounter.map(x => x: UInt).padTo(CSR.nHPM, 0.U)) zipWithIndex) {
-    read_mapping += (i + CSR.firstHPE) -> e // mhpmeventN
-    read_mapping += (i + CSR.firstMHPC) -> c // mhpmcounterN
-    if (conf.xprlen == 32) {
-      read_mapping += (i + CSR.firstMHPCH) -> c // mhpmcounterNh
-    }
-  }
-*/
   if (conf.xprlen == 32) {
     read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
     read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
@@ -340,10 +328,6 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     {
       writeCounter(i + CSR.firstMHPC, reg_hpmcounter(i), wdata)
     }
-/*    for (((e, c), i) <- (reg_hpmevent zip reg_hpmcounter) zipWithIndex) {
-      writeCounter(i + CSR.firstMHPC, c, wdata)
-      //when (decoded_addr(i + CSR.firstHPE)) { e := perfEventSets.maskEventSelector(wdata) }
-    }*/
     writeCounter(CSRs.mcycle, reg_time, wdata)
     writeCounter(CSRs.minstret, reg_instret, wdata)
 

@@ -1,9 +1,7 @@
 #include "VTop__Dpi.h"
-#include "common.h"
 #if VM_TRACE
 #include <verilated_vcd_c.h>
 #endif
-//#include "disasm.h" // disabled for now... need to update to the current ISA/ABI in common/disasm.*
 #include "VTop.h" // chisel-generated code...
 #include "verilator.h"
 #include <fesvr/dtm.h>
@@ -17,6 +15,7 @@
 
 extern dtm_t *dtm;
 uint64_t trace_count = 0;
+bool verbose = false;
 double sc_time_stamp ()
 {
   return double( trace_count );
@@ -37,7 +36,6 @@ int main(int argc, char** argv)
    unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
    uint64_t max_cycles = 0;
    int start = 0;
-   bool log = false;
    const char* loadmem = NULL;
    FILE *vcdfile = NULL, *logfile = stderr;
    const char* failure = NULL;
@@ -51,7 +49,7 @@ int main(int argc, char** argv)
       else if (arg.substr(0, 2) == "-s")
          random_seed = atoi(argv[i]+2);
       else if (arg == "+verbose")
-         log = true;
+         verbose = true;
       else if (arg.substr(0, 12) == "+max-cycles=")
          max_cycles = atoll(argv[i]+12);
       else if (arg.substr(0, 9) == "+loadmem="){
