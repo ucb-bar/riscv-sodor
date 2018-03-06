@@ -195,6 +195,7 @@ global_bmarks = \
 	median \
 	multiply \
 	qsort \
+	rsort \
 	towers \
 	dhrystone \
 	vvadd 
