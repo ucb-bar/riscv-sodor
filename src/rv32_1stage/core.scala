@@ -21,7 +21,7 @@ import chisel3._
 import chisel3.util._
 import Common._
 
-class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
+class CoreIo(implicit val conf: SodorConfiguration) extends Bundle 
 {
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
