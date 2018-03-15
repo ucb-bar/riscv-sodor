@@ -15,7 +15,7 @@ object Util
   implicit def intToUInt(x: Int): UInt = x.U
   implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
   implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
-  implicit def booleanToBool(x: Boolean): Bool = Bool(x)
+  implicit def booleanToBool(x: Boolean): Bool = x.B
   implicit def sextToConv(x: UInt) = new AnyRef {
     def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
   }
@@ -111,12 +111,12 @@ case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
 {
   private val isWide = width > 2*inc.getWidth
   private val smallWidth = if (isWide) inc.getWidth max log2Ceil(width) else width
-  private val small = if (reset) Reg(init=0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
+  private val small = if (reset) RegInit(0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
   private val nextSmall = small +& inc
   small := nextSmall
 
   private val large = if (isWide) {
-    val r = if (reset) Reg(init=0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
+    val r = if (reset) RegInit(0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
     when (nextSmall(smallWidth)) { r := r + 1.U }
     r
   } else null

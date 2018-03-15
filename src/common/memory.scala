@@ -112,7 +112,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := io.core_ports(i).req.valid
-      io.core_ports(i).req.ready := Bool(true) // for now, no back pressure 
+      io.core_ports(i).req.ready := true.B // for now, no back pressure 
       async_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
 

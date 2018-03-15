@@ -24,7 +24,7 @@ trait RISCVConstants
    // generated NOPs which are (ADDI x0, x0, 0).
    // Reasoning for this is to let visualizers and stat-trackers differentiate
    // between software NOPs and machine-generated Bubbles in the pipeline.
-   val BUBBLE  = Bits(0x4033, 32)
+   val BUBBLE  = "h4033".U(32.W)
 }
 
 trait PrivilegedConstants
