@@ -63,14 +63,14 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    // Micro-PC State Register
    val upc_state_next = Wire(UInt())
-   val upc_state = Reg(UInt(), next = upc_state_next, init = label_target_map("INIT_PC").asUInt(label_sz.W))
+   val upc_state = RegNext(upc_state_next, init = label_target_map("INIT_PC").U(label_sz.W))
 
    // Micro-code ROM
-   val micro_code = Vec(rombits)
+   val micro_code = VecInit(rombits)
    val uop = micro_code(upc_state) 
    
    // Extract Control Signals from UOP
-  val cs = new Bundle()
+  val cs = uop.asTypeOf(new Bundle()
   {
      val msk_sel        = UInt(MSK_SZ)
      val csr_cmd        = UInt(CSR.SZ)
@@ -89,8 +89,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
      val en_imm         = Bool()  
      val ubr            = UInt(UBR_N.getWidth.W)  
      val upc_rom_target = UInt(label_sz.W)  
-     override def clone = this.asInstanceOf[this.type]
-  }.fromBits(uop)
+  })
   require(label_sz == 8, "Label size must be 8")
 
   val mem_is_busy = !io.mem.resp.valid && cs.en_mem.toBool
