@@ -13,7 +13,7 @@ import chisel3.util._
 import Constants._
 import Common._
 
-class RFileIo(implicit conf: SodorConfiguration) extends Bundle()
+class RFileIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val rs1_addr = Input(UInt(5.W))
    val rs1_data = Output(UInt(conf.xprlen.W))
@@ -25,19 +25,19 @@ class RFileIo(implicit conf: SodorConfiguration) extends Bundle()
    val wen      = Input(Bool())
 }
 
-class RegisterFile(implicit conf: SodorConfiguration) extends Module
+class RegisterFile(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new RFileIo())
 
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(32,UInt(conf.xprlen.W))
 
-   when (io.wen && (io.waddr != 0.U))
+   when (io.wen && (io.waddr =/= 0.U))
    {
       regfile(io.waddr) := io.wdata
    }
 
-   io.rs1_data := Mux((io.rs1_addr != 0.U), regfile(io.rs1_addr), 0.U)
-   io.rs2_data := Mux((io.rs2_addr != 0.U), regfile(io.rs2_addr), 0.U)
+   io.rs1_data := Mux((io.rs1_addr =/= 0.U), regfile(io.rs1_addr), 0.U)
+   io.rs2_data := Mux((io.rs2_addr =/= 0.U), regfile(io.rs2_addr), 0.U)
        
 }
 }
