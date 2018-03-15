@@ -45,7 +45,6 @@ trait MemoryOpConstants
 class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
    val addr = Input(UInt(addrWidth.W))
    val data = Output(UInt(dataWidth.W))
-   override def cloneType = { new Rport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
 class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
@@ -54,7 +53,6 @@ class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
    val data = Input(UInt(dataWidth.W))
    val mask = Input(UInt(maskWidth.W))
    val en = Input(Bool())
-   override def cloneType = { new Wport(addrWidth,dataWidth).asInstanceOf[this.type] }
 }
 
 class d2h2i1(val addrWidth : Int) extends Bundle{
@@ -74,30 +72,27 @@ class SyncMem(val addrWidth : Int) extends BlackBox{
 }
 
 // from the pov of the datapath
-class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
+class MemPortIo(val data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle 
 {
    val req    = new DecoupledIO(new MemReq(data_width))
    val resp   = Flipped(new ValidIO(new MemResp(data_width)))
-  override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
-class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
+class MemReq(val data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle
 {
    val addr = Output(UInt(conf.xprlen.W))
    val data = Output(UInt(data_width.W))
    val fcn  = Output(UInt(M_X.getWidth.W))  // memory function code
    val typ  = Output(UInt(MT_X.getWidth.W)) // memory type
-  override def cloneType = { new MemReq(data_width).asInstanceOf[this.type] }
 }
 
-class MemResp(data_width: Int) extends Bundle
+class MemResp(val data_width: Int) extends Bundle
 {
    val data = Output(UInt(data_width.W))
-  override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
 //for 1,2 and 5 stage need for combinational reads 
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class AsyncScratchPadMemory(val num_core_ports: Int,val num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
    {
@@ -160,7 +155,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    } 
 }
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class SyncScratchPadMemory(val num_core_ports: Int, val num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
    {
@@ -174,7 +169,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    sync_data.io.clk := clock
    for (i <- 0 until num_core_ports)
    {
-      io.core_ports(i).resp.valid := Reg(next = io.core_ports(i).req.valid)
+      io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
       io.core_ports(i).req.ready := true.B // for now, no back pressure 
       sync_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
@@ -211,7 +206,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 
    // DEBUG PORT-------
    io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := Reg(next = io.debug_port.req.valid)
+   io.debug_port.resp.valid := RegNext(io.debug_port.req.valid)
    // asynchronous read
    sync_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := sync_data.io.hr.data

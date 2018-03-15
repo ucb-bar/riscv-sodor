@@ -25,7 +25,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    //***************************
    val i1reg = Reg(UInt(conf.xprlen.W))
    val d1reg = Reg(UInt(conf.xprlen.W))
-   val nextdreq = Reg(init = true.B)
+   val nextdreq = RegInit(true.B)
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
    val d_fire = Wire(Bool()) 
