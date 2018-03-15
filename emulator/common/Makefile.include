@@ -97,7 +97,7 @@ clean:
 #--------------------------------------------------------------------
 
 # Globally installed assembly tests
-global_tstdir = $(install)/riscv-tests
+global_tstdir = $(srcDir)/riscv-tests/isa
 
 global_asm_tests += \
 	rv32ui-p-simple \
@@ -142,15 +142,8 @@ global_asm_tests += \
 #	rv32mi-p-ma_addr \
 	rv32mi-p-ma_fetch \
 
-	# Local assembly tests
-local_tstdir = $(srcDir)/riscv-tests/isa
-
-local_asm_tests := \
-	$(local_asm_tests)
-	#append any tests set by individual processors
-
 # Globally installed benchmarks
-global_bmarkdir = $(install)/riscv-bmarks
+global_bmarkdir = $(srcDir)/riscv-tests/benchmarks
 global_bmarks = \
 	median \
 	multiply \
@@ -159,11 +152,6 @@ global_bmarks = \
 	towers \
 	vvadd \
 	dhrystone
-
-# Local benchmarks
-local_bmarkdir = $(srcDir)/riscv-tests/benchmarks
-local_bmarks = \
-
 
 #--------------------------------------------------------------------
 # Run assembly tests and benchmarks

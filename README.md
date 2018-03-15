@@ -165,7 +165,16 @@ make -j4
 This will install a compiler named riscv64-unknown-elf-gcc
 
 ### Alternative 
-Sifive also provides prebuilt toolchain found here [tools](https://www.sifive.com/products/tools/) which can be used to generate ELF's for Sodor
+Sifive provides prebuilt toolchain found here https://www.sifive.com/products/tools/ which can be used to generate ELF's for Sodor
+```bash
+#Before dowloading(~326MB) the archive do check if 20171231 is latest available on their website
+wget https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz
+tar -xzf riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz -C /opt
+rm riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz
+mv /opt/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6 /opt/riscv
+export PATH=/opt/riscv/bin:$PATH
+export RISCV=/opt/riscv
+```
 
 Compiling the tests
 ----------------------------
