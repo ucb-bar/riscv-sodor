@@ -34,21 +34,19 @@ class CtrlSignals extends Bundle()
    val dmem_fcn  = Output(UInt(M_X.getWidth.W))
    val dmem_typ  = Output(UInt(3.W))
  
-   val exception = Output(Bool())   
+   val illegal = Output(Bool())   
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit val conf: SodorConfiguration) extends Bundle() 
 {
-   val dcpath = Flipped(new DebugCPath())
    val imem = Flipped(new FrontEndCpuIO())
    val dmem = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtrlSignals()
-   override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
    io := DontCare
@@ -175,8 +173,8 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
 
    //-------------------------------
    // Exception Handling
-   io.ctl.exception := !cs_inst_val && io.imem.resp.valid
-   take_evec        := Reg(next=io.ctl.exception) || io.dat.csr_eret 
+   io.ctl.illegal := !cs_inst_val && io.imem.resp.valid
+   take_evec        := RegNext(io.ctl.illegal) || io.dat.csr_eret 
 
 
 }

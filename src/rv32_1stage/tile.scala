@@ -21,7 +21,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    })
 
    // notice that while the core is put into reset, the scratchpad needs to be
-   // alive so that the HTIF can load in the program.
+   // alive so that the Debug Module can load in the program.
    val debug = Module(new DebugModule())
    val core   = Module(new Core())
    core.io := DontCare
@@ -30,8 +30,6 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    core.io.imem <> memory.io.core_ports(1)
    debug.io.debugmem <> memory.io.debug_port
    core.reset := debug.io.resetcore | reset.toBool
-   debug.io.ddpath <> core.io.ddpath
-   debug.io.dcpath <> core.io.dcpath 
    debug.io.dmi <> io.dmi
 }
 
