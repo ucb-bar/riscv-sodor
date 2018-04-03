@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+using std::string;
+
 extern bool verbose;
 extern bool done_reset;
 
