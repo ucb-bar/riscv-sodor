@@ -92,9 +92,9 @@ trait ScalarOpConstants
    val MWR_X   = 0.asUInt(2.W)
 
    // Memory Enable Signal
-   val MEN_0   = Bool(false)
-   val MEN_1   = Bool(true)
-   val MEN_X   = Bool(false)
+   val MEN_0   = false.B
+   val MEN_1   = true.B
+   val MEN_X   = false.B
 
    // Memory Mask Type Signal
    val MSK_B   = 0.asUInt(3.W)

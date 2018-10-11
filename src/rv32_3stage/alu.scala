@@ -32,7 +32,7 @@ object ALU
 }
 import ALU._
 
-class ALUIO(implicit conf: SodorConfiguration) extends Bundle {
+class ALUIO(implicit val conf: SodorConfiguration) extends Bundle {
   val fn = Input(UInt(SZ_ALU_FN.W))
   val in2 = Input(UInt(conf.xprlen.W))
   val in1 = Input(UInt(conf.xprlen.W))
@@ -40,7 +40,7 @@ class ALUIO(implicit conf: SodorConfiguration) extends Bundle {
   val adder_out = Output(UInt(conf.xprlen.W))
 }
 
-class ALU(implicit conf: SodorConfiguration) extends Module
+class ALU(implicit val conf: SodorConfiguration) extends Module
 {
   val io = IO(new ALUIO)
 
@@ -55,10 +55,10 @@ class ALU(implicit conf: SodorConfiguration) extends Module
 
   require(conf.xprlen == 32)
   // SLL, SRL, SRA
-  val shamt = io.in2(4,0).toUInt
+  val shamt = io.in2(4,0).asUInt()
   val shin_r = io.in1(31,0)
   val shin = Mux(io.fn === ALU_SRL  || io.fn === ALU_SRA, shin_r, Reverse(shin_r))
-  val shout_r = (Cat(isSub(io.fn) & shin(msb), shin).toSInt >> shamt)(msb,0)
+  val shout_r = (Cat(isSub(io.fn) & shin(msb), shin).asSInt() >> shamt)(msb,0)
   val shout_l = Reverse(shout_r)
 
   val bitwise_logic =
@@ -74,6 +74,6 @@ class ALU(implicit conf: SodorConfiguration) extends Module
     Mux(io.fn === ALU_SLL,                       shout_l,
         bitwise_logic))))
 
-  io.out := out_xpr_length(31,0).toUInt
+  io.out := out_xpr_length(31,0).asUInt()
   io.adder_out := sum
 }

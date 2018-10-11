@@ -20,7 +20,7 @@ import chisel3.util._
 
 import Common._
 
-class CoreIo(implicit conf: SodorConfiguration) extends Bundle 
+class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
 {
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
@@ -28,7 +28,7 @@ class CoreIo(implicit conf: SodorConfiguration) extends Bundle
   val dcpath = Flipped(new DebugCPath())
 }
 
-class Core(implicit conf: SodorConfiguration) extends Module
+class Core(implicit val conf: SodorConfiguration) extends Module
 {
   val io = IO(new CoreIo())
   val c  = Module(new CtlPath())

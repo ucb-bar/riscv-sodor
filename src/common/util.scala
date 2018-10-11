@@ -15,7 +15,7 @@ object Util
   implicit def intToUInt(x: Int): UInt = x.U
   implicit def intToBoolean(x: Int): Boolean = if (x != 0) true else false
   implicit def booleanToInt(x: Boolean): Int = if (x) 1 else 0
-  implicit def booleanToBool(x: Boolean): Bool = Bool(x)
+  implicit def booleanToBool(x: Boolean): Bool = x.B
   implicit def sextToConv(x: UInt) = new AnyRef {
     def sextTo(n: Int): UInt = Cat(Fill(n - x.getWidth, x(x.getWidth-1)), x)
   }
@@ -37,11 +37,11 @@ object Util
     def padTo(n: Int): UInt = {
       require(x.getWidth <= n)
       if (x.getWidth == n) x
-      else Cat(UInt(0, n - x.getWidth), x)
+      else Cat(0.U((n - x.getWidth).W), x)
     }
 
     def extract(hi: Int, lo: Int): UInt = {
-      if (hi == lo-1) UInt(0)
+      if (hi == lo-1) 0.U
       else x(hi, lo)
     }
 
@@ -55,7 +55,7 @@ object maskMatch
 {
    def apply(msk1: UInt, msk2: UInt): Bool =
    {
-      val br_match = (msk1 & msk2) != 0.U
+      val br_match = (msk1 & msk2) =/= 0.U
       return br_match
    }
 }
@@ -74,7 +74,7 @@ object PerformShiftRegister
 {
    def apply(reg_val: Bits, new_bit: Bool): Bits =
    {
-      reg_val := Cat(reg_val(reg_val.getWidth-1, 0).toBits, new_bit.toBits).toBits
+      reg_val := Cat(reg_val(reg_val.getWidth-1, 0).asUInt(), new_bit.asUInt()).asUInt()
       reg_val
    }
 }
@@ -111,12 +111,12 @@ case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
 {
   private val isWide = width > 2*inc.getWidth
   private val smallWidth = if (isWide) inc.getWidth max log2Ceil(width) else width
-  private val small = if (reset) Reg(init=0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
+  private val small = if (reset) RegInit(0.asUInt(smallWidth.W)) else Reg(UInt(smallWidth.W))
   private val nextSmall = small +& inc
   small := nextSmall
 
   private val large = if (isWide) {
-    val r = if (reset) Reg(init=0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
+    val r = if (reset) RegInit(0.asUInt((width - smallWidth).W)) else Reg(UInt((width - smallWidth).W))
     when (nextSmall(smallWidth)) { r := r + 1.U }
     r
   } else null
@@ -178,18 +178,18 @@ object Str
     var s = digs(q % rad)
     for (i <- 1 until ceil(log(2)/log(radix)*w).toInt) {
       q = q / rad
-      s = Cat(Mux(Bool(radix == 10) && q === 0.U, Str(' '), digs(q % rad)), s)
+      s = Cat(Mux((radix == 10).B && q === 0.U, Str(' '), digs(q % rad)), s)
     }
     s
   }
   def apply(x: SInt): Bits = apply(x, 10)
   def apply(x: SInt, radix: Int): Bits = {
     val neg = x < 0.S
-    val abs = Mux(neg, -x, x).toUInt
+    val abs = Mux(neg, -x, x).asUInt()
     if (radix != 10) {
       Cat(Mux(neg, Str('-'), Str(' ')), Str(abs, radix))
     } else {
-      val rad = UInt(radix)
+      val rad = radix.U
       val digs = digits(radix)
       val w = abs.getWidth
       require(w > 0)
@@ -220,7 +220,7 @@ object Str
 
   private def digit(d: Int): Char = (if (d < 10) '0'+d else 'a'-10+d).toChar
   private def digits(radix: Int): Vec[Bits] =
-    Vec((0 until radix).map(i => Str(digit(i))))
+    VecInit((0 until radix).map(i => Str(digit(i))))
 
   private def validChar(x: Char) = x == (x & 0xFF)
 }

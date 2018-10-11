@@ -16,7 +16,7 @@ import Constants._
 import Common._
 import Common.Constants._
 
-class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val inst   = Output(UInt(32.W))
    val br_eq  = Output(Bool())
@@ -26,7 +26,7 @@ class DatToCtlIo(implicit conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
@@ -35,7 +35,7 @@ class DpathIo(implicit conf: SodorConfiguration) extends Bundle()
    val dat  = new DatToCtlIo()
 }
 
-class DatPath(implicit conf: SodorConfiguration) extends Module
+class DatPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
@@ -57,7 +57,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                   (io.ctl.pc_sel === PC_EXC) -> exception_target
                   ))
 
-   val pc_reg = Reg(init = START_ADDR) 
+   val pc_reg = RegInit(START_ADDR)
 
    when (!io.ctl.stall) 
    {
@@ -80,9 +80,9 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    val wb_data = Wire(UInt(conf.xprlen.W))
  
    // Register File
-   val regfile = Mem(UInt(conf.xprlen.W), 32)
+   val regfile = Mem(32, UInt(conf.xprlen.W))
 
-   when (io.ctl.rf_wen && (wb_addr != 0.U) && !io.ctl.exception)
+   when (io.ctl.rf_wen && (wb_addr =/= 0.U) && !io.ctl.exception)
    {
       regfile(wb_addr) := wb_data
    }
@@ -94,8 +94,8 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    }
    ///
 
-   val rs1_data = Mux((rs1_addr != 0.U), regfile(rs1_addr), 0.asUInt(conf.xprlen.W))
-   val rs2_data = Mux((rs2_addr != 0.U), regfile(rs2_addr), 0.asUInt(conf.xprlen.W))
+   val rs1_data = Mux((rs1_addr =/= 0.U), regfile(rs1_addr), 0.asUInt(conf.xprlen.W))
+   val rs2_data = Mux((rs2_addr =/= 0.U), regfile(rs2_addr), 0.asUInt(conf.xprlen.W))
    
    
    // immediates
@@ -118,40 +118,40 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
                (io.ctl.op1_sel === OP1_RS1) -> rs1_data,
                (io.ctl.op1_sel === OP1_IMU) -> imm_u_sext,
                (io.ctl.op1_sel === OP1_IMZ) -> imm_z
-               )).toUInt
+               )).asUInt()
 
    val alu_op2 = MuxCase(0.U, Array(
                (io.ctl.op2_sel === OP2_RS2) -> rs2_data,
                (io.ctl.op2_sel === OP2_PC)  -> pc_reg,
                (io.ctl.op2_sel === OP2_IMI) -> imm_i_sext,
                (io.ctl.op2_sel === OP2_IMS) -> imm_s_sext
-               )).toUInt
+               )).asUInt()
 
 
 
    // ALU
    val alu_out   = Wire(UInt(conf.xprlen.W))
 
-   val alu_shamt = alu_op2(4,0).toUInt
+   val alu_shamt = alu_op2(4,0).asUInt()
 
    alu_out := MuxCase(0.U, Array(
-                  (io.ctl.alu_fun === ALU_ADD)  -> (alu_op1 + alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_SUB)  -> (alu_op1 - alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_AND)  -> (alu_op1 & alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_OR)   -> (alu_op1 | alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_XOR)  -> (alu_op1 ^ alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_SLT)  -> (alu_op1.toSInt < alu_op2.toSInt).toUInt,
-                  (io.ctl.alu_fun === ALU_SLTU) -> (alu_op1 < alu_op2).toUInt,
-                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).toUInt,
-                  (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.toSInt >> alu_shamt).toUInt,
-                  (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).toUInt,
+                  (io.ctl.alu_fun === ALU_ADD)  -> (alu_op1 + alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_SUB)  -> (alu_op1 - alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_AND)  -> (alu_op1 & alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_OR)   -> (alu_op1 | alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_XOR)  -> (alu_op1 ^ alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_SLT)  -> (alu_op1.asSInt() < alu_op2.asSInt()).asUInt(),
+                  (io.ctl.alu_fun === ALU_SLTU) -> (alu_op1 < alu_op2).asUInt(),
+                  (io.ctl.alu_fun === ALU_SLL)  -> ((alu_op1 << alu_shamt)(conf.xprlen-1, 0)).asUInt(),
+                  (io.ctl.alu_fun === ALU_SRA)  -> (alu_op1.asSInt() >> alu_shamt).asUInt(),
+                  (io.ctl.alu_fun === ALU_SRL)  -> (alu_op1 >> alu_shamt).asUInt(),
                   (io.ctl.alu_fun === ALU_COPY1)-> alu_op1
                   ))
 
    // Branch/Jump Target Calculation
    br_target       := pc_reg + imm_b_sext
    jmp_target      := pc_reg + imm_j_sext
-   jump_reg_target := (rs1_data.toUInt + imm_i_sext.toUInt)
+   jump_reg_target := (rs1_data.asUInt() + imm_i_sext.asUInt())
 
    // Control Status Registers
    val csr = Module(new CSRFile())
@@ -182,13 +182,13 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
    // datapath to controlpath outputs
    io.dat.inst   := inst
    io.dat.br_eq  := (rs1_data === rs2_data)
-   io.dat.br_lt  := (rs1_data.toSInt < rs2_data.toSInt) 
-   io.dat.br_ltu := (rs1_data.toUInt < rs2_data.toUInt)
+   io.dat.br_lt  := (rs1_data.asSInt() < rs2_data.asSInt())
+   io.dat.br_ltu := (rs1_data.asUInt() < rs2_data.asUInt())
    
    
    // datapath to data memory outputs
    io.dmem.req.bits.addr  := alu_out
-   io.dmem.req.bits.data := rs2_data.toUInt 
+   io.dmem.req.bits.data := rs2_data.asUInt()
    
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
@@ -220,7 +220,7 @@ class DatPath(implicit conf: SodorConfiguration) extends Module
       {
          // use "sed" to parse out "@@@" from the other printf code above.
          val rd = inst(RD_MSB,RD_LSB)
-         when (io.ctl.rf_wen && rd != 0.U)
+         when (io.ctl.rf_wen && rd =/= 0.U)
          {
             printf("@@@ 0x%x (0x%x) x%d 0x%x\n", pc_reg, inst, rd, Cat(Fill(32,wb_data(31)),wb_data))
          }
