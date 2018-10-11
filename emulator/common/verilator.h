@@ -2,8 +2,9 @@
 #define _ROCKET_VERILATOR_H
 
 #include "verilated_vcd_c.h"
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
+#include <string>
 
 extern bool verbose;
 extern bool done_reset;
@@ -12,7 +13,7 @@ class VerilatedVcdFILE : public VerilatedVcdFile {
  public:
   VerilatedVcdFILE(FILE* file) : file(file) {}
   ~VerilatedVcdFILE() {}
-  bool open(const string& name) override {
+  bool open(const std::string& name) override {
     // file should already be open
     return file != NULL;
   }
