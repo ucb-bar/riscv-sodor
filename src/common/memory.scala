@@ -76,14 +76,14 @@ class SyncMem(val addrWidth : Int) extends BlackBox{
 }
 
 // from the pov of the datapath
-class MemPortIo(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle 
+class MemPortIo(data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle
 {
    val req    = new DecoupledIO(new MemReq(data_width))
    val resp   = Flipped(new ValidIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
-class MemReq(data_width: Int)(implicit conf: SodorConfiguration) extends Bundle
+class MemReq(data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle
 {
    val addr = Output(UInt(conf.xprlen.W))
    val data = Output(UInt(data_width.W))
@@ -102,7 +102,7 @@ class MemResp(data_width: Int) extends Bundle
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
 //for 1,2 and 5 stage need for combinational reads 
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
    {
@@ -117,7 +117,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := io.core_ports(i).req.valid
-      io.core_ports(i).req.ready := Bool(true) // for now, no back pressure 
+      io.core_ports(i).req.ready := true.B // for now, no back pressure
       async_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
 
@@ -132,7 +132,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
       (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
-   async_data.io.dw.en := Mux((io.core_ports(DPORT).req.bits.fcn === M_XWR),Bool(true),Bool(false))
+   async_data.io.dw.en := Mux((io.core_ports(DPORT).req.bits.fcn === M_XWR),true.B,false.B)
    when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
    {
       async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
@@ -149,12 +149,12 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    ////////////
 
    // DEBUG PORT-------
-   io.debug_port.req.ready := Bool(true) // for now, no back pressure
+   io.debug_port.req.ready := true.B // for now, no back pressure
    io.debug_port.resp.valid := io.debug_port.req.valid
    // asynchronous read
    async_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := async_data.io.hr.data
-   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),Bool(true),Bool(false))
+   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),true.B,false.B)
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
       async_data.io.hw.addr := io.debug_port.req.bits.addr
@@ -163,7 +163,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    } 
 }
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorConfiguration) extends Module
+class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
    {
@@ -177,7 +177,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    sync_data.io.clk := clock
    for (i <- 0 until num_core_ports)
    {
-      io.core_ports(i).resp.valid := Reg(next = io.core_ports(i).req.valid)
+      io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
       io.core_ports(i).req.ready := true.B // for now, no back pressure 
       sync_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
@@ -214,7 +214,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 
    // DEBUG PORT-------
    io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := Reg(next = io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.resp.valid := RegNext(io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
    // asynchronous read
    sync_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := sync_data.io.hr.data
@@ -228,7 +228,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 }
 
 
-class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit conf: SodorConfiguration) extends Module
+class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
    {
@@ -250,9 +250,9 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
 
    for (i <- 0 until num_core_ports)
    {
-      io.core_ports(i).resp.valid := Reg(next = io.core_ports(i).req.valid)
+      io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
       
-      io.core_ports(i).req.ready := Bool(true) // for now, no back pressure 
+      io.core_ports(i).req.ready := true.B // for now, no back pressure
 
       val req_valid      = io.core_ports(i).req.valid
       val req_addr       = io.core_ports(i).req.bits.addr
@@ -260,7 +260,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       val req_fcn        = io.core_ports(i).req.bits.fcn
       val req_typ        = io.core_ports(i).req.bits.typ
       val byte_shift_amt = io.core_ports(i).req.bits.addr(2,0)
-      val bit_shift_amt  = Cat(byte_shift_amt, UInt(0,3))
+      val bit_shift_amt  = Cat(byte_shift_amt, 0.U(3.W))
 
       // read access
       val data_idx = Wire(UInt())
@@ -270,7 +270,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       val rdata_out = Wire(UInt(32.W))
 
       read_data_out := data_bank.read(r_data_idx)
-      rdata_out     := LoadDataGen(read_data_out, Reg(next=req_typ), Reg(next = req_addr(2,0)))
+      rdata_out     := LoadDataGen(read_data_out, RegNext(req_typ), RegNext(req_addr(2,0)))
       io.core_ports(i).resp.bits.data := rdata_out
 
 
@@ -291,8 +291,8 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    // HTIF -------
    val htif_idx = Reg(UInt())
    htif_idx := io.htif_port.req.bits.addr >> idx_lsb.U
-   io.htif_port.req.ready := Bool(true) // for now, no back pressure
-   io.htif_port.resp.valid := Reg(next=io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
+   io.htif_port.req.ready := true.B // for now, no back pressure
+   io.htif_port.resp.valid := RegNext(io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
    
    // synchronous read
    

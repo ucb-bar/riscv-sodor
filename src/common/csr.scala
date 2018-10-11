@@ -91,7 +91,7 @@ class MIP extends Bundle {
   val usip = Bool()
 }
 
-class PerfCounterIO(implicit conf: SodorConfiguration) extends Bundle{
+class PerfCounterIO(implicit val conf: SodorConfiguration) extends Bundle{
   //val eventSel = Output(UInt(conf.xprlen.W))
   val inc = Input(UInt(conf.xprlen.W))
   override def cloneType = { new PerfCounterIO().asInstanceOf[this.type] }
@@ -123,7 +123,7 @@ object CSR
   val hpmWidth = 40
 }
 
-class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
+class CSRFileIO(implicit val conf: SodorConfiguration) extends Bundle {
   val hartid = Input(UInt(conf.xprlen.W))
   val rw = new Bundle {
     val cmd = Input(UInt(CSR.SZ))
@@ -152,15 +152,15 @@ class CSRFileIO(implicit conf: SodorConfiguration) extends Bundle {
 
 }
 
-class CSRFile(implicit conf: SodorConfiguration) extends Module
+class CSRFile(implicit val conf: SodorConfiguration) extends Module
 {
   val io = IO(new CSRFileIO)
   io := DontCare
 
-  val reset_mstatus = Wire(init=new MStatus().fromBits(0))
+  val reset_mstatus = WireInit(0.U.asTypeOf(new MStatus()))
   reset_mstatus.mpp := PRV.M
   reset_mstatus.prv := PRV.M
-  val reg_mstatus = Reg(init=reset_mstatus)
+  val reg_mstatus = RegInit(reset_mstatus)
   val reg_mepc = Reg(UInt(conf.xprlen.W))
   val reg_mcause = Reg(UInt(conf.xprlen.W))
   val reg_mtval = Reg(UInt(conf.xprlen.W))
@@ -168,9 +168,9 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
   val reg_medeleg = Reg(UInt(conf.xprlen.W))
 
-  val reg_mip = Reg(init=new MIP().fromBits(0))
-  val reg_mie = Reg(init=new MIP().fromBits(0))
-  val reg_wfi = Reg(init = false.B)
+  val reg_mip = RegInit(0.U.asTypeOf(new MIP()))
+  val reg_mie = RegInit(0.U.asTypeOf(new MIP()))
+  val reg_wfi = RegInit(false.B)
   val reg_mtvec = Reg(UInt(conf.xprlen.W))
 
   val reg_time = WideCounter(64)
@@ -181,22 +181,22 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   //(io.counters zip reg_hpmevent) foreach { case (c, e) => c.eventSel := e }
   val reg_hpmcounter = io.counters.map(c => WideCounter(CSR.hpmWidth, c.inc, reset = false))
 
-  val new_prv = Wire(init = reg_mstatus.prv)
+  val new_prv = WireInit(reg_mstatus.prv)
   reg_mstatus.prv := new_prv
 
-  val reg_debug = Reg(init = false.B)
+  val reg_debug = RegInit(false.B)
   val reg_dpc = Reg(UInt(conf.xprlen.W))
   val reg_dscratch = Reg(UInt(conf.xprlen.W))
   val reg_singleStepped = Reg(Bool())
-  val reset_dcsr = Wire(init = new DCSR().fromBits(0))
+  val reset_dcsr = WireInit(0.U.asTypeOf(new DCSR()))
   reset_dcsr.xdebugver := 1
   reset_dcsr.prv := PRV.M
-  val reg_dcsr = Reg(init = reset_dcsr)
+  val reg_dcsr = RegInit(reset_dcsr)
 
   val system_insn = io.rw.cmd === CSR.I
-  val cpu_ren = io.rw.cmd != CSR.N && !system_insn
+  val cpu_ren = io.rw.cmd =/= CSR.N && !system_insn
 
-  val read_mstatus = io.status.toBits
+  val read_mstatus = io.status.asUInt()
   val isa_string = "I"
   val misa = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
   val impid = 0x8000 // indicates an anonymous source, which can be used
@@ -212,8 +212,8 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     CSRs.mimpid -> impid.U,
     CSRs.mstatus -> read_mstatus,
     CSRs.mtvec -> MTVEC.U,
-    CSRs.mip -> reg_mip.toBits,
-    CSRs.mie -> reg_mie.toBits,
+    CSRs.mip -> reg_mip.asUInt(),
+    CSRs.mie -> reg_mie.asUInt(),
     CSRs.mscratch -> reg_mscratch,
     CSRs.mepc -> reg_mepc,
     CSRs.mtval -> reg_mtval,
@@ -260,7 +260,7 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
 
   val priv_sufficient = reg_mstatus.prv >= io.decode.csr(9,8)
   val read_only = io.decode.csr(11,10).andR
-  val cpu_wen = cpu_ren && io.rw.cmd != CSR.R && priv_sufficient
+  val cpu_wen = cpu_ren && io.rw.cmd =/= CSR.R && priv_sufficient
   val wen = cpu_wen && !read_only
   val wdata = readModifyWriteCSR(io.rw.cmd, io.rw.rdata, io.rw.wdata)
   
@@ -331,23 +331,23 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
   when (wen) {
 
     when (decoded_addr(CSRs.dcsr)) {
-        val new_dcsr = new DCSR().fromBits(wdata)
+        val new_dcsr = wdata.asTypeOf(new DCSR())
         reg_dcsr.step := new_dcsr.step
         reg_dcsr.ebreakm := new_dcsr.ebreakm
         if (conf.usingUser) reg_dcsr.ebreaku := new_dcsr.ebreaku
       }
 
     when (decoded_addr(CSRs.mstatus)) {
-      val new_mstatus = new MStatus().fromBits(wdata)
+      val new_mstatus = wdata.asTypeOf(new MStatus())
       reg_mstatus.mie := new_mstatus.mie
       reg_mstatus.mpie := new_mstatus.mpie
     }
     when (decoded_addr(CSRs.mip)) {
-      val new_mip = new MIP().fromBits(wdata)
+      val new_mip = wdata.asTypeOf(new MIP())
       reg_mip.msip := new_mip.msip
     }
     when (decoded_addr(CSRs.mie)) {
-      val new_mie = new MIP().fromBits(wdata)
+      val new_mie = wdata.asTypeOf(new MIP())
       reg_mie.msip := new_mie.msip
       reg_mie.mtip := new_mie.mtip
     }
@@ -387,5 +387,5 @@ class CSRFile(implicit conf: SodorConfiguration) extends Module
     when (decoded_addr(lo)) { ctr := Cat(ctr(ctr.getWidth-1, 32), wdata) }
   }
   def readModifyWriteCSR(cmd: UInt, rdata: UInt, wdata: UInt) =
-    (Mux(cmd.isOneOf(CSR.S, CSR.C), rdata, UInt(0)) | wdata) & ~Mux(cmd === CSR.C, wdata, UInt(0))
+    (Mux(cmd.isOneOf(CSR.S, CSR.C), rdata, 0.U) | wdata) & ~Mux(cmd === CSR.C, wdata, 0.U)
 }

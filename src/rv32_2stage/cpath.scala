@@ -29,7 +29,7 @@ class CtlToDatIo extends Bundle()
    val exception = Output(Bool())
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
+class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val dcpath = Flipped(new DebugCPath())
    val imem = new MemPortIo(conf.xprlen)
@@ -40,7 +40,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
 
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit val conf: SodorConfiguration) extends Module
 {
   val io = IO(new CpathIo())
   io := DontCare

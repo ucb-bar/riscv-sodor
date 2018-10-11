@@ -37,7 +37,7 @@ class CtrlSignals extends Bundle()
    val exception = Output(Bool())   
 }
 
-class CpathIo(implicit conf: SodorConfiguration) extends Bundle() 
+class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val dcpath = Flipped(new DebugCPath())
    val imem = Flipped(new FrontEndCpuIO())
@@ -48,7 +48,7 @@ class CpathIo(implicit conf: SodorConfiguration) extends Bundle()
 }
 
                                                                                                                             
-class CtlPath(implicit conf: SodorConfiguration) extends Module
+class CtlPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
    io := DontCare
@@ -176,7 +176,7 @@ class CtlPath(implicit conf: SodorConfiguration) extends Module
    //-------------------------------
    // Exception Handling
    io.ctl.exception := !cs_inst_val && io.imem.resp.valid
-   take_evec        := Reg(next=io.ctl.exception) || io.dat.csr_eret 
+   take_evec        := RegNext(io.ctl.exception) || io.dat.csr_eret
 
 
 }
