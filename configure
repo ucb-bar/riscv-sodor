@@ -2943,7 +2943,7 @@ fi
 chiseldir=$with_chisel
 
 
-ac_config_files="$ac_config_files prefix.mk Makefile project/plugins.sbt project/build.properties project/build.scala"
+ac_config_files="$ac_config_files prefix.mk Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
