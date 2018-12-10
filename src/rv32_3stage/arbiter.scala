@@ -17,12 +17,12 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
       {
-         // TODO I need to come up with better names... this is too confusing 
+         // TODO I need to come up with better names... this is too confusing
          // from the point of view of the other modules
          val imem = Flipped(new MemPortIo(conf.xprlen)) // instruction fetch
-         val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store 
+         val dmem = Flipped(new MemPortIo(conf.xprlen)) // load/store
          val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
-      }) 
+      })
 
    //***************************
    val i1reg = Reg(UInt(conf.xprlen.W))
@@ -30,18 +30,18 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    val nextdreq = RegInit(true.B)
    io.dmem.req.ready := true.B
    //d_fire : when true data request will be put on bus
-   val d_fire = Wire(Bool()) 
+   val d_fire = Wire(Bool())
    io.imem.req.ready := d_fire
    //***************************
    // hook up requests
    // 3 cycle FSM on LW , SW , FENCE in exe stage
    // HAZ since contention for MEM PORT so next cycle STALL
-   // CYC 1 : Store inst in reg requested in prev CYC 
+   // CYC 1 : Store inst in reg requested in prev CYC
    //         make data addr available on MEM PORT
    // CYC 2 : Store data in reg to be used in next CYC
    // CYC 3 : Default State with data addr on MEM PORT
    // nextdreq ensures that data req gets access to bus only
-   // for one cycle 
+   // for one cycle
    // alternate between data and instr to avoid starvation
    when (io.dmem.req.valid && nextdreq)
    {
@@ -75,10 +75,10 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
       io.mem.req.bits.fcn  := io.imem.req.bits.fcn
       io.mem.req.bits.typ  := io.imem.req.bits.typ
    }
-   
+
    io.mem.req.bits.data := io.dmem.req.bits.data
    io.dmem.resp.valid := io.mem.resp.valid && !io.imem.resp.valid
-   
+
    when (!nextdreq){
       d1reg := io.mem.resp.bits.data
    }
@@ -90,5 +90,5 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
    io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
    io.dmem.resp.bits.data := d1reg
 }
- 
+
 }

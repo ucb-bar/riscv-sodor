@@ -17,24 +17,24 @@ import Common.Instructions._
 import Constants._
 import ALU._
 
-class CtrlSignals extends Bundle() 
+class CtrlSignals extends Bundle()
 {
    val exe_kill  = Output(Bool())    // squash EX stage (exception/mret occurred)
-   val pc_sel    = Output(UInt(3.W)) 
+   val pc_sel    = Output(UInt(3.W))
    val brjmp_sel = Output(Bool())
-   val op1_sel   = Output(UInt(2.W)) 
-   val op2_sel   = Output(UInt(2.W)) 
-   val alu_fun   = Output(UInt(SZ_ALU_FN.W)) 
-   val wb_sel    = Output(UInt(2.W)) 
-   val rf_wen    = Output(Bool()) 
+   val op1_sel   = Output(UInt(2.W))
+   val op2_sel   = Output(UInt(2.W))
+   val alu_fun   = Output(UInt(SZ_ALU_FN.W))
+   val wb_sel    = Output(UInt(2.W))
+   val rf_wen    = Output(Bool())
    val bypassable = Output(Bool())     // instruction's result can be bypassed
-   val csr_cmd   = Output(UInt(CSR.SZ)) 
+   val csr_cmd   = Output(UInt(CSR.SZ))
 
    val dmem_val  = Output(Bool())
    val dmem_fcn  = Output(UInt(M_X.getWidth.W))
    val dmem_typ  = Output(UInt(3.W))
- 
-   val exception = Output(Bool())   
+
+   val exception = Output(Bool())
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -47,7 +47,7 @@ class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    override def clone = { new CpathIo().asInstanceOf[this.type] }
 }
 
-                                                                                                                            
+
 class CtlPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new CpathIo())
@@ -69,10 +69,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   SW      -> List(Y, BR_N  , N, OP1_RS1, OP2_IMS , ALU_ADD , WB_X  , REN_0, N, MEN_1, M_XWR, MT_W,  CSR.N, M_N),
                   SB      -> List(Y, BR_N  , N, OP1_RS1, OP2_IMS , ALU_ADD , WB_X  , REN_0, N, MEN_1, M_XWR, MT_B,  CSR.N, M_N),
                   SH      -> List(Y, BR_N  , N, OP1_RS1, OP2_IMS , ALU_ADD , WB_X  , REN_0, N, MEN_1, M_XWR, MT_H,  CSR.N, M_N),
-                  
+
                   AUIPC   -> List(Y, BR_N  , N, OP1_IMU, OP2_PC  , ALU_ADD  ,WB_ALU, REN_1, Y, MEN_0, M_X ,  MT_X,  CSR.N, M_N),
                   LUI     -> List(Y, BR_N  , N, OP1_IMU, OP2_X   , ALU_COPY1,WB_ALU, REN_1, Y, MEN_0, M_X ,  MT_X,  CSR.N, M_N),
-                 
+
                   ADDI    -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_ADD , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   ANDI    -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_AND , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   ORI     -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_OR  , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
@@ -82,7 +82,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   SLLI    -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_SLL , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   SRAI    -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_SRA , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   SRLI    -> List(Y, BR_N  , N, OP1_RS1, OP2_IMI , ALU_SRL , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
-                   
+
                   SLL     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_SLL , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   ADD     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_ADD , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   SUB     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_SUB , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
@@ -93,7 +93,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   XOR     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_XOR , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   SRA     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_SRA , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   SRL     -> List(Y, BR_N  , N, OP1_RS1, OP2_RS2 , ALU_SRL , WB_ALU, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
-                  
+
                   JAL     -> List(Y, BR_J  , Y, OP1_X  , OP2_X   , ALU_X   , WB_PC4, REN_1, Y, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   JALR    -> List(Y, BR_JR , Y, OP1_RS1, OP2_IMI , ALU_X   , WB_PC4, REN_1, N, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   BEQ     -> List(Y, BR_EQ , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_N),
@@ -102,7 +102,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   BGEU    -> List(Y, BR_GEU, N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   BLT     -> List(Y, BR_LT , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_N),
                   BLTU    -> List(Y, BR_LTU, N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_N),
-  
+
                   CSRRWI  -> List(Y, BR_N  , N, OP1_IMZ, OP2_X   , ALU_COPY1,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.W, M_N),
                   CSRRSI  -> List(Y, BR_N  , N, OP1_IMZ, OP2_X   , ALU_COPY1,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.S, M_N),
                   CSRRW   -> List(Y, BR_N  , N, OP1_RS1, OP2_X   , ALU_COPY1,WB_CSR, REN_1, N, MEN_0, M_X ,  MT_X,  CSR.W, M_N),
@@ -112,11 +112,11 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                                                                                                                                   // TODO:
                   ECALL   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // don't think I actually
                   MRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), // need to flush memory here
-                  DRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
-                  EBREAK  -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
-                  WFI     -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD), 
+                  DRET    -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD),
+                  EBREAK  -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD),
+                  WFI     -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD),
 
-                  FENCE_I -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_SI), 
+                  FENCE_I -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_SI),
                   FENCE   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_1, M_X  , MT_X,  CSR.N, M_SD)
                   // we are already sequentially consistent, so no need to honor the fence instruction
                   ))
@@ -129,9 +129,9 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // Is the instruction valid? If not, mux off all control signals!
    val ctrl_valid = io.imem.resp.valid
-                           
-   // Branch Logic   
-   val take_evec = Wire(Bool()) // jump to the csr.io.evec target 
+
+   // Branch Logic
+   val take_evec = Wire(Bool()) // jump to the csr.io.evec target
                           // (for exceptions or sret, taken in the WB stage)
 
    val ctrl_pc_sel = Mux(take_evec            ,  PC_EXC,
@@ -146,8 +146,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                      PC_4
                      ))))))))))
-                           
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid 
+
+   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
@@ -157,17 +157,17 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
    io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen.toBool)
-   io.ctl.bypassable := cs_bypassable.toBool 
+   io.ctl.bypassable := cs_bypassable.toBool
 
    val rs1_addr = io.imem.resp.bits.inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
    io.ctl.csr_cmd    := Mux(!ctrl_valid, CSR.N, csr_cmd)
-   
+
    // Memory Requests
    if(NUM_MEMORY_PORTS == 1)
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
-   else 
+   else
       io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid
    io.ctl.dmem_fcn   := cs_mem_fcn
    io.ctl.dmem_typ   := cs_msk_sel

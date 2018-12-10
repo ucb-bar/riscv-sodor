@@ -117,7 +117,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                  /*Mux(io.ctl.exe_pc_sel === PC_EXC*/ exception_target)))
 
    // for a fencei, refetch the if_pc (assuming no stall, no branch, and no exception)
-   when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 && 
+   when (io.ctl.fencei && io.ctl.exe_pc_sel === PC_4 &&
          !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill)
    {
       if_pc_next := if_reg_pc
@@ -165,7 +165,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    //// DebugModule
    regfile.io.dm_addr := io.ddpath.addr
-   io.ddpath.rdata := regfile.io.dm_rdata 
+   io.ddpath.rdata := regfile.io.dm_rdata
    regfile.io.dm_en := io.ddpath.validreq
    regfile.io.dm_wdata := io.ddpath.wdata
    ///
@@ -423,11 +423,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       , exe_reg_pc
       , RegNext(exe_reg_pc)
       , RegNext(RegNext(exe_reg_pc))
-      , Mux(wb_reg_ctrl_rf_wen, Str("M"), Str(" ")) 
+      , Mux(wb_reg_ctrl_rf_wen, Str("M"), Str(" "))
       , Mux(mem_reg_ctrl_rf_wen, Str("Z"), Str(" "))
       , wb_reg_wbaddr
       , wb_reg_wbdata
-      , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F 
+      , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F
         Mux(io.ctl.dec_stall, Str("S"), Str(" ")))  //STALL->S
       , Mux(io.ctl.exe_pc_sel === 1.U, Str("B"),  //BJ -> B
         Mux(io.ctl.exe_pc_sel === 2.U, Str("J"),   //JR -> J

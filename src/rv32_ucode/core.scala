@@ -1,5 +1,5 @@
 //**************************************************************************
-// RISCV Micro-Coded Processor 
+// RISCV Micro-Coded Processor
 //--------------------------------------------------------------------------
 //
 // Christopher Celio
@@ -29,16 +29,16 @@ class Core(implicit val conf: SodorConfiguration) extends Module
   val io = IO(new CoreIo())
   val c  = Module(new CtlPath())
   val d  = Module(new DatPath())
-  
+
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat
-  
+
   c.io.mem <> io.mem
   d.io.mem <> io.mem
   io.mem.req.valid := c.io.mem.req.valid
   io.mem.req.bits.fcn := c.io.mem.req.bits.fcn
   io.mem.req.bits.typ := c.io.mem.req.bits.typ
-  
+
   d.io.ddpath <> io.ddpath
   c.io.dcpath <> io.dcpath
 }

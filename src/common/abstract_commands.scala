@@ -29,7 +29,7 @@ class ACCESS_REGISTERFields extends Bundle {
   val size = UInt(3.W)
 
   val reserved1 = UInt(1.W)
-  
+
   /* When 1, execute the program in the Program Buffer exactly once
             after performing the transfer, if any.
   */

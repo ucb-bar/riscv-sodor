@@ -54,7 +54,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
    val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
-   
+
    val wb_hazard_stall = Wire(Bool()) // hazard detected, stall in IF/EXE required
 
    //**********************************
@@ -69,24 +69,24 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val take_pc = Mux(io.ctl.pc_sel === PC_EXC,   exception_target,
                  Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
                                                  exe_brjmp_target)) // PC_BR or PC_J
-                                                    
+
    io.imem.req.bits.pc := take_pc
 
-   
+
    //**********************************
    // Execute Stage
    val exe_valid = io.imem.resp.valid
    val exe_inst  = io.imem.resp.bits.inst
    val exe_pc    = io.imem.resp.bits.pc
-   
+
    // Decode
    val exe_rs1_addr = exe_inst(RS1_MSB, RS1_LSB)
    val exe_rs2_addr = exe_inst(RS2_MSB, RS2_LSB)
    val exe_wbaddr   = exe_inst(RD_MSB,  RD_LSB)
-                       
+
    val wb_wbdata    = Wire(UInt(conf.xprlen.W))
 
-   // Hazard Stall Logic 
+   // Hazard Stall Logic
    if(NUM_MEMORY_PORTS == 1) {
       // stall for more cycles incase of store after load with read after write conflict
       val count = RegInit(1.asUInt(2.W))
@@ -105,7 +105,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       wb_hazard_stall := ((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable) ||
                          ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    }
-   
+
 
 
    // Register File
@@ -125,10 +125,10 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    val rf_rs1_data = Mux((exe_rs1_addr =/= 0.U) , regfile(exe_rs1_addr), 0.asUInt(conf.xprlen.W))
    val rf_rs2_data = Mux((exe_rs2_addr =/= 0.U) , regfile(exe_rs2_addr), 0.asUInt(conf.xprlen.W))
-   
-   
+
+
    // immediates
-   val imm_i = exe_inst(31, 20) 
+   val imm_i = exe_inst(31, 20)
    val imm_s = Cat(exe_inst(31, 25), exe_inst(11,7))
    val imm_b = Cat(exe_inst(31), exe_inst(7), exe_inst(30,25), exe_inst(11,8))
    val imm_u = Cat(exe_inst(31, 12), Fill(12,0.U))
@@ -140,8 +140,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val imm_s_sext = Cat(Fill(20,imm_s(11)), imm_s)
    val imm_b_sext = Cat(Fill(19,imm_b(11)), imm_b, 0.U)
    val imm_j_sext = Cat(Fill(11,imm_j(19)), imm_j, 0.U)
- 
-   
+
+
    // Bypass Muxes
    // bypass early for branch condition checking, and to prevent needing 3 bypass muxes
    val exe_rs1_data = MuxCase(rf_rs1_data, Array(
@@ -150,19 +150,19 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_rs2_data = MuxCase(rf_rs2_data, Array(
                            ((wb_reg_wbaddr === exe_rs2_addr) && (exe_rs2_addr =/= 0.U) && wb_reg_ctrl.rf_wen && wb_reg_ctrl.bypassable) -> wb_reg_alu)
                         )
-   
+
 
    // Operand Muxes
    val exe_alu_op1 = Mux(io.ctl.op1_sel === OP1_IMZ, imm_z,
                      Mux(io.ctl.op1_sel === OP1_IMU, imm_u,
                                                      exe_rs1_data)).asUInt()
-   
+
    val exe_alu_op2 = Mux(io.ctl.op2_sel === OP2_IMI, imm_i_sext,
                      Mux(io.ctl.op2_sel === OP2_PC,  exe_pc,
                      Mux(io.ctl.op2_sel === OP2_IMS, imm_s_sext,
                                                      exe_rs2_data))).asUInt()
-  
-        
+
+
    // ALU
    val alu = Module(new ALU())
 
@@ -175,24 +175,24 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Branch/Jump Target Calculation
    val imm_brjmp = Mux(io.ctl.brjmp_sel, imm_j_sext, imm_b_sext)
    exe_brjmp_target := exe_pc + imm_brjmp
-   exe_jump_reg_target := alu.io.adder_out 
+   exe_jump_reg_target := alu.io.adder_out
 
 
    // datapath to controlpath outputs
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
    io.dat.br_lt  := (exe_rs1_data.asSInt() < exe_rs2_data.asSInt())
    io.dat.br_ltu := (exe_rs1_data.asUInt() < exe_rs2_data.asUInt())
-    
+
    // datapath to data memory outputs
    io.dmem.req.valid     := io.ctl.dmem_val
-   if(NUM_MEMORY_PORTS == 1) 
+   if(NUM_MEMORY_PORTS == 1)
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
-   else   
-      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid 
+   else
+      io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid
    io.dmem.req.bits.typ  := io.ctl.dmem_typ
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
-                                                   
+
 
    // execute to wb registers
    wb_reg_ctrl :=  io.ctl
@@ -207,17 +207,17 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    wb_reg_alu      := exe_alu_out
    wb_reg_wbaddr   := exe_wbaddr
    wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
-                                   
+
    //**********************************
    // Writeback Stage
-   wb_reg_valid := exe_valid && !wb_hazard_stall 
-    
+   wb_reg_valid := exe_valid && !wb_hazard_stall
+
    // Control Status Registers
    val csr = Module(new CSRFile())
    csr.io := DontCare
    csr.io.decode.csr   := wb_reg_csr_addr
    csr.io.rw.wdata  := wb_reg_alu
-   csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd 
+   csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd
    val wb_csr_out    = csr.io.rw.rdata
 
    csr.io.retire    := wb_reg_valid
@@ -228,15 +228,15 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
-   
-   // WB Mux                                                                   
+
+   // WB Mux
    // Note: I'm relying on the fact that the EXE stage is holding the
    // instruction behind our jal, which assumes we always predict PC+4, and we
    // don't clear the "mispredicted" PC when we jump.
    require (PREDICT_PCP4==true)
    wb_wbdata := MuxCase(wb_reg_alu, Array(
                   (wb_reg_ctrl.wb_sel === WB_ALU) -> wb_reg_alu,
-                  (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data, 
+                  (wb_reg_ctrl.wb_sel === WB_MEM) -> io.dmem.resp.bits.data,
                   (wb_reg_ctrl.wb_sel === WB_PC4) -> exe_pc,
                   (wb_reg_ctrl.wb_sel === WB_CSR) -> wb_csr_out
                   ))
@@ -293,8 +293,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          }
       }
    }
- 
+
 }
 
- 
+
 }

@@ -23,7 +23,7 @@ class RFileIo(implicit val conf: SodorConfiguration) extends Bundle()
    val dm_rdata = Output(UInt(conf.xprlen.W))
    val dm_wdata = Input(UInt(conf.xprlen.W))
    val dm_en = Input(Bool())
-    
+
    val waddr    = Input(UInt(5.W))
    val wdata    = Input(UInt(conf.xprlen.W))
    val wen      = Input(Bool())
@@ -48,6 +48,6 @@ class RegisterFile(implicit val conf: SodorConfiguration) extends Module
    io.rs1_data := Mux((io.rs1_addr =/= 0.U), regfile(io.rs1_addr), 0.U)
    io.rs2_data := Mux((io.rs2_addr =/= 0.U), regfile(io.rs2_addr), 0.U)
    io.dm_rdata := Mux((io.dm_addr =/= 0.U), regfile(io.dm_addr), 0.U)
-       
+
 }
 }

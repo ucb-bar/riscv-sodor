@@ -1,7 +1,7 @@
 //**************************************************************************
-// RISCV Processor 
+// RISCV Processor
 //--------------------------------------------------------------------------
- 
+
 package Sodor
 {
 
@@ -23,17 +23,17 @@ class Core(resetSignal: Bool = null)(implicit val conf: SodorConfiguration) exte
    val io = IO(new CoreIo())
    val c  = Module(new CtlPath())
    val d  = Module(new DatPath())
-   
+
    c.io.ctl  <> d.io.ctl
    c.io.dat  <> d.io.dat
-   
+
    io.imem <> c.io.imem
    io.imem <> d.io.imem
    io.imem.req.valid := c.io.imem.req.valid
 
    io.dmem <> c.io.dmem
    io.dmem <> d.io.dmem
-   
+
    d.io.ddpath <> io.ddpath
    c.io.dcpath <> io.dcpath
 }

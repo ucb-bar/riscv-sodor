@@ -40,7 +40,7 @@ class CtlToDatIo extends Bundle()
 
    val pipeline_kill = Output(Bool()) // an exception occurred (detected in mem stage).
                                     // Kill the entire pipeline disregard stalls
-                                    // and kill if,dec,exe stages. 
+                                    // and kill if,dec,exe stages.
    val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
 }
 
@@ -151,9 +151,9 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // Exception Handling ---------------------
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception)
-   
-   val dec_exception = (!cs_val_inst && io.imem.resp.valid) 
- 
+
+   val dec_exception = (!cs_val_inst && io.imem.resp.valid)
+
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
 
@@ -255,14 +255,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
    io.ctl.rf_wen     := cs_rf_wen
-   
+
    // we need to stall IF while fencei goes through DEC and EXE, as there may
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || RegNext(cs_fencei)
 
    io.ctl.mem_exception := RegNext(exe_reg_exception)
-                                    
-    
+
+
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.dec_inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U

@@ -47,7 +47,7 @@ class DMIResp() extends Bundle {
   val resp = Output(UInt(DMConsts.dmiRespSize.W))
 }
 
-/** Structure to define the top-level DMI interface 
+/** Structure to define the top-level DMI interface
   *  of DebugModule.
   *  DebugModule is the consumer of this interface.
   *  Therefore it has the 'flipped' version of this.
@@ -58,8 +58,8 @@ class DMIIO(implicit val conf: SodorConfiguration) extends Bundle {
 }
 
 /** This includes the clock and reset as these are passed through the
-  *  hierarchy until the Debug Module is actually instantiated. 
-  *  
+  *  hierarchy until the Debug Module is actually instantiated.
+  *
   */
 
 class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
@@ -73,7 +73,7 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   def connect(tbclk: Clock, tbreset: Bool, dutio: DMIIO, tbsuccess: Bool) = {
     io.clk := tbclk
     io.reset := tbreset
-    dutio <> io.debug 
+    dutio <> io.debug
 
     tbsuccess := io.exit === 1.U
     when (io.exit >= 2.U) {
@@ -145,7 +145,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
 
   val read_map = collection.mutable.LinkedHashMap[Int,UInt](
     DMI_RegAddrs.DMI_ABSTRACTCS -> abstractcs.asUInt,
-    DMI_RegAddrs.DMI_DMCONTROL -> dmcontrol.asUInt, 
+    DMI_RegAddrs.DMI_DMCONTROL -> dmcontrol.asUInt,
     DMI_RegAddrs.DMI_DMSTATUS  -> dmstatus.asUInt,
     DMI_RegAddrs.DMI_COMMAND -> command.asUInt,
     DMI_RegAddrs.DMI_HARTINFO -> DMConsts.hartInfo,
@@ -167,14 +167,14 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
   io.dmi.resp.bits.data := Mux1H(for ((k, v) <- read_map) yield decoded_addr(k) -> v)
   val wdata = io.dmi.req.bits.data
   dmstatus.allhalted := dmcontrol.haltreq
-  dmstatus.allrunning := dmcontrol.resumereq 
+  dmstatus.allrunning := dmcontrol.resumereq
   io.dcpath.halt := dmstatus.allhalted && !dmstatus.allrunning
-  when (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){ 
-    when((decoded_addr(DMI_RegAddrs.DMI_ABSTRACTCS)) && io.dmi.req.valid) { 
+  when (io.dmi.req.bits.op === DMConsts.dmi_OP_WRITE){
+    when((decoded_addr(DMI_RegAddrs.DMI_ABSTRACTCS)) && io.dmi.req.valid) {
       val tempabstractcs = wdata.asTypeOf(new ABSTRACTCSFields())
-      abstractcs.cmderr := tempabstractcs.cmderr 
+      abstractcs.cmderr := tempabstractcs.cmderr
     }
-    when(decoded_addr(DMI_RegAddrs.DMI_COMMAND)) { 
+    when(decoded_addr(DMI_RegAddrs.DMI_COMMAND)) {
       val tempcommand = wdata.asTypeOf(new ACCESS_REGISTERFields())
       when(tempcommand.size === 2.U){
         command.postexec := tempcommand.postexec
@@ -186,10 +186,10 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
         abstractcs.cmderr := 2.U
       }
     }
-    when(decoded_addr(DMI_RegAddrs.DMI_DMCONTROL)) { 
+    when(decoded_addr(DMI_RegAddrs.DMI_DMCONTROL)) {
       val tempcontrol = wdata.asTypeOf(new DMCONTROLFields())
       dmcontrol.haltreq := tempcontrol.haltreq
-      dmcontrol.resumereq := tempcontrol.resumereq 
+      dmcontrol.resumereq := tempcontrol.resumereq
       dmcontrol.hartreset := tempcontrol.hartreset
       dmcontrol.ndmreset := tempcontrol.ndmreset
       dmcontrol.dmactive := tempcontrol.dmactive
@@ -217,14 +217,14 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0)) ( data0 := wdata )
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0+1)) ( data1 := wdata )
     when(decoded_addr(DMI_RegAddrs.DMI_DATA0+2)) ( data2 := wdata )
-  } 
+  }
 
   /// abstract cs command regfile access
   io.ddpath.addr := command.regno & "hfff".U
   when(command.transfer && abstractcs.cmderr =/= 0.U){
     when(command.write){
       io.ddpath.wdata := data0
-      io.ddpath.validreq := true.B     
+      io.ddpath.validreq := true.B
     } .otherwise {
       data0 := io.ddpath.rdata
     }
@@ -237,7 +237,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
 
 
   val firstreaddone = Reg(Bool())
-  
+
   io.dmi.resp.valid := Mux(firstreaddone, RegNext(io.debugmem.resp.valid), io.dmi.req.valid)
 
   when ((decoded_addr(DMI_RegAddrs.DMI_SBDATA0) && (io.dmi.req.bits.op === DMConsts.dmi_OP_READ)) || (sbcs.sbautoread && firstreaddone)){
@@ -252,10 +252,10 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     memreadfire := true.B
     firstreaddone := true.B
   }
-  
+
   when(memreadfire && io.debugmem.resp.valid)
-  {  // following is for sync data available in 
-    // next cycle memreadfire a reg allows 
+  {  // following is for sync data available in
+    // next cycle memreadfire a reg allows
     // entering this reg only in next
     sbdata := io.debugmem.resp.bits.data
     memreadfire := false.B
@@ -263,7 +263,7 @@ class DebugModule(implicit val conf: SodorConfiguration) extends Module {
     {
       sbaddr := sbaddr + 4.U
     }
-  } 
+  }
 
   when(!decoded_addr(DMI_RegAddrs.DMI_SBDATA0)){
     firstreaddone := false.B

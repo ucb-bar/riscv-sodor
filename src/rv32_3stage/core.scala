@@ -1,5 +1,5 @@
 //**************************************************************************
-// RISCV Processor 
+// RISCV Processor
 //--------------------------------------------------------------------------
 
 package Sodor
@@ -33,10 +33,10 @@ class Core(implicit val conf: SodorConfiguration) extends Module
 
    cpath.io.ctl  <> dpath.io.ctl
    cpath.io.dat  <> dpath.io.dat
-   
+
    cpath.io.dmem <> io.dmem
    dpath.io.dmem <> io.dmem
-   
+
    dpath.io.ddpath <> io.ddpath
    cpath.io.dcpath <> io.dcpath
 }

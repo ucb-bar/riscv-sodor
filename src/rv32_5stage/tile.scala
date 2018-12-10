@@ -10,8 +10,8 @@ import chisel3._
 import chisel3.util._
 
 import Constants._
-import Common._   
-import Common.Util._   
+import Common._
+import Common.Util._
 
 
 class SodorTile(implicit val conf: SodorConfiguration) extends Module
@@ -19,7 +19,7 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
    val io = IO(new Bundle {
       val dmi = Flipped(new DMIIO())
    })
-   
+
    val core   = Module(new Core())
    core.io := DontCare
    val memory = Module(new AsyncScratchPadMemory(num_core_ports = 2))
@@ -31,8 +31,8 @@ class SodorTile(implicit val conf: SodorConfiguration) extends Module
 
    core.reset := debug.io.resetcore | reset.toBool
    debug.io.ddpath <> core.io.ddpath
-   debug.io.dcpath <> core.io.dcpath 
+   debug.io.dcpath <> core.io.dcpath
    debug.io.dmi <> io.dmi
 }
- 
+
 }

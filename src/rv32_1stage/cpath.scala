@@ -15,16 +15,16 @@ import Common._
 import Common.Instructions._
 import Constants._
 
-class CtlToDatIo extends Bundle() 
+class CtlToDatIo extends Bundle()
 {
    val stall     = Output(Bool())
-   val pc_sel    = Output(UInt(PC_4.getWidth.W)) 
-   val op1_sel   = Output(UInt(OP1_X.getWidth.W)) 
-   val op2_sel   = Output(UInt(OP2_X.getWidth.W)) 
-   val alu_fun   = Output(UInt(ALU_X.getWidth.W)) 
-   val wb_sel    = Output(UInt(WB_X.getWidth.W)) 
-   val rf_wen    = Output(Bool()) 
-   val csr_cmd   = Output(UInt(CSR.SZ)) 
+   val pc_sel    = Output(UInt(PC_4.getWidth.W))
+   val op1_sel   = Output(UInt(OP1_X.getWidth.W))
+   val op2_sel   = Output(UInt(OP2_X.getWidth.W))
+   val alu_fun   = Output(UInt(ALU_X.getWidth.W))
+   val wb_sel    = Output(UInt(WB_X.getWidth.W))
+   val rf_wen    = Output(Bool())
+   val csr_cmd   = Output(UInt(CSR.SZ))
    val exception = Output(Bool())
 }
 
@@ -38,14 +38,14 @@ class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
 }
 
-                                                                                                                            
+
 class CtlPath(implicit val conf: SodorConfiguration) extends Module
-{                                                                                                                   
+{
   val io = IO(new CpathIo())
   io := DontCare
 
    val csignals =
-      ListLookup(io.dat.inst,                                                                                       
+      ListLookup(io.dat.inst,
                              List(N, BR_N  , OP1_X  ,  OP2_X  , ALU_X   , WB_X   , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
                Array(       /* val  |  BR  |  op1   |   op2     |  ALU    |  wb  | rf   | mem  | mem  | mask |  csr  */
                             /* inst | type |   sel  |    sel    |   fcn   |  sel | wen  |  en  |  wr  | type |  cmd  */
@@ -57,10 +57,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   SW      -> List(Y, BR_N  , OP1_RS1, OP2_IMS , ALU_ADD ,  WB_X  , REN_0, MEN_1, M_XWR, MT_W,  CSR.N),
                   SB      -> List(Y, BR_N  , OP1_RS1, OP2_IMS , ALU_ADD ,  WB_X  , REN_0, MEN_1, M_XWR, MT_B,  CSR.N),
                   SH      -> List(Y, BR_N  , OP1_RS1, OP2_IMS , ALU_ADD ,  WB_X  , REN_0, MEN_1, M_XWR, MT_H,  CSR.N),
-                  
+
                   AUIPC   -> List(Y, BR_N  , OP1_IMU, OP2_PC  , ALU_ADD ,  WB_ALU, REN_1, MEN_0, M_X ,  MT_X,  CSR.N),
                   LUI     -> List(Y, BR_N  , OP1_IMU, OP2_X   , ALU_COPY1, WB_ALU, REN_1, MEN_0, M_X ,  MT_X,  CSR.N),
-                 
+
                   ADDI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_ADD ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   ANDI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_AND ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   ORI     -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_OR  ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
@@ -70,7 +70,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   SLLI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_SLL ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   SRAI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_SRA ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   SRLI    -> List(Y, BR_N  , OP1_RS1, OP2_IMI , ALU_SRL ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
-                   
+
                   SLL     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_SLL ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   ADD     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_ADD ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   SUB     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_SUB ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
@@ -81,7 +81,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   XOR     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_XOR ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   SRA     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_SRA ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   SRL     -> List(Y, BR_N  , OP1_RS1, OP2_RS2 , ALU_SRL ,  WB_ALU, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
-                  
+
                   JAL     -> List(Y, BR_J  , OP1_X  , OP2_X   , ALU_X   ,  WB_PC4, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   JALR    -> List(Y, BR_JR , OP1_RS1, OP2_IMI , ALU_X   ,  WB_PC4, REN_1, MEN_0, M_X  , MT_X,  CSR.N),
                   BEQ     -> List(Y, BR_EQ , OP1_X  , OP2_X   , ALU_X   ,  WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
@@ -90,14 +90,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   BGEU    -> List(Y, BR_GEU, OP1_X  , OP2_X   , ALU_X   ,  WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
                   BLT     -> List(Y, BR_LT , OP1_X  , OP2_X   , ALU_X   ,  WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
                   BLTU    -> List(Y, BR_LTU, OP1_X  , OP2_X   , ALU_X   ,  WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
-  
+
                   CSRRWI  -> List(Y, BR_N  , OP1_IMZ, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.W),
                   CSRRSI  -> List(Y, BR_N  , OP1_IMZ, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.S),
                   CSRRCI  -> List(Y, BR_N  , OP1_IMZ, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.C),
                   CSRRW   -> List(Y, BR_N  , OP1_RS1, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.W),
                   CSRRS   -> List(Y, BR_N  , OP1_RS1, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.S),
                   CSRRC   -> List(Y, BR_N  , OP1_RS1, OP2_X   , ALU_COPY1, WB_CSR, REN_1, MEN_0, M_X ,  MT_X,  CSR.C),
-           
+
                   ECALL   -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
                   MRET    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
                   DRET    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.I),
@@ -113,8 +113,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val (cs_val_inst: Bool) :: cs_br_type         :: cs_op1_sel            :: cs_op2_sel :: cs0 = csignals
    val cs_alu_fun          :: cs_wb_sel          :: (cs_rf_wen: Bool)     ::               cs1 = cs0
    val (cs_mem_en: Bool)   :: cs_mem_fcn         :: cs_msk_sel            :: cs_csr_cmd :: Nil = cs1
-                        
-   // Branch Logic   
+
+   // Branch Logic
    val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
                          io.ctl.exception      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
@@ -127,9 +127,9 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_J  ,  PC_J,
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
-                           
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en) 
- 
+
+   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
+
    // Set the data-path control signals
    io.ctl.stall    := stall
    io.ctl.pc_sel   := ctrl_pc_sel
@@ -138,14 +138,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.ctl.alu_fun  := cs_alu_fun
    io.ctl.wb_sel   := cs_wb_sel
    io.ctl.rf_wen   := Mux(stall || io.ctl.exception, false.B, cs_rf_wen)
-  
+
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    val csr_cmd = Mux(csr_ren, CSR.R, cs_csr_cmd)
 
    io.ctl.csr_cmd  := Mux(stall, CSR.N, csr_cmd)
-   
+
    // Memory Requests
    io.imem.req.valid    := true.B
    io.imem.req.bits.fcn := M_XRD
@@ -154,15 +154,15 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.dmem.req.valid    := cs_mem_en
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
-   
+
    // Exception Handling ---------------------
    // We only need to check if the instruction is illegal (or unsupported)
    // or if the CSR file wants us to be interrupted.
    // Other exceptions are detected later in the pipeline by passing the
    // instruction to the CSR File and letting it redirect the PC as it sees
    // fit.
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid) 
- 
+   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
+
 }
 
 }
