@@ -25,7 +25,7 @@ import Constants._
 import Common._
 import Common.Util._
 
-trait MemoryOpConstants 
+trait MemoryOpConstants
 {
    val MT_X  = 0.asUInt(3.W)
    val MT_B  = 1.asUInt(3.W)
@@ -64,7 +64,7 @@ class d2h2i1(val addrWidth : Int) extends Bundle{
    val hw = new  Wport(addrWidth,32)
    val dw = new  Wport(addrWidth,32)
    val hr = new  Rport(addrWidth,32)
-   val clk = Input(Clock()) 
+   val clk = Input(Clock())
 }
 
 class AsyncReadMem(val addrWidth : Int) extends BlackBox{
@@ -101,7 +101,7 @@ class MemResp(data_width: Int) extends Bundle
 // NOTE: the default is enormous (and may crash your computer), but is bound by
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
-//for 1,2 and 5 stage need for combinational reads 
+//for 1,2 and 5 stage need for combinational reads
 class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new Bundle
@@ -121,7 +121,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       async_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
 
-   /////////// DPORT 
+   /////////// DPORT
    val req_addri = io.core_ports(DPORT).req.bits.addr
 
    val req_typi = io.core_ports(DPORT).req.bits.typ
@@ -158,9 +158,9 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
       async_data.io.hw.addr := io.debug_port.req.bits.addr
-      async_data.io.hw.data := io.debug_port.req.bits.data 
+      async_data.io.hw.data := io.debug_port.req.bits.data
       async_data.io.hw.mask := 15.U
-   } 
+   }
 }
 
 class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
@@ -178,12 +178,12 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
-      io.core_ports(i).req.ready := true.B // for now, no back pressure 
+      io.core_ports(i).req.ready := true.B // for now, no back pressure
       sync_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
 
-   /////////// DPORT 
-   //val resp_datai = Wire(UInt(conf.xprlen.W))  
+   /////////// DPORT
+   //val resp_datai = Wire(UInt(conf.xprlen.W))
    val req_addri = io.core_ports(DPORT).req.bits.addr
 
    val req_typi = Reg(UInt(3.W))
@@ -191,10 +191,10 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    val resp_datai = sync_data.io.dataInstr(DPORT).data
 
    io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
-      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)), 
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)), 
-      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)), 
-      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0)) 
+      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)),
+      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
+      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
+      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
 
    sync_data.io.dw.en := io.core_ports(DPORT).req.bits.fcn === M_XWR
@@ -209,7 +209,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 
    ///////////// IPORT
    if (num_core_ports == 2)
-      io.core_ports(IPORT).resp.bits.data := sync_data.io.dataInstr(IPORT).data 
+      io.core_ports(IPORT).resp.bits.data := sync_data.io.dataInstr(IPORT).data
    ////////////
 
    // DEBUG PORT-------
@@ -222,9 +222,9 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
    when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
    {
       sync_data.io.hw.addr := io.debug_port.req.bits.addr
-      sync_data.io.hw.data := io.debug_port.req.bits.data 
+      sync_data.io.hw.data := io.debug_port.req.bits.data
       sync_data.io.hw.mask := 15.U
-   } 
+   }
 }
 
 
@@ -237,7 +237,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    })
 
 
-   // HTIF min packet size is 8 bytes 
+   // HTIF min packet size is 8 bytes
    // but 32b core will access in 4 byte chunks
    // thus we will bank the scratchpad
    val num_bytes_per_line = 8
@@ -246,12 +246,12 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    val data_bank = SyncReadMem(num_lines, Vec(num_bytes_per_line, UInt(8.W)))
 
    // constants
-   val idx_lsb = log2Ceil(num_bytes_per_line) 
+   val idx_lsb = log2Ceil(num_bytes_per_line)
 
    for (i <- 0 until num_core_ports)
    {
       io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
-      
+
       io.core_ports(i).req.ready := true.B // for now, no back pressure
 
       val req_valid      = io.core_ports(i).req.valid
@@ -278,14 +278,14 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       // write access
       when (req_valid && req_fcn === M_XWR)
       {
-         val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0)) 
-         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).toBools)  
+         val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0))
+         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).toBools)
          // move the wdata into position on the sub-line
       }
       .elsewhen (req_valid && req_fcn === M_XRD){
          r_data_idx := data_idx
       }
-   }  
+   }
 
 
    // HTIF -------
@@ -293,20 +293,20 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    htif_idx := io.htif_port.req.bits.addr >> idx_lsb.U
    io.htif_port.req.ready := true.B // for now, no back pressure
    io.htif_port.resp.valid := RegNext(io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-   
+
    // synchronous read
-   
+
    io.htif_port.resp.bits.data := data_bank.read(htif_idx).asUInt
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {
-      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools) 
+      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools)
    }
 }
 
 
 object GenVec
 {
-   def apply(din: UInt): Vec[UInt] = 
+   def apply(din: UInt): Vec[UInt] =
    {
       val dout = Wire(Vec(8, UInt(8.W)))
       dout(0) := din(7,0)
@@ -339,9 +339,9 @@ object StoreDataGen
 
 object StoreMask
 {
-   def apply(sel: UInt, idx: UInt): UInt = 
+   def apply(sel: UInt, idx: UInt): UInt =
    {
-      val word = sel === MT_W 
+      val word = sel === MT_W
       val half = sel === MT_H
       val wmask = Wire(UInt(8.W))
       val temp_byte = Wire(UInt(8.W))

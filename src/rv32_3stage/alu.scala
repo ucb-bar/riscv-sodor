@@ -25,8 +25,8 @@ object ALU
   val ALU_SRA  = 11.U
   val ALU_SLT  = 12.U
   val ALU_SLTU = 14.U
-  val ALU_COPY1= 8.U   
-    
+  val ALU_COPY1= 8.U
+
   def isSub(cmd: UInt) = cmd(3)
   def isSLTU(cmd: UInt) = cmd(1)
 }

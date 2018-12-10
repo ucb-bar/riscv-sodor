@@ -1,5 +1,5 @@
 //**************************************************************************
-// RISCV Processor 
+// RISCV Processor
 //--------------------------------------------------------------------------
 //
 // Christopher Celio
@@ -13,7 +13,7 @@
 //
 // The goal of the 1-stage is to provide the simpliest, easiest-to-read code to
 // demonstrate the RISC-V ISA.
- 
+
 package Sodor
 {
 
@@ -38,10 +38,10 @@ class Core(implicit val conf: SodorConfiguration) extends Module
   val d  = Module(new DatPath())
   c.io.ctl  <> d.io.ctl
   c.io.dat  <> d.io.dat
-  
+
   io.imem <> c.io.imem
   io.imem <> d.io.imem
-  
+
   io.dmem <> c.io.dmem
   io.dmem <> d.io.dmem
   io.dmem.req.valid := c.io.dmem.req.valid

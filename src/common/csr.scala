@@ -2,7 +2,7 @@
 
 // TODO: add timeh, cycleh, counth, instreh counters for the full RV32I experience.
 // NOTE: This is mostly a copy from the Berkeley Rocket-chip csr file. It is
-//       overkill for a small, embedded processor. 
+//       overkill for a small, embedded processor.
 
 package Common
 
@@ -263,7 +263,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val cpu_wen = cpu_ren && io.rw.cmd =/= CSR.R && priv_sufficient
   val wen = cpu_wen && !read_only
   val wdata = readModifyWriteCSR(io.rw.cmd, io.rw.rdata, io.rw.wdata)
-  
+
   val opcode = 1.U << io.decode.csr(2,0)
   val insn_call = system_insn && opcode(0)
   val insn_break = system_insn && opcode(1)
@@ -287,7 +287,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     io.evec := "h80000004".U
     reg_mepc := io.pc // misaligned memory exceptions not supported...
   }
-  
+
   assert(PopCount(insn_ret :: io.exception :: Nil) <= 1, "these conditions must be mutually exclusive")
 
    when (reg_time >= reg_mtimecmp) {
@@ -309,7 +309,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     io.evec := reg_mepc
   }
 
-  //ECALL 
+  //ECALL
   when(insn_call){
     io.evec := "h80000004".U
     reg_mcause := reg_mstatus.prv + Causes.user_ecall
@@ -373,7 +373,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
 
     if(conf.usingUser){
       when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
-      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }  
+      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }
     }
   }
 

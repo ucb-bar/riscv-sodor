@@ -23,7 +23,7 @@ object Util
   implicit def wcToUInt(c: WideCounter): UInt = c.value
   implicit class UIntIsOneOf(val x: UInt) extends AnyVal {
     def isOneOf(s: Seq[UInt]): Bool = s.map(x === _).reduce(_||_)
-  
+
     def isOneOf(u1: UInt, u2: UInt*): Bool = isOneOf(u1 +: u2.toSeq)
   }
 
@@ -49,7 +49,7 @@ object Util
   }
 }
 
- 
+
 //do two masks have at least 1 bit match?
 object maskMatch
 {
@@ -59,7 +59,7 @@ object maskMatch
       return br_match
    }
 }
-   
+
 //clear one-bit in the Mask as specified by the idx
 object clearMaskBit
 {
@@ -68,7 +68,7 @@ object clearMaskBit
       return (msk & ~(1.U << idx))(msk.getWidth-1, 0)
    }
 }
-  
+
 //shift a register over by one bit
 object PerformShiftRegister
 {
@@ -104,7 +104,7 @@ object Split
     w
   }
 }
- 
+
 
 // a counter that clock gates most of its MSBs using the LSB carry-out
 case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
@@ -139,20 +139,20 @@ case class WideCounter(width: Int, inc: UInt = 1.U, reset: Boolean = true)
 // taken from rocket FPU
 object RegEn
 {
-   def apply[T <: Data](data: T, en: Bool) = 
+   def apply[T <: Data](data: T, en: Bool) =
    {
       val r = Reg(data)
       when (en) { r := data }
       r
    }
-   def apply[T <: Bits](data: T, en: Bool, resetVal: T) = 
+   def apply[T <: Bits](data: T, en: Bool, resetVal: T) =
    {
       val r = RegInit(resetVal)
       when (en) { r := data }
       r
    }
 }
- 
+
 object Str
 {
   def apply(s: String): UInt = {
@@ -224,7 +224,7 @@ object Str
 
   private def validChar(x: Char) = x == (x & 0xFF)
 }
- 
+
 
 
 }

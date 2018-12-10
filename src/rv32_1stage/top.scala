@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 
 
-class Top extends Module 
+class Top extends Module
 {
    val io = IO(new Bundle{
       val success = Output(Bool())
