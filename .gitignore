@@ -8,7 +8,9 @@ emulator/*/generated-src-debug
 emulator/*/*.o
 emulator/*/*.a
 emulator/*/output/
+emulator/*/obj_dir/
 prefix.mk
+Makefile
 *.tar.gz
 install/share
 *.pyc
