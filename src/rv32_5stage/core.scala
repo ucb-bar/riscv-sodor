@@ -6,9 +6,8 @@ package Sodor
 {
 
 import chisel3._
-import chisel3.util._
-
 import Common._
+import chisel3.core.withReset
 
 class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
 {
@@ -18,24 +17,26 @@ class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
    val dmem = new MemPortIo(conf.xprlen)
 }
 
-class Core(resetSignal: Bool = null)(implicit val conf: SodorConfiguration) extends Module(_reset = resetSignal)
+class Core(resetSignal: Bool = null)(implicit val conf: SodorConfiguration) extends Module()
 {
-   val io = IO(new CoreIo())
-   val c  = Module(new CtlPath())
-   val d  = Module(new DatPath())
+    val io = IO(new CoreIo())
+    val c = Module(new CtlPath())
+    val d = Module(new DatPath())
 
-   c.io.ctl  <> d.io.ctl
-   c.io.dat  <> d.io.dat
+  withReset(resetSignal) {
+    c.io.ctl <> d.io.ctl
+    c.io.dat <> d.io.dat
 
-   io.imem <> c.io.imem
-   io.imem <> d.io.imem
-   io.imem.req.valid := c.io.imem.req.valid
+    io.imem <> c.io.imem
+    io.imem <> d.io.imem
+    io.imem.req.valid := c.io.imem.req.valid
 
-   io.dmem <> c.io.dmem
-   io.dmem <> d.io.dmem
+    io.dmem <> c.io.dmem
+    io.dmem <> d.io.dmem
 
-   d.io.ddpath <> io.ddpath
-   c.io.dcpath <> io.dcpath
+    d.io.ddpath <> io.ddpath
+    c.io.dcpath <> io.dcpath
+  }
 }
 
 }
