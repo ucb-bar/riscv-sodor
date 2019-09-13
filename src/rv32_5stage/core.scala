@@ -7,7 +7,6 @@ package Sodor
 
 import chisel3._
 import Common._
-import chisel3.core.withReset
 
 class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
 {
