@@ -1,10 +1,6 @@
 # Declaration of common variables
 
-RISCV           := @riscv_path@
 srcDir          := @abs_top_srcdir@
-installTop      := $(DESTDIR)$(RISCV)
-buildIncludeDir := $(RISCV)/include
-buildLibDir     := $(RISCV)/lib
 buildDir        := @abs_top_builddir@
 
 # Paths to different source trees

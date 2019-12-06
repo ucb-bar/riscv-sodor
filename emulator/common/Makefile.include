@@ -41,10 +41,9 @@ ifeq ($(wildcard $(VERILATOR_INCLUDE)/vltstd/vpi_user.h),)
 $(error <vltstd/vpi_user.h> not found in include path: $(VERILATOR_INCLUDE))
 endif
  
-#riscv-pk is relative to top of sodor
-#pk_hex is relative to emulator/proc directory
-RISCV_PK:= $(installTop)/riscv-pk/target/bin/pk
-PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
+# TODO: Remove since pk is unused
+#RISCV_PK:= $(installTop)/riscv-pk/target/bin/pk
+#PK_HEX  := $(addsuffix .hex,$(RISCV_PK))
 
 # Allow us to use different Tracer modules for each processor
 TRACERPATH?=$(common)

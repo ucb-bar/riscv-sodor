@@ -86,7 +86,7 @@ export PATH=$PATH:$VERILATOR_ROOT/bin
 
 Build the sodor emulators
 ```bash
-./configure --with-riscv=/usr/local
+./configure
 make
 # To run the all the stages with the given tests available in ./install
 make run-emulator
@@ -110,7 +110,7 @@ the path to the local Chisel source directory to the configure script.
 
     $ git clone https://github.com/ucb-bar/chisel.git
     $ cd riscv-sodor
-    $ ./configure --with-riscv=/usr/local --with-chisel=../chisel
+    $ ./configure --with-chisel=../chisel
     $ make
 
 Creating a source release package
