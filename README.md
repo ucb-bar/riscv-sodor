@@ -50,9 +50,8 @@ Building the processor emulators
 
 Because this repository is designed to be used as RISC-V processor
 examples written in [Chisel3](https://github.com/freechipsproject/chisel3/wiki) (and a regressive testsuite for Chisel updates),
-no external [RISC-V tools](http://riscv.org) are used (with the exception of
-the RISC-V [front-end server](https://github.com/codelec/riscv-fesvr) and
-optionally, the [spike-dasm](https://github.com/riscv/riscv-isa-run) binary to
+no external [RISC-V tools](http://riscv.org) are used (with the optional
+exception of the [spike-dasm](https://github.com/riscv/riscv-isa-sim) binary to
 provide a disassembly of instructions in the generated *.out files).
 The assumption is that [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-toolchain) is not
 available on the local system.  Thus, RISC-V unit tests and benchmarks were
@@ -85,14 +84,6 @@ export VERILATOR_ROOT=$PWD
 export PATH=$PATH:$VERILATOR_ROOT/bin
 ```
 
-Install the RISC-V front-end server to talk between the host and RISC-V target processors.
-```bash
-cd riscv-fesvr
-mkdir build; cd build
-../configure --prefix=/usr/local
-make install 
-```
-
 Build the sodor emulators
 ```bash
 ./configure --with-riscv=/usr/local
@@ -104,8 +95,6 @@ make install
 # Clean all generated files
 make clean
 ```
-(Although you can set the prefix to any directory of your choice, they must be
-the same directory for both riscv-fesvr and riscv-sodor).
 
 (Alternative) Build together with Chisel sources
 ------------------------------------------------

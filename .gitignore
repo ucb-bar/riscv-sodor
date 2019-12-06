@@ -8,6 +8,7 @@ emulator/*/*.o
 emulator/*/*.a
 emulator/*/obj_dir/
 emulator/*/output/
+emulator/*/fesvr/
 src/*/target/
 config.status
 Makefile

@@ -41,8 +41,8 @@ int main(int argc, char** argv)
    const char* loadmem = NULL;
    FILE *vcdfile = NULL, *logfile = stderr;
    const char* failure = NULL;
-   
-   std::vector<std::string> to_dtm;
+   int optind;
+
    for (int i = 1; i < argc; i++)
    {
       std::string arg = argv[i];
@@ -54,24 +54,23 @@ int main(int argc, char** argv)
          log = true;
       else if (arg.substr(0, 12) == "+max-cycles=")
          max_cycles = atoll(argv[i]+12);
-      else if (arg.substr(0, 9) == "+loadmem="){
-         loadmem = argv[i]+9;
-         to_dtm.push_back(argv[i]+9);
+      else { // End of EMULATOR options
+         optind = i;
+         break;
       }
    }
 
-   const int disasm_len = 24;
-
-   if(!to_dtm.size()){
-      fprintf(stderr,"No binary specified for emulator\n");
-      return 1;
+   // Shift HTIF options to the front of argv
+   int htif_argc = 1 + argc - optind;
+   for (int i = 1; optind < argc;)
+   {
+      argv[i++] = argv[optind++];
    }
-
 
    VTop dut; // design under test, aka, your chisel code
 
    //Instantiated DTM
-   dtm = new dtm_t(to_dtm);
+   dtm = new dtm_t(htif_argc, argv);
    fprintf(stderr, "Instantiated DTM.\n");
 
 #if VM_TRACE
