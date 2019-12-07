@@ -282,10 +282,9 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   io.eret := insn_call || insn_break || insn_ret
 
   // ILLEGAL INSTR
+  // TODO: Support misaligned address exceptions
   when (io.exception) {
     reg_mcause := Causes.illegal_instruction
-    io.evec := "h80000004".U
-    reg_mepc := io.pc // misaligned memory exceptions not supported...
   }
 
   assert(PopCount(insn_ret :: io.exception :: Nil) <= 1, "these conditions must be mutually exclusive")
@@ -293,6 +292,10 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
    when (reg_time >= reg_mtimecmp) {
       reg_mip.mtip := true
    }
+
+  // io.evec must be held stable for more than one cycle for the
+  // microcoded code to correctly redirect the PC on exceptions
+  io.evec := 0x80000004L.U
 
   //DRET
   when(insn_ret && io.decode.csr(10)){
@@ -311,16 +314,17 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
 
   //ECALL
   when(insn_call){
-    io.evec := "h80000004".U
     reg_mcause := reg_mstatus.prv + Causes.user_ecall
   }
 
   //EBREAK
   when(insn_break){
-    io.evec := "h80000004".U
     reg_mcause := Causes.breakpoint
   }
 
+  when (io.exception || insn_call || insn_break) {
+    reg_mepc := io.pc
+  }
 
   io.time := reg_time
   io.csr_stall := reg_wfi

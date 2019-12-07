@@ -142,8 +142,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata
    csr.io.retire    := io.ctl.upc_is_fetch
-   // for now, the ucode does NOT support exceptions
-   csr.io.exception := io.ctl.exception //false.B
+   csr.io.exception := io.ctl.exception
    csr.io.pc        := regfile(PC_IDX) - 4.U
    exception_target := csr.io.evec
 
