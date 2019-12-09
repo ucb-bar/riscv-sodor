@@ -55,12 +55,14 @@ run-emulator: $(patsubst %,emulator/%/generated-src/timestamp,$(targets))
 run-emulator-debug: $(patsubst %,emulator/%/generated-src-debug/timestamp,$(targets))
 
 clean-tests:
-	make -C $(patsubst %,emulator/%,$(all_targets)) clean-tests
+	for d in $(addprefix emulator/,$(all_targets)) ; do \
+		$(MAKE) -C "$${d}" clean-tests ; \
+	done
 
 clean:
 	-find sbt -type d -name target -exec rm -rf {} \+
-	for d in $(patsubst %,emulator/%,$(all_targets)) ; do \
-		make -C $$d clean ; \
+	for d in $(addprefix emulator/,$(all_targets)) ; do \
+		$(MAKE) -C $$d clean ; \
 	done
 	$(RM) test-results.xml
 
@@ -92,7 +94,7 @@ emulator/%/generated-src/timestamp: emulator/%/emulator
 	@echo
 	@echo running basedir/Makefile: make run-emulator
 	@echo
-	make -C $(dir $<) run
+	$(MAKE) -C $(dir $<) run
 	install -d $(dir $@)
 	date > $@
 
@@ -100,17 +102,19 @@ emulator/%/generated-src-debug/timestamp: emulator/%/emulator-debug
 	@echo
 	@echo running basedir/Makefile: make run-emulator-debug
 	@echo
-	make -C $(dir $<) run-debug
+	$(MAKE) -C $(dir $<) run-debug
 	install -d $(dir $@)
 	date > $@
 
 emulator/%/emulator: $(prerequisites)
-	make -C $(dir $@)
+	$(MAKE) -C $(dir $@)
 
 emulator/%/emulator-debug: $(prerequisites)
-	make -C $(dir $@) emulator-debug
+	$(MAKE) -C $(dir $@) emulator-debug
 
-.PHONY: run-emulator target clean clean-tests
+.PHONY: all install dist-src compile shell debug console
+.PHONY: run-emulator run-emulator-debug target clean clean-tests
+.PHONY: reports report-cpi report-bp report-stats
 
 # Because we are using recursive makefiles and emulator is an actual file.
 emulator/rv32_1stage/emulator: $(wildcard $(srcDir)/src/common/*.scala) \
@@ -146,5 +150,5 @@ emulator/rv32_ucode/emulator-debug: $(wildcard $(srcDir)/src/common/*.scala) \
 .PHONY:	jenkins-build
 
 jenkins-build:
-	make clean run-emulator
-	make reports
+	$(MAKE) clean run-emulator
+	$(MAKE) reports
