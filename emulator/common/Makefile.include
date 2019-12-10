@@ -1,4 +1,6 @@
-SHELL := /bin/sh
+SHELL := /bin/bash
+.SHELLFLAGS += -o pipefail
+
 .SUFFIXES: # Disable built-in suffix rules
 
 .PHONY: all
@@ -216,7 +218,7 @@ output/%.out: $(global_tstdir)/% emulator | output
 
 # Allow some cores to print out a "commit log", prepended with "@@@ ". Can be compared against the Spike ISA simulator.
 output/%.vpd: output/%.hex emulator-debug | output
-	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- $< 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	-./emulator-debug +max-cycles=$(asm_test_timeout) $(seed) +verbose -v- $< 2> $(patsubst %.vpd,%.temp,$@) | vcd2vpd - $@ > /dev/null
 	sed -e '/@@@/ !d' -e 's/-.*//g' -e 's/@@@ //' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.commit,$@)
 	sed -e '/@@@/ d' <$(patsubst %.vpd,%.temp,$@) >$(patsubst %.vpd,%.out,$@)
 	rm $(patsubst %.vpd,%.temp,$@)
@@ -231,7 +233,7 @@ $(addprefix output/, $(global_bmarks_vcd)): output/%.riscv.vcd: $(global_bmarkdi
 $(addprefix output/, $(global_bmarks_outgz)): output/%.riscv.out.gz: emulator | output
 	./emulator +max-cycles=$(bmark_timeout) +verbose $(global_bmarkdir)/$*.$(filetype) 2>&1 | gzip > $@
 $(addprefix output/, $(global_bmarks_vpd)): output/%.riscv.vpd: emulator-debug | output
-	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null && [ $$PIPESTATUS -eq 0 ]
+	./emulator-debug +max-cycles=$(bmark_timeout) $(seed) +verbose -v- $(global_bmarkdir)/$*.$(filetype) 2> $(patsubst %.vpd,%.out,$@) | vcd2vpd - $@ > /dev/null
  
 else                                                   
 
