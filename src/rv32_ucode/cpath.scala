@@ -38,6 +38,7 @@ class CtlToDatIo extends Bundle()
    val upc     = Output(UInt()) // for debugging purposes
    val upc_is_fetch = Output(Bool()) // for debugging purposes
    val exception = Output(Bool())
+   val retire = Output(Bool())
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -144,6 +145,16 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    io.ctl.upc := upc_state
    io.ctl.upc_is_fetch := (upc_state === label_target_map("FETCH").U)
+
+   // track whether current instruction caused an exception
+   val en_retire = RegInit(false.B)
+   when (io.ctl.upc_is_fetch) {
+      en_retire := true.B
+   }
+   when (io.ctl.exception) {
+      en_retire := false.B
+   }
+   io.ctl.retire := io.ctl.upc_is_fetch && en_retire
 
    // Memory Interface
    io.mem.req.bits.fcn := Mux(cs.en_mem && cs.mem_wr , M_XWR, M_XRD)

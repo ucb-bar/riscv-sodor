@@ -51,6 +51,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Pipeline State Registers
    val wb_reg_valid    = RegInit(false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
+   val wb_reg_pc       = Reg(UInt(conf.xprlen.W))
    val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
    val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
@@ -195,9 +196,12 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
 
    // execute to wb registers
+   wb_reg_valid := exe_valid
    wb_reg_ctrl :=  io.ctl
+   wb_reg_pc := exe_pc
    when (wb_hazard_stall || io.ctl.exe_kill)
    {
+      wb_reg_valid          := false.B
       wb_reg_ctrl.rf_wen    := false.B
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := false.B
@@ -210,7 +214,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Writeback Stage
-   wb_reg_valid := exe_valid && !wb_hazard_stall
 
    // Control Status Registers
    val csr = Module(new CSRFile())
@@ -220,9 +223,9 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd
    val wb_csr_out    = csr.io.rw.rdata
 
-   csr.io.retire    := wb_reg_valid
-   csr.io.exception := RegNext(io.ctl.exception)
-   csr.io.pc        := exe_pc - 4.U
+   csr.io.retire    := wb_reg_valid && !wb_reg_ctrl.exception
+   csr.io.exception := wb_reg_ctrl.exception
+   csr.io.pc        := wb_reg_pc
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
 
@@ -244,14 +247,12 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    //**********************************
    // Printout
 
-   val debug_wb_pc = Wire(UInt(32.W))
-   debug_wb_pc := Mux(RegNext(wb_hazard_stall), 0.U, RegNext(exe_pc))
    val debug_wb_inst = RegNext(Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
 
    printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
       csr.io.time(31,0),
       csr.io.retire,
-      debug_wb_pc,
+      wb_reg_pc,
       wb_reg_wbaddr,
       wb_wbdata,
       wb_reg_ctrl.rf_wen,
@@ -282,11 +283,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          val rd = debug_wb_inst(RD_MSB,RD_LSB)
          when (wb_reg_ctrl.rf_wen && rd =/= 0.U)
          {
-            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", debug_wb_pc, debug_wb_inst, rd, Cat(Fill(32,wb_wbdata(31)),wb_wbdata))
+            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", wb_reg_pc, debug_wb_inst, rd, Cat(Fill(32,wb_wbdata(31)),wb_wbdata))
          }
          .otherwise
          {
-            printf("@@@ 0x%x (0x%x)\n", debug_wb_pc, debug_wb_inst)
+            printf("@@@ 0x%x (0x%x)\n", wb_reg_pc, debug_wb_inst)
          }
       }
    }

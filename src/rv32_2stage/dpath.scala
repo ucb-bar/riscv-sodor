@@ -47,6 +47,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_reg_pc       = RegInit(0.asUInt(conf.xprlen.W))
    val exe_reg_pc_plus4 = RegInit(0.asUInt(conf.xprlen.W))
    val exe_reg_inst     = RegInit(BUBBLE)
+   val exe_reg_valid    = RegInit(false.B)
 
    //**********************************
    // Instruction Fetch Stage
@@ -84,11 +85,13 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    {
       exe_reg_inst := BUBBLE
       exe_reg_pc   := 0.U
+      exe_reg_valid := false.B
    }
    .otherwise
    {
       exe_reg_inst := if_inst
       exe_reg_pc   := if_reg_pc
+      exe_reg_valid := true.B
    }
 
    exe_reg_pc_plus4 := if_pc_plus4
@@ -185,7 +188,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
 
-   csr.io.retire    := !io.ctl.stall // TODO verify this works properly
+   csr.io.retire    := exe_reg_valid && !(io.ctl.stall || io.ctl.exception)
    csr.io.exception := io.ctl.exception
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec

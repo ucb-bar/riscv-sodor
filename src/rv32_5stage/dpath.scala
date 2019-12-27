@@ -52,10 +52,12 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val if_reg_pc             = RegInit(START_ADDR)
 
    // Instruction Decode State
+   val dec_reg_valid         = RegInit(false.B)
    val dec_reg_inst          = RegInit(BUBBLE)
    val dec_reg_pc            = RegInit(0.asUInt(conf.xprlen.W))
 
    // Execute State
+   val exe_reg_valid         = RegInit(false.B)
    val exe_reg_inst          = RegInit(BUBBLE)
    val exe_reg_pc            = RegInit(0.asUInt(conf.xprlen.W))
    val exe_reg_wbaddr        = Reg(UInt(5.W))
@@ -75,6 +77,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_csr_cmd  = RegInit(CSR.N)
 
    // Memory State
+   val mem_reg_valid         = RegInit(false.B)
    val mem_reg_pc            = Reg(UInt(conf.xprlen.W))
    val mem_reg_inst          = Reg(UInt(conf.xprlen.W))
    val mem_reg_alu_out       = Reg(Bits())
@@ -92,6 +95,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val mem_reg_ctrl_csr_cmd  = RegInit(CSR.N)
 
    // Writeback State
+   val wb_reg_valid          = RegInit(false.B)
    val wb_reg_wbaddr         = Reg(UInt())
    val wb_reg_wbdata         = Reg(UInt(conf.xprlen.W))
    val wb_reg_ctrl_rf_wen    = RegInit(false.B)
@@ -129,16 +133,19 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    when (io.ctl.pipeline_kill)
    {
+      dec_reg_valid := false.B
       dec_reg_inst := BUBBLE
    }
    .elsewhen (!io.ctl.dec_stall && !io.ctl.full_stall)
    {
       when (io.ctl.if_kill)
       {
+         dec_reg_valid := false.B
          dec_reg_inst := BUBBLE
       }
       .otherwise
       {
+         dec_reg_valid := true.B
          dec_reg_inst := if_inst
       }
 
@@ -245,6 +252,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    {
       // (kill exe stage)
       // insert NOP (bubble) into Execute stage on front-end stall (e.g., hazard clearing)
+      exe_reg_valid         := false.B
       exe_reg_inst          := BUBBLE
       exe_reg_wbaddr        := 0.U
       exe_reg_ctrl_rf_wen   := false.B
@@ -268,6 +276,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
       when (io.ctl.dec_kill)
       {
+         exe_reg_valid         := false.B
          exe_reg_inst          := BUBBLE
          exe_reg_wbaddr        := 0.U
          exe_reg_ctrl_rf_wen   := false.B
@@ -278,6 +287,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       }
       .otherwise
       {
+         exe_reg_valid         := dec_reg_valid
          exe_reg_inst          := dec_reg_inst
          exe_reg_wbaddr        := dec_wbaddr
          exe_reg_ctrl_rf_wen   := io.ctl.rf_wen
@@ -324,13 +334,15 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    when (io.ctl.pipeline_kill)
    {
-      mem_reg_pc            := BUBBLE
+      mem_reg_valid         := false.B
+      mem_reg_inst          := BUBBLE
       mem_reg_ctrl_rf_wen   := false.B
       mem_reg_ctrl_mem_val  := false.B
       mem_reg_ctrl_csr_cmd  := false.B
    }
    .elsewhen (!io.ctl.full_stall)
    {
+      mem_reg_valid         := exe_reg_valid
       mem_reg_pc            := exe_reg_pc
       mem_reg_inst          := exe_reg_inst
       mem_reg_alu_out       := Mux((exe_reg_ctrl_wb_sel === WB_PC4), exe_pc_plus4, exe_alu_out)
@@ -359,7 +371,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 
-   csr.io.retire    := !io.ctl.full_stall && !io.ctl.dec_stall
+   csr.io.retire    := wb_reg_valid
    csr.io.exception := io.ctl.mem_exception
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
@@ -385,12 +397,14 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    when (!io.ctl.full_stall)
    {
+      wb_reg_valid         := mem_reg_valid && !io.ctl.mem_exception
       wb_reg_wbaddr        := mem_reg_wbaddr
       wb_reg_wbdata        := mem_wbdata
       wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, false.B, mem_reg_ctrl_rf_wen)
    }
    .otherwise
    {
+      wb_reg_valid         := false.B
       wb_reg_ctrl_rf_wen   := false.B
    }
 
