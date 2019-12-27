@@ -100,6 +100,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_wbaddr   = exe_reg_inst(RD_MSB,  RD_LSB)
 
    val exe_wbdata = Wire(UInt(conf.xprlen.W))
+   val exe_wben = io.ctl.rf_wen && !io.ctl.exception
 
    // Register File
    val regfile = Mem(32, UInt(conf.xprlen.W))
@@ -112,7 +113,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    ///
 
 
-   when (io.ctl.rf_wen && (exe_wbaddr =/= 0.U) && !io.ctl.exception)
+   when (exe_wben && (exe_wbaddr =/= 0.U))
    {
       regfile(exe_wbaddr) := exe_wbdata
    }
@@ -216,35 +217,31 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dmem.req.bits.data := exe_rs2_data.asUInt()
 
 
-   // Time Stamp Counter & Retired Instruction Counter
-   val tsc_reg = RegInit(0.asUInt(conf.xprlen.W))
-   tsc_reg := tsc_reg + 1.U
-
-   val irt_reg = RegInit(0.asUInt(conf.xprlen.W))
-   when (!io.ctl.stall && !io.ctl.if_kill) { irt_reg := irt_reg + 1.U }
-
-
    // Printout
-   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] PC= (0x%x,0x%x) [%x,%x] %c%c%c Exe: DASM(%x)\n"
-      , tsc_reg(31,0)
-      , exe_alu_op1
-      , exe_alu_op2
-      , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
-      , exe_wbaddr
-      , exe_wbdata
-      , if_reg_pc
-      , exe_reg_pc
-      , if_inst(6,0)
-      , exe_reg_inst(6,0)
-      , Mux(io.ctl.stall, Str("S"), Str(" ")) //stall -> S
-      , Mux(io.ctl.if_kill, Str("K"), Str(" ")) // Kill -> K
-      , Mux(io.ctl.pc_sel  === 1.U, Str("B"), // BR -> B
-         Mux(io.ctl.pc_sel === 2.U, Str("J"),
-         Mux(io.ctl.pc_sel === 3.U, Str("R"),  // JR -> R
-         Mux(io.ctl.pc_sel === 4.U, Str("E"),  // EX -> E
-         Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
-      , exe_reg_inst
-      )
+   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
+      csr.io.time(31,0),
+      csr.io.retire,
+      exe_reg_pc,
+      exe_wbaddr,
+      exe_wbdata,
+      exe_wben,
+      exe_rs1_addr,
+      exe_alu_op1,
+      exe_rs2_addr,
+      exe_alu_op2,
+      exe_reg_inst,
+      MuxCase(Str(" "), Seq(
+         io.ctl.stall -> Str("S"),
+         io.ctl.if_kill -> Str("K"))),
+      MuxLookup(io.ctl.pc_sel, Str("?"), Seq(
+         PC_BR -> Str("B"),
+         PC_J -> Str("J"),
+         PC_JR -> Str("R"),
+         PC_EXC -> Str("E"),
+         PC_4 -> Str(" "))),
+      Mux(csr.io.exception, Str("X"), Str(" ")),
+      exe_reg_inst)
+
 }
 
 

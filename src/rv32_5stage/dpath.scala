@@ -415,28 +415,31 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dmem.req.bits.typ  := mem_reg_ctrl_mem_typ
    io.dmem.req.bits.data := mem_reg_rs2_data
 
-   // Printout
-   printf("Cyc= %d (0x%x, 0x%x, 0x%x, 0x%x, 0x%x) WB[%c%c %x: 0x%x] %c %c %c ExeInst: DASM(%x)\n"
-      , csr.io.time(31,0)
-      , if_reg_pc
-      , dec_reg_pc
-      , exe_reg_pc
-      , RegNext(exe_reg_pc)
-      , RegNext(RegNext(exe_reg_pc))
-      , Mux(wb_reg_ctrl_rf_wen, Str("M"), Str(" "))
-      , Mux(mem_reg_ctrl_rf_wen, Str("Z"), Str(" "))
-      , wb_reg_wbaddr
-      , wb_reg_wbdata
-      , Mux(io.ctl.full_stall, Str("F"),   //FREEZE-> F
-        Mux(io.ctl.dec_stall, Str("S"), Str(" ")))  //STALL->S
-      , Mux(io.ctl.exe_pc_sel === 1.U, Str("B"),  //BJ -> B
-        Mux(io.ctl.exe_pc_sel === 2.U, Str("J"),   //JR -> J
-        Mux(io.ctl.exe_pc_sel === 3.U, Str("E"),   //EX -> E
-        Mux(io.ctl.exe_pc_sel === 0.U, Str(" "), Str("?")))))
-      , Mux(csr.io.exception, Str("X"), Str(" "))
-      , Mux(io.ctl.pipeline_kill, BUBBLE, exe_reg_inst)
-      )
+   val wb_reg_inst = RegNext(mem_reg_inst)
 
+   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
+      csr.io.time(31,0),
+      csr.io.retire,
+      RegNext(mem_reg_pc),
+      wb_reg_wbaddr,
+      wb_reg_wbdata,
+      wb_reg_ctrl_rf_wen,
+      RegNext(mem_reg_rs1_addr),
+      RegNext(mem_reg_op1_data),
+      RegNext(mem_reg_rs2_addr),
+      RegNext(mem_reg_op2_data),
+      wb_reg_inst,
+      MuxCase(Str(" "), Seq(
+         io.ctl.pipeline_kill -> Str("K"),
+         io.ctl.full_stall -> Str("F"),
+         io.ctl.dec_stall -> Str("S"))),
+      MuxLookup(io.ctl.exe_pc_sel, Str("?"), Seq(
+         PC_BRJMP -> Str("B"),
+         PC_JALR -> Str("R"),
+         PC_EXC -> Str("E"),
+         PC_4 -> Str(" "))),
+      Mux(csr.io.exception, Str("X"), Str(" ")),
+      wb_reg_inst)
 }
 
 
