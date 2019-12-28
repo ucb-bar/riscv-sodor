@@ -58,69 +58,95 @@ Disassembly of section .text.init:
 800000a8:	30529073          	csrw	mtvec,t0
 800000ac:	00100513          	li	a0,1
 800000b0:	01f51513          	slli	a0,a0,0x1f
-800000b4:	00054863          	bltz	a0,800000c4 <reset_vector+0x78>
+800000b4:	00054c63          	bltz	a0,800000cc <reset_vector+0x80>
 800000b8:	0ff0000f          	fence
 800000bc:	00100193          	li	gp,1
-800000c0:	00000073          	ecall
-800000c4:	80000297          	auipc	t0,0x80000
-800000c8:	f3c28293          	addi	t0,t0,-196 # 0 <_start-0x80000000>
-800000cc:	00028e63          	beqz	t0,800000e8 <reset_vector+0x9c>
-800000d0:	10529073          	csrw	stvec,t0
-800000d4:	0000b2b7          	lui	t0,0xb
-800000d8:	10928293          	addi	t0,t0,265 # b109 <_start-0x7fff4ef7>
-800000dc:	30229073          	csrw	medeleg,t0
-800000e0:	30202373          	csrr	t1,medeleg
-800000e4:	f4629ce3          	bne	t0,t1,8000003c <handle_exception>
-800000e8:	30005073          	csrwi	mstatus,0
-800000ec:	00000297          	auipc	t0,0x0
-800000f0:	01428293          	addi	t0,t0,20 # 80000100 <test_2>
-800000f4:	34129073          	csrw	mepc,t0
-800000f8:	f1402573          	csrr	a0,mhartid
-800000fc:	30200073          	mret
+800000c0:	05d00893          	li	a7,93
+800000c4:	00000513          	li	a0,0
+800000c8:	00000073          	ecall
+800000cc:	80000297          	auipc	t0,0x80000
+800000d0:	f3428293          	addi	t0,t0,-204 # 0 <_start-0x80000000>
+800000d4:	00028e63          	beqz	t0,800000f0 <reset_vector+0xa4>
+800000d8:	10529073          	csrw	stvec,t0
+800000dc:	0000b2b7          	lui	t0,0xb
+800000e0:	10928293          	addi	t0,t0,265 # b109 <_start-0x7fff4ef7>
+800000e4:	30229073          	csrw	medeleg,t0
+800000e8:	30202373          	csrr	t1,medeleg
+800000ec:	f46298e3          	bne	t0,t1,8000003c <handle_exception>
+800000f0:	30005073          	csrwi	mstatus,0
+800000f4:	00000297          	auipc	t0,0x0
+800000f8:	01428293          	addi	t0,t0,20 # 80000108 <test_2>
+800000fc:	34129073          	csrw	mepc,t0
+80000100:	f1402573          	csrr	a0,mhartid
+80000104:	30200073          	mret
 
-80000100 <test_2>:
-80000100:	000000b7          	lui	ra,0x0
-80000104:	00000e93          	li	t4,0
-80000108:	00200193          	li	gp,2
-8000010c:	05d09a63          	bne	ra,t4,80000160 <fail>
+80000108 <test_2>:
+80000108:	000000b7          	lui	ra,0x0
+8000010c:	00000e93          	li	t4,0
+80000110:	00200193          	li	gp,2
+80000114:	05d09a63          	bne	ra,t4,80000168 <fail>
 
-80000110 <test_3>:
-80000110:	fffff0b7          	lui	ra,0xfffff
-80000114:	4010d093          	srai	ra,ra,0x1
-80000118:	80000e93          	li	t4,-2048
-8000011c:	00300193          	li	gp,3
-80000120:	05d09063          	bne	ra,t4,80000160 <fail>
+80000118 <test_3>:
+80000118:	fffff0b7          	lui	ra,0xfffff
+8000011c:	4010d093          	srai	ra,ra,0x1
+80000120:	80000e93          	li	t4,-2048
+80000124:	00300193          	li	gp,3
+80000128:	05d09063          	bne	ra,t4,80000168 <fail>
 
-80000124 <test_4>:
-80000124:	7ffff0b7          	lui	ra,0x7ffff
-80000128:	4140d093          	srai	ra,ra,0x14
-8000012c:	7ff00e93          	li	t4,2047
-80000130:	00400193          	li	gp,4
-80000134:	03d09663          	bne	ra,t4,80000160 <fail>
+8000012c <test_4>:
+8000012c:	7ffff0b7          	lui	ra,0x7ffff
+80000130:	4140d093          	srai	ra,ra,0x14
+80000134:	7ff00e93          	li	t4,2047
+80000138:	00400193          	li	gp,4
+8000013c:	03d09663          	bne	ra,t4,80000168 <fail>
 
-80000138 <test_5>:
-80000138:	800000b7          	lui	ra,0x80000
-8000013c:	4140d093          	srai	ra,ra,0x14
-80000140:	80000e93          	li	t4,-2048
-80000144:	00500193          	li	gp,5
-80000148:	01d09c63          	bne	ra,t4,80000160 <fail>
+80000140 <test_5>:
+80000140:	800000b7          	lui	ra,0x80000
+80000144:	4140d093          	srai	ra,ra,0x14
+80000148:	80000e93          	li	t4,-2048
+8000014c:	00500193          	li	gp,5
+80000150:	01d09c63          	bne	ra,t4,80000168 <fail>
 
-8000014c <test_6>:
-8000014c:	80000037          	lui	zero,0x80000
-80000150:	00000e93          	li	t4,0
-80000154:	00600193          	li	gp,6
-80000158:	01d01463          	bne	zero,t4,80000160 <fail>
-8000015c:	00301c63          	bne	zero,gp,80000174 <pass>
+80000154 <test_6>:
+80000154:	80000037          	lui	zero,0x80000
+80000158:	00000e93          	li	t4,0
+8000015c:	00600193          	li	gp,6
+80000160:	01d01463          	bne	zero,t4,80000168 <fail>
+80000164:	02301063          	bne	zero,gp,80000184 <pass>
 
-80000160 <fail>:
-80000160:	0ff0000f          	fence
-80000164:	00018063          	beqz	gp,80000164 <fail+0x4>
-80000168:	00119193          	slli	gp,gp,0x1
-8000016c:	0011e193          	ori	gp,gp,1
-80000170:	00000073          	ecall
+80000168 <fail>:
+80000168:	0ff0000f          	fence
+8000016c:	00018063          	beqz	gp,8000016c <fail+0x4>
+80000170:	00119193          	slli	gp,gp,0x1
+80000174:	0011e193          	ori	gp,gp,1
+80000178:	05d00893          	li	a7,93
+8000017c:	00018513          	mv	a0,gp
+80000180:	00000073          	ecall
 
-80000174 <pass>:
-80000174:	0ff0000f          	fence
-80000178:	00100193          	li	gp,1
-8000017c:	00000073          	ecall
-80000180:	c0001073          	unimp
+80000184 <pass>:
+80000184:	0ff0000f          	fence
+80000188:	00100193          	li	gp,1
+8000018c:	05d00893          	li	a7,93
+80000190:	00000513          	li	a0,0
+80000194:	00000073          	ecall
+80000198:	c0001073          	unimp
+8000019c:	0000                	unimp
+8000019e:	0000                	unimp
+800001a0:	0000                	unimp
+800001a2:	0000                	unimp
+800001a4:	0000                	unimp
+800001a6:	0000                	unimp
+800001a8:	0000                	unimp
+800001aa:	0000                	unimp
+800001ac:	0000                	unimp
+800001ae:	0000                	unimp
+800001b0:	0000                	unimp
+800001b2:	0000                	unimp
+800001b4:	0000                	unimp
+800001b6:	0000                	unimp
+800001b8:	0000                	unimp
+800001ba:	0000                	unimp
+800001bc:	0000                	unimp
+800001be:	0000                	unimp
+800001c0:	0000                	unimp
+800001c2:	0000                	unimp

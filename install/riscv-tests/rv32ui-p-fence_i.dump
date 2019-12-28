@@ -58,32 +58,32 @@ Disassembly of section .text.init:
 800000a8:	30529073          	csrw	mtvec,t0
 800000ac:	00100513          	li	a0,1
 800000b0:	01f51513          	slli	a0,a0,0x1f
-800000b4:	00054863          	bltz	a0,800000c4 <reset_vector+0x78>
+800000b4:	00054c63          	bltz	a0,800000cc <reset_vector+0x80>
 800000b8:	0ff0000f          	fence
 800000bc:	00100193          	li	gp,1
-800000c0:	00000073          	ecall
-800000c4:	80000297          	auipc	t0,0x80000
-800000c8:	f3c28293          	addi	t0,t0,-196 # 0 <_start-0x80000000>
-800000cc:	00028e63          	beqz	t0,800000e8 <reset_vector+0x9c>
-800000d0:	10529073          	csrw	stvec,t0
-800000d4:	0000b2b7          	lui	t0,0xb
-800000d8:	10928293          	addi	t0,t0,265 # b109 <_start-0x7fff4ef7>
-800000dc:	30229073          	csrw	medeleg,t0
-800000e0:	30202373          	csrr	t1,medeleg
-800000e4:	f4629ce3          	bne	t0,t1,8000003c <handle_exception>
-800000e8:	30005073          	csrwi	mstatus,0
-800000ec:	00000297          	auipc	t0,0x0
-800000f0:	01428293          	addi	t0,t0,20 # 80000100 <reset_vector+0xb4>
-800000f4:	34129073          	csrw	mepc,t0
-800000f8:	f1402573          	csrr	a0,mhartid
-800000fc:	30200073          	mret
-80000100:	06f00693          	li	a3,111
-80000104:	00002517          	auipc	a0,0x2
-80000108:	efc51503          	lh	a0,-260(a0) # 80002000 <begin_signature>
-8000010c:	00002597          	auipc	a1,0x2
-80000110:	ef659583          	lh	a1,-266(a1) # 80002002 <begin_signature+0x2>
-80000114:	00000013          	nop
-80000118:	00000013          	nop
+800000c0:	05d00893          	li	a7,93
+800000c4:	00000513          	li	a0,0
+800000c8:	00000073          	ecall
+800000cc:	80000297          	auipc	t0,0x80000
+800000d0:	f3428293          	addi	t0,t0,-204 # 0 <_start-0x80000000>
+800000d4:	00028e63          	beqz	t0,800000f0 <reset_vector+0xa4>
+800000d8:	10529073          	csrw	stvec,t0
+800000dc:	0000b2b7          	lui	t0,0xb
+800000e0:	10928293          	addi	t0,t0,265 # b109 <_start-0x7fff4ef7>
+800000e4:	30229073          	csrw	medeleg,t0
+800000e8:	30202373          	csrr	t1,medeleg
+800000ec:	f46298e3          	bne	t0,t1,8000003c <handle_exception>
+800000f0:	30005073          	csrwi	mstatus,0
+800000f4:	00000297          	auipc	t0,0x0
+800000f8:	01428293          	addi	t0,t0,20 # 80000108 <reset_vector+0xbc>
+800000fc:	34129073          	csrw	mepc,t0
+80000100:	f1402573          	csrr	a0,mhartid
+80000104:	30200073          	mret
+80000108:	06f00693          	li	a3,111
+8000010c:	00002517          	auipc	a0,0x2
+80000110:	ef451503          	lh	a0,-268(a0) # 80002000 <begin_signature>
+80000114:	00002597          	auipc	a1,0x2
+80000118:	eee59583          	lh	a1,-274(a1) # 80002002 <begin_signature+0x2>
 8000011c:	00000013          	nop
 80000120:	00000013          	nop
 80000124:	00000013          	nop
@@ -134,28 +134,24 @@ Disassembly of section .text.init:
 800001c8:	30900e93          	li	t4,777
 800001cc:	00300193          	li	gp,3
 800001d0:	01d69463          	bne	a3,t4,800001d8 <fail>
-800001d4:	00301c63          	bne	zero,gp,800001ec <pass>
+800001d4:	02301063          	bne	zero,gp,800001f4 <pass>
 
 800001d8 <fail>:
 800001d8:	0ff0000f          	fence
 800001dc:	00018063          	beqz	gp,800001dc <fail+0x4>
 800001e0:	00119193          	slli	gp,gp,0x1
 800001e4:	0011e193          	ori	gp,gp,1
-800001e8:	00000073          	ecall
+800001e8:	05d00893          	li	a7,93
+800001ec:	00018513          	mv	a0,gp
+800001f0:	00000073          	ecall
 
-800001ec <pass>:
-800001ec:	0ff0000f          	fence
-800001f0:	00100193          	li	gp,1
-800001f4:	00000073          	ecall
-800001f8:	c0001073          	unimp
-800001fc:	0000                	unimp
-800001fe:	0000                	unimp
-80000200:	0000                	unimp
-80000202:	0000                	unimp
-80000204:	0000                	unimp
-80000206:	0000                	unimp
-80000208:	0000                	unimp
-8000020a:	0000                	unimp
+800001f4 <pass>:
+800001f4:	0ff0000f          	fence
+800001f8:	00100193          	li	gp,1
+800001fc:	05d00893          	li	a7,93
+80000200:	00000513          	li	a0,0
+80000204:	00000073          	ecall
+80000208:	c0001073          	unimp
 8000020c:	0000                	unimp
 8000020e:	0000                	unimp
 80000210:	0000                	unimp
@@ -170,10 +166,6 @@ Disassembly of section .text.init:
 80000222:	0000                	unimp
 80000224:	0000                	unimp
 80000226:	0000                	unimp
-80000228:	0000                	unimp
-8000022a:	0000                	unimp
-8000022c:	0000                	unimp
-8000022e:	0000                	unimp
 
 Disassembly of section .data:
 
