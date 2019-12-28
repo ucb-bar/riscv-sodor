@@ -141,7 +141,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata
-   csr.io.retire    := io.ctl.upc_is_fetch
+   csr.io.retire    := io.ctl.retire
    csr.io.exception := io.ctl.exception
    csr.io.pc        := regfile(PC_IDX) - 4.U
    exception_target := csr.io.evec
@@ -182,27 +182,24 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Output Signals to the Memory
    io.mem.req.bits.addr := reg_ma.asUInt()
    io.mem.req.bits.data := bus
-   // Retired Instruction Counter
-   val irt_reg = RegInit(0.asUInt(conf.xprlen.W))
-   when (io.ctl.upc_is_fetch) { irt_reg := irt_reg + 1.U }
 
    // Printout
-   printf("%cCyc= %d (MA=0x%x) %d %c %c RegAddr=%d Bus=0x%x A=0x%x B=0x%x PCReg=( 0x%x ) UPC=%d InstReg=[ 0x%x : DASM(%x) ]\n"
-      , Mux(io.ctl.upc_is_fetch, Str("F"), Str(" "))
-      , csr.io.time(31,0)
-      , reg_ma
-      , io.ctl.reg_sel
-      , Mux(io.ctl.en_mem, Str("E"), Str(" "))
-      , Mux(io.ctl.exception, Str("X"), Str(" "))
-      , reg_addr
-      , bus
-      , reg_a
-      , reg_b
-      , regfile(PC_IDX) // this is the PC register
-      , io.ctl.upc
-      , ir
-      , ir
-      )
+   printf("Cyc= %d [%d] PCReg=[%x] uPC=[%x] Bus=[%x] RegSel=[%d] RegAddr=[%d] A=[%x] B=[%x] MA=[%x] InstReg=[%x] %c%c%c DASM(%x)\n",
+      csr.io.time(31,0),
+      csr.io.retire,
+      regfile(PC_IDX),
+      io.ctl.upc,
+      bus,
+      io.ctl.reg_sel,
+      reg_addr,
+      reg_a,
+      reg_b,
+      reg_ma,
+      ir,
+      Mux(io.ctl.upc_is_fetch, Str("F"), Str(" ")),
+      Mux(io.ctl.en_mem, Str("M"), Str(" ")),
+      Mux(io.ctl.exception, Str("X"), Str(" ")),
+      ir)
 
 }
 

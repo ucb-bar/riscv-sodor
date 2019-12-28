@@ -50,20 +50,25 @@ debug:
 console:
 	$(SBT) "project ${MK_TARGET_PROC}" console
 
-run-emulator: $(patsubst %,emulator/%/generated-src/timestamp,$(targets))
+timestamps := $(foreach x,$(targets),emulator/$(x)/generated-src/timestamp)
+timestamps_debug := $(foreach x,$(targets),emulator/$(x)/generated-src-debug/timestamp)
 
-run-emulator-debug: $(patsubst %,emulator/%/generated-src-debug/timestamp,$(targets))
+run-emulator: $(timestamps)
+
+run-emulator-debug: $(timestamps_debug)
 
 clean-tests:
 	for d in $(addprefix emulator/,$(all_targets)) ; do \
 		$(MAKE) -C "$${d}" clean-tests ; \
 	done
+	$(RM) $(timestamps) $(timestamps_debug)
 
 clean:
 	-find sbt -type d -name target -exec rm -rf {} \+
 	for d in $(addprefix emulator/,$(all_targets)) ; do \
-		$(MAKE) -C $$d clean ; \
+		$(MAKE) -C "$${d}" clean ; \
 	done
+	$(RM) $(timestamps) $(timestamps_debug)
 	$(RM) test-results.xml
 
 reports: test-results.xml report-cpi report-bp report-stats

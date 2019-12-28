@@ -78,11 +78,12 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val wb_addr  = inst(RD_MSB,  RD_LSB)
 
    val wb_data = Wire(UInt(conf.xprlen.W))
+   val wb_wen = io.ctl.rf_wen && !io.ctl.exception
 
    // Register File
    val regfile = Mem(32, UInt(conf.xprlen.W))
 
-   when (io.ctl.rf_wen && (wb_addr =/= 0.U) && !io.ctl.exception)
+   when (wb_wen && (wb_addr =/= 0.U))
    {
       regfile(wb_addr) := wb_data
    }
@@ -160,7 +161,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := alu_out
 
-   csr.io.retire    := !io.ctl.stall
+   csr.io.retire    := !(io.ctl.stall || io.ctl.exception)
    csr.io.exception := io.ctl.exception
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
@@ -193,26 +194,28 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn
    // the DASM(%x) into a disassembly string.
-   printf("Cyc= %d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] %c Mem[%d: R:0x%x W:0x%x] PC= 0x%x %c%c DASM(%x)\n"
-      , csr.io.time(31,0)
-      , alu_op1
-      , alu_op2
-      , Mux(io.ctl.rf_wen, Str("W"), Str("_"))
-      , wb_addr
-      , wb_data
-      , Mux(csr.io.exception, Str("E"), Str(" ")) // EXC -> E
-      , io.ctl.wb_sel
-      , io.dmem.resp.bits.data
-      , io.dmem.req.bits.data
-      , pc_reg
-      , Mux(io.ctl.stall, Str("s"), Str(" "))
-      , Mux(io.ctl.pc_sel  === 1.U, Str("B"),
-         Mux(io.ctl.pc_sel === 2.U, Str("J"),
-         Mux(io.ctl.pc_sel === 3.U, Str("K"),// JR -> K
-         Mux(io.ctl.pc_sel === 4.U, Str("X"),// EX -> X
-         Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
-      , inst
-      )
+   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
+      csr.io.time(31,0),
+      csr.io.retire,
+      pc_reg,
+      wb_addr,
+      wb_data,
+      wb_wen,
+      rs1_addr,
+      alu_op1,
+      rs2_addr,
+      alu_op2,
+      inst,
+      Mux(io.ctl.stall, Str("S"), Str(" ")),
+      MuxLookup(io.ctl.pc_sel, Str("?"), Seq(
+         PC_BR -> Str("B"),
+         PC_J -> Str("J"),
+         PC_JR -> Str("R"),
+         PC_EXC -> Str("E"),
+         PC_4 -> Str(" "))),
+      Mux(csr.io.exception, Str("X"), Str(" ")),
+      inst)
+
 
    if (PRINT_COMMIT_LOG)
    {

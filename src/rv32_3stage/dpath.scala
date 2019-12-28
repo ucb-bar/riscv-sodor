@@ -51,6 +51,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Pipeline State Registers
    val wb_reg_valid    = RegInit(false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
+   val wb_reg_pc       = Reg(UInt(conf.xprlen.W))
    val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
    val wb_reg_csr_addr = Reg(UInt(12.W))
    val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
@@ -195,9 +196,12 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
 
    // execute to wb registers
+   wb_reg_valid := exe_valid
    wb_reg_ctrl :=  io.ctl
+   wb_reg_pc := exe_pc
    when (wb_hazard_stall || io.ctl.exe_kill)
    {
+      wb_reg_valid          := false.B
       wb_reg_ctrl.rf_wen    := false.B
       wb_reg_ctrl.csr_cmd   := CSR.N
       wb_reg_ctrl.dmem_val  := false.B
@@ -210,7 +214,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Writeback Stage
-   wb_reg_valid := exe_valid && !wb_hazard_stall
 
    // Control Status Registers
    val csr = Module(new CSRFile())
@@ -220,9 +223,9 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd
    val wb_csr_out    = csr.io.rw.rdata
 
-   csr.io.retire    := wb_reg_valid
-   csr.io.exception := RegNext(io.ctl.exception)
-   csr.io.pc        := exe_pc - 4.U
+   csr.io.retire    := wb_reg_valid && !wb_reg_ctrl.exception
+   csr.io.exception := wb_reg_ctrl.exception
+   csr.io.pc        := wb_reg_pc
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
 
@@ -244,36 +247,31 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    //**********************************
    // Printout
 
-   val irt_reg = RegInit(0.asUInt(conf.xprlen.W))
-   when (wb_reg_valid) { irt_reg := irt_reg + 1.U }
-
-   val debug_wb_pc = Wire(UInt(32.W))
-   debug_wb_pc := Mux(RegNext(wb_hazard_stall), 0.U, RegNext(exe_pc))
    val debug_wb_inst = RegNext(Mux((wb_hazard_stall || io.ctl.exe_kill || !exe_valid), BUBBLE, exe_inst))
-   printf("Cyc=%d Op1=[0x%x] Op2=[0x%x] W[%c,%d= 0x%x] [%c,0x%x] %d %c %c PC=(0x%x,0x%x,0x%x) [%x,%d,%d], WB: DASM(%x)\n"
-      , csr.io.time(31,0)
-      , exe_alu_op1
-      , exe_alu_op2
-      , Mux(wb_reg_ctrl.rf_wen, Str("W"), Str("_"))
-      , wb_reg_wbaddr
-      , wb_wbdata
-      , Mux(io.ctl.exception, Str("E"), Str("_"))
-      , io.imem.resp.bits.inst
-      , irt_reg(11,0)
-      , Mux(wb_hazard_stall, Str("H"), Str(" "))  // HAZ -> H
-      , Mux(io.ctl.pc_sel === 1.U, Str("B"),   // Br -> B
-        Mux(io.ctl.pc_sel === 2.U, Str("J"),   // J -> J
-        Mux(io.ctl.pc_sel === 3.U, Str("R"),   // JR -> R
-        Mux(io.ctl.pc_sel === 4.U, Str("X"),   //XPCT -> X
-        Mux(io.ctl.pc_sel === 0.U, Str(" "), Str("?"))))))
-      , io.imem.debug.if_pc(31,0)
-      , exe_pc(31,0)
-      , Mux(RegNext(wb_hazard_stall), 0.U, RegNext(exe_pc(31,0)))
-      , io.imem.debug.if_inst(6,0)
-      , Mux(exe_valid, exe_inst, BUBBLE)(6,0)
-      , debug_wb_inst(6,0)
-      , debug_wb_inst
-      )
+
+   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
+      csr.io.time(31,0),
+      csr.io.retire,
+      wb_reg_pc,
+      wb_reg_wbaddr,
+      wb_wbdata,
+      wb_reg_ctrl.rf_wen,
+      RegNext(exe_rs1_addr),
+      RegNext(exe_alu_op1),
+      RegNext(exe_rs2_addr),
+      RegNext(exe_alu_op2),
+      debug_wb_inst,
+      MuxCase(Str(" "), Seq(
+         wb_hazard_stall -> Str("H"),
+         io.ctl.exe_kill -> Str("K"))),
+      MuxLookup(io.ctl.pc_sel, Str("?"), Seq(
+         PC_BR -> Str("B"),
+         PC_J -> Str("J"),
+         PC_JR -> Str("R"),
+         PC_EXC -> Str("E"),
+         PC_4 -> Str(" "))),
+      Mux(csr.io.exception, Str("X"), Str(" ")),
+      debug_wb_inst)
 
    // for debugging, print out the commit information.
    // can be compared against the riscv-isa-run Spike ISA simulator's commit logger.
@@ -285,11 +283,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          val rd = debug_wb_inst(RD_MSB,RD_LSB)
          when (wb_reg_ctrl.rf_wen && rd =/= 0.U)
          {
-            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", debug_wb_pc, debug_wb_inst, rd, Cat(Fill(32,wb_wbdata(31)),wb_wbdata))
+            printf("@@@ 0x%x (0x%x) x%d 0x%x\n", wb_reg_pc, debug_wb_inst, rd, Cat(Fill(32,wb_wbdata(31)),wb_wbdata))
          }
          .otherwise
          {
-            printf("@@@ 0x%x (0x%x)\n", debug_wb_pc, debug_wb_inst)
+            printf("@@@ 0x%x (0x%x)\n", wb_reg_pc, debug_wb_inst)
          }
       }
    }
