@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental._
 
+import freechips.rocketchip.ScratchpadSlavePort
 import freechips.rocketchip.config.{Parameters, Field}
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
@@ -12,42 +13,47 @@ import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-class ScratchpadDataArray(implicit p: Parameters) extends L1HellaCacheModule()(p) {
-  val io = new Bundle {
-    val req = Valid(new DCacheDataReq).flip
-    val resp = Vec(nWays, UInt(width = req.bits.wdata.getWidth)).asOutput
-  }
+case object SodorScratchpadKey extends Field[SodorScratchpadParam](SodorScratchpadParam())
 
-  require(rowBytes % wordBytes == 0)
-  val eccMask = if (eccBits == wordBits) Seq(true.B) else io.req.bits.eccMask.asBools
-  val wMask = if (nWays == 1) eccMask else (0 until nWays).flatMap(i => eccMask.map(_ && io.req.bits.way_en(i)))
-  val wWords = io.req.bits.wdata.grouped(encBits * (wordBits / eccBits))
-  val addr = io.req.bits.addr >> rowOffBits
-  val data_arrays = Seq.tabulate(rowBytes / wordBytes) {
-    i =>
-      DescribedSRAM(
-        name = s"data_arrays_${i}",
-        desc = "DCache Data Array",
-        size = nSets * cacheBlockBytes / rowBytes,
-        data = Vec(nWays * (wordBits / eccBits), UInt(width = encBits))
-      )
-  }
+case class SodorScratchpadParam(
+  val size: Int = 1 >> 10,
+  val blockOffsetBits: Int = 4,
+  val baseAddress: BigInt = 0x80000000
+)
 
-  val rdata = for (((array, omSRAM), i) <- data_arrays zipWithIndex) yield {
-    val valid = io.req.valid && (Bool(data_arrays.size == 1) || io.req.bits.wordMask(i))
-    when (valid && io.req.bits.write) {
-      val wData = wWords(i).grouped(encBits)
-      array.write(addr, Vec((0 until nWays).flatMap(i => wData)), wMask)
-    }
-    val data = array.read(addr, valid && !io.req.bits.write)
-    data.grouped(wordBits / eccBits).map(_.asUInt).toSeq
-  }
-  (io.resp zip rdata.transpose).foreach { case (resp, data) => resp := data.asUInt }
+class SodorScratchpad(implicit p: Parameters) extends LazyModule with HasL1HellaCacheParameters {
+  val param = p(SodorScratchpadKey)
+
+  // Ports
+  val address = new AddressSet(param.baseAddress, param.baseAddress)
+  val slavePort = new ScratchpadSlavePort(address = address, coreDataBytes = wordBytes, usingAtomics = False)
+
+  lazy val module = new SodorScratchpadImp(this)
 }
 
-class SodorScratchpad(implicit p: Parameters) extends LazyModule {
-  val address = new AddressSet(0x80000000, 0xffffffff)  // TODO: What is the new address for the scratchpad?
-  val slavePort = new ScratchpadSlavePort(address = address, coreDataBytes = 8, usingAtomics = False)
-  
+class SodorScratchpadImp(outer: SodorScratchpad) extends BaseTileModuleImp(outer) {
+  val dataArray = Mem(outer.dataScratchpadSize, UInt((outer.wordBytes * 8).W))
 
+  outer.slavePort.module.io.req.ready := true.B
+
+  val slave_ready = outer.slavePort.module.io.req.ready
+  val slave_resp_valid = outer.slavePort.module.io.resp.valid
+  val slave_req_valid = outer.slavePort.module.io.req.valid
+  val s1_slave_req_valid = RegNext(slave_req_valid)
+  val slave_cmd = outer.slavePort.module.io.req.bits.cmd
+  val s1_slave_cmd = RegNext(slave_cmd)
+
+  val slave_req_addr = outer.slavePort.module.io.req.bits.addr(log2Ceil(outer.dataScratchpadSize), 0)
+  val slave_req_size = outer.slavePort.module.io.req.bits.size
+  val slave_read_data = outer.slavePort.module.io.resp.bits.data
+  val slave_read_mask = outer.slavePort.module.io.resp.bits.mask
+  val s1_slave_req_addr = RegNext(slave_req_addr)
+  val s1_slave_write_data = outer.slavePort.module.io.s1_data.data
+  val s1_slave_write_mask = outer.slavePort.module.io.s1_data.mask
+
+  slave_ready := true.B
+  slave_read_mask := new StoreGen(slave_req_size, slave_req_addr, 0.U, outer.wordBytes).mask
+  slave_read_data := dataArray.read(slave_read_addr)
+  slave_resp_valid := slave_req_valid & s1_slave_cmd === M_XRD
+  when (slave_req_valid & s1_slave_cmd === M_XWR) { dataArray.write(s1_slave_req_addr, s1_slave_write_data & s1_slave_write_mask) }
 }
