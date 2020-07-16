@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental._
 
-import freechips.rocketchip.ScratchpadSlavePort
+import freechips.rocketchip.rocket._
 import freechips.rocketchip.config.{Parameters, Field}
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
@@ -19,14 +19,14 @@ class SodorScratchpad(implicit p: Parameters) extends LazyModule with HasL1Hella
   val baseAddress = p(SodorScratchpadBaseAddress)
 
   // Ports
-  val address = new AddressSet(param.baseAddress, param.baseAddress + dataScratchpadSize)
-  val slavePort = new ScratchpadSlavePort(address = address, coreDataBytes = wordBytes, usingAtomics = False)
+  val address = new AddressSet(baseAddress, baseAddress + dataScratchpadSize)
+  val slavePort = LazyModule(new ScratchpadSlavePort(address = address, coreDataBytes = wordBytes, usingAtomics = false))
 
   lazy val module = new SodorScratchpadImp(this)
 }
 
-class SodorScratchpadImp(outer: SodorScratchpad) extends BaseTileModuleImp(outer) {
-  val io = new HellaCacheIO(outer.p)
+class SodorScratchpadImp(outer: SodorScratchpad) extends LazyModuleImp(outer) {
+  val io = new HellaCacheIO()(outer.p)
 
   val dataArray = Mem(outer.dataScratchpadSize, UInt((outer.wordBytes * 8).W))
 
@@ -49,7 +49,7 @@ class SodorScratchpadImp(outer: SodorScratchpad) extends BaseTileModuleImp(outer
 
   slave_ready := true.B
   slave_read_mask := new StoreGen(slave_req_size, slave_req_addr, 0.U, outer.wordBytes).mask
-  slave_read_data := dataArray.read(slave_read_addr)
+  slave_read_data := dataArray.read(slave_req_addr)
   slave_resp_valid := slave_req_valid & s1_slave_cmd === M_XRD
   when (slave_req_valid & s1_slave_cmd === M_XWR & !s1_slave_write_kill) {
     printf("written: %f\n", s1_slave_write_data)

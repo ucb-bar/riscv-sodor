@@ -105,6 +105,11 @@ class SodorTile(
   val masterNode = visibilityNode
   val slaveNode = TLIdentityNode()
 
+  // Connect node to crossbar switches (bus)
+  tlOtherMastersNode := tlMasterXbar.node
+  masterNode :=* tlOtherMastersNode
+  DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
+
   // Implementation class (See below)
   override lazy val module = new SodorTileModuleImp(this)
 
@@ -124,7 +129,26 @@ class SodorTile(
     Resource(cpuDevice, "reg").bind(ResourceAddress(hartId))
   }
 
-  val scratchpad = new SodorScratchpad()
+  val scratchpad = LazyModule(new SodorScratchpad())
+  connectTLSlave(scratchpad.slavePort.node, scratchpad.coreDataBytes)
+
+  val memAXI4Node = AXI4MasterNode(
+  Seq(AXI4MasterPortParameters(
+    masters = Seq(AXI4MasterParameters(
+      name = "sodor master",
+      id = IdRange(0, 1 << 4))))))
+
+  val memoryTap = TLIdentityNode()
+  (tlMasterXbar.node
+    := memoryTap
+    := TLBuffer()
+    := TLFIFOFixer(TLFIFOFixer.all) // fix FIFO ordering
+    := TLWidthWidget(masterPortBeatBytes) // reduce size of TL
+    := AXI4ToTL() // convert to TL
+    := AXI4UserYanker(Some(2)) // remove user field on AXI interface. need but in reality user intf. not needed
+    := AXI4Fragmenter() // deal with multi-beat xacts
+    := memAXI4Node)
+
 }
 
 class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
