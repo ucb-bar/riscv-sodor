@@ -111,18 +111,18 @@ class SodorTile(
   masterNode :=* tlOtherMastersNode
   DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
 
-  // // Slave port adapter
-  // val coreParams = {
-  //   class C(implicit val p: Parameters) extends HasL1HellaCacheParameters
-  //   new C
-  // }
-  // val dtim_adapter = tileParams.dcache.flatMap { d => d.scratch.map { s =>
-  //   LazyModule(new ScratchpadSlavePort(AddressSet.misaligned(s, d.dataScratchpadBytes), coreParams.coreDataBytes, tileParams.core.useAtomics && !tileParams.core.useAtomicsOnlyForIO))
-  // }}
-  // dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
+  // Slave port adapter
+  val coreParams = {
+    class C(implicit val p: Parameters) extends HasCoreParameters
+    new C
+  }
+  val dtim_adapter = tileParams.dcache.flatMap { d => d.scratch.map { s =>
+    LazyModule(new ScratchpadSlavePort(AddressSet.misaligned(s, d.dataScratchpadBytes), coreParams.coreDataBytes, tileParams.core.useAtomics && !tileParams.core.useAtomicsOnlyForIO))
+  }}
+  dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
 
-  // val dtimProperty = dtim_adapter.map(d => Map(
-  //   "sifive,dtim" -> d.device.asProperty)).getOrElse(Nil)
+  val dtimProperty = dtim_adapter.map(d => Map(
+    "sifive,dtim" -> d.device.asProperty)).getOrElse(Nil)
 
   // Implementation class (See below)
   override lazy val module = new SodorTileModuleImp(this)
@@ -186,10 +186,10 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // annotate the parameters
   Annotated.params(this, outer.sodorParams)
 
-  // // Add scratchpad
-  // require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
-  // val scratchpadModule = Module(new SodorScratchpad(outer.coreParams)(outer.p))
-  // scratchpadModule.io <> outer.dtim_adapter.get.module.io.dmem
+  // Add scratchpad
+  require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
+  val scratchpadModule = Module(new SodorScratchpad()(outer.p))
+  scratchpadModule.io <> outer.dtim_adapter.get.module.io.dmem
 
 }
 
@@ -205,9 +205,10 @@ class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends 
         tileParams = SodorTileParams(
           hartId = i + idOffset,
           scratchpad = DCacheParams(
+            nSets = 256,
             nWays = 1,
             nMSHRs = 0,
-            scratch = Some(0x80000000)
+            scratch = Some(0x80000000L)
           )
         ),
         crossingParams = RocketCrossingParams()
