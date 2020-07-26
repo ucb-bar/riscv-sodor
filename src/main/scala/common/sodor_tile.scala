@@ -117,7 +117,7 @@ class SodorTile(
     new C
   }
   val dtim_adapter = tileParams.dcache.flatMap { d => d.scratch.map { s =>
-    LazyModule(new ScratchpadSlavePort(AddressSet.misaligned(s, d.dataScratchpadBytes), coreParams.coreDataBytes, tileParams.core.useAtomics && !tileParams.core.useAtomicsOnlyForIO))
+    LazyModule(new ScratchpadSlavePort(AddressSet.misaligned(s, d.dataScratchpadBytes), coreParams.coreDataBytes, false))
   }}
   dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
 
@@ -135,8 +135,8 @@ class SodorTile(
       Description(name, mapping ++
                         cpuProperties ++
                         nextLevelCacheProperty ++
-                        tileProperties /*++
-                        dtimProperty*/)
+                        tileProperties ++
+                        dtimProperty)
     }
   }
 
@@ -189,11 +189,10 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // Add scratchpad
   require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
   val scratchpadModule = Module(new SodorScratchpad()(outer.p))
-  scratchpadModule.io <> outer.dtim_adapter.get.module.io.dmem
+  scratchpadModule.io.slavePort <> outer.dtim_adapter.get.module.io.dmem
 
 }
 
-// DOC include start: Config fragment
 class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
@@ -220,4 +219,3 @@ class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends 
   // The # of instruction bits. Use maximum # of bits if your core supports both 32 and 64 bits.
   case XLen => 64
 })
-// DOC include end: Config fragments
