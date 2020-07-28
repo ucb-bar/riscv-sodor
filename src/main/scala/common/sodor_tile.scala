@@ -186,11 +186,19 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // annotate the parameters
   Annotated.params(this, outer.sodorParams)
 
-  // Add scratchpad
-  require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
-  val scratchpadModule = Module(new SodorScratchpad()(outer.p))
-  scratchpadModule.io.slavePort <> outer.dtim_adapter.get.module.io.dmem
+  // Sodor configuration
+  implicit val conf = SodorConfiguration(chipyardBuild = true)
 
+  // Tile 
+  val tile = Module(p(SodorInternalTileKey).instantiate)
+
+  // Add scratchpad adapter
+  require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
+  val scratchpadAdapter = Module(new SodorScratchpadAdapter()(outer.p, conf))
+  scratchpadAdapter.io.slavePort <> outer.dtim_adapter.get.module.io.dmem
+
+  // Connect tile
+  tile.io.debug_port <> scratchpadAdapter.io.memPort
 }
 
 class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config((site, here, up) => {
@@ -215,7 +223,7 @@ class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends 
     } ++ prev
   }
   // Configurate # of bytes in one memory / IO transaction. For RV64, one load/store instruction can transfer 8 bytes at most.
-  case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 8)
+  case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 4)
   // The # of instruction bits. Use maximum # of bits if your core supports both 32 and 64 bits.
-  case XLen => 64
+  case XLen => 32
 })

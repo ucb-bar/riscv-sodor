@@ -23,7 +23,7 @@ class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
   val mem  = new MemPortIo(conf.xprlen)
 }
 
-class Core(implicit val conf: SodorConfiguration) extends Module
+class Core(implicit val conf: SodorConfiguration) extends AbstractCore
 {
   val io = IO(new CoreIo())
   val c  = Module(new CtlPath())
@@ -40,4 +40,6 @@ class Core(implicit val conf: SodorConfiguration) extends Module
 
   d.io.ddpath <> io.ddpath
   c.io.dcpath <> io.dcpath
+
+  val mem_ports = List(io.mem)
 }

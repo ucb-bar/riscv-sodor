@@ -5,7 +5,11 @@ import chisel3.util._
 
 import Constants._
 
-case class SodorConfiguration()
+case class SodorConfiguration(
+   // Configuration for Chipyard integration
+   val chipyardBuild: Boolean = false,
+   val debuglen: Int = 32
+)
 {
    val xprlen = 32
    val nxpr = 32
