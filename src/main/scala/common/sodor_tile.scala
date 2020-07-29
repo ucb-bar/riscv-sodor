@@ -116,9 +116,12 @@ class SodorTile(
     class C(implicit val p: Parameters) extends HasCoreParameters
     new C
   }
-  val dtim_adapter = tileParams.dcache.flatMap { d => d.scratch.map { s =>
-    LazyModule(new ScratchpadSlavePort(AddressSet.misaligned(s, d.dataScratchpadBytes), coreParams.coreDataBytes, false))
+  val dtim_address = tileParams.dcache.flatMap { d => d.scratch.map { s =>
+    AddressSet.misaligned(s, d.dataScratchpadBytes)
   }}
+  val dtim_adapter = dtim_address.map { addr => 
+    LazyModule(new ScratchpadSlavePort(addr, coreParams.coreDataBytes, false))
+  }
   dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
 
   val dtimProperty = dtim_adapter.map(d => Map(
@@ -189,11 +192,14 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // Sodor configuration
   implicit val conf = SodorConfiguration(chipyardBuild = true)
 
+  // Scratchpad checking
+  require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad: make sure that tileParams.dcache.scratch is defined.")
+  require(outer.dtim_address.get.length == 1, "Sodor core can only have one scratchpad.")
+
   // Tile 
-  val tile = Module(p(SodorInternalTileKey).instantiate)
+  val tile = Module(p(SodorInternalTileKey).instantiate(outer.dtim_address.get.apply(0)))
 
   // Add scratchpad adapter
-  require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad")
   val scratchpadAdapter = Module(new SodorScratchpadAdapter()(outer.p, conf))
   scratchpadAdapter.io.slavePort <> outer.dtim_adapter.get.module.io.dmem
 

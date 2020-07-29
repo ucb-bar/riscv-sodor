@@ -34,5 +34,5 @@ class Core()(implicit val conf: SodorConfiguration) extends AbstractCore
    d.io.ddpath <> io.ddpath
    c.io.dcpath <> io.dcpath
 
-   val mem_ports = List(io.imem, io.dmem)
+   val mem_ports = List(io.dmem, io.imem)
 }

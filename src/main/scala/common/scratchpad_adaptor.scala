@@ -71,7 +71,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   slave_resp_valid := io.memPort.resp.valid & s1_slave_cmd === M_XRD
 
   // Connect read info
-  s1_slave_read_mask := new StoreGen(s1_slave_req_size, s1_slave_req_size, 0.U, coreParams.coreDataBytes).mask
+  s1_slave_read_mask := new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreParams.coreDataBytes).mask
   s1_slave_read_data := io.memPort.resp.bits.data
 
   // Connect write info
@@ -83,4 +83,27 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, sodorConst.M_XRD, sodorConst.M_XWR)
   // The "&" at the end clears the MSB in case of "signed dword" request, which we treat as an unsigned one
   io.memPort.req.bits.typ := Mux(s1_slave_req_signed, s1_slave_req_size, s1_slave_req_size + 4.U(3.W) & 3.U)
+}
+
+// This class simply route all memory request that doesn't belong to the scratchpad
+class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfiguration) extends Module {
+  val io = IO(new Bundle() {
+    val masterPort = new MemPortIo(data_width = conf.xprlen)
+    val scratchPort = new MemPortIo(data_width = conf.xprlen)
+    val corePort = Flipped(new MemPortIo(data_width = conf.xprlen))
+  })
+
+  val in_range = cacheAddress.contains(io.corePort.req.bits.addr)
+
+  // Connect other signals
+  io.masterPort.req.bits <> io.corePort.req.bits
+  io.scratchPort.req.bits <> io.corePort.req.bits
+
+  // Connect valid signal 
+  io.masterPort.req.valid := io.corePort.req.valid & !in_range
+  io.scratchPort.req.valid := io.corePort.req.valid & in_range
+
+  // Mux ready and request signal
+  io.corePort.req.ready := Mux(in_range, io.scratchPort.req.ready, io.masterPort.req.ready)
+  io.corePort.resp := Mux(in_range, io.scratchPort.resp, io.masterPort.resp)
 }
