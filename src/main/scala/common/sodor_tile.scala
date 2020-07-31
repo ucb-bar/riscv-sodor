@@ -96,6 +96,8 @@ class SodorTile(
   with SinksExternalInterrupts
   with SourcesExternalNotifications
 {
+  // Sodor configuration
+  implicit val conf = SodorConfiguration(chipyardBuild = true)
 
   // Private constructor ensures altered LazyModule.p is used implicitly
   def this(params: SodorTileParams, crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
@@ -190,7 +192,7 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   Annotated.params(this, outer.sodorParams)
 
   // Sodor configuration
-  implicit val conf = SodorConfiguration(chipyardBuild = true)
+  implicit val conf = outer.conf
 
   // Scratchpad checking
   require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad: make sure that tileParams.dcache.scratch is defined.")

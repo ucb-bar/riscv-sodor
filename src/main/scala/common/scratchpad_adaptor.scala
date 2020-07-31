@@ -81,8 +81,10 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // Other connections
   s2_nack := false.B
   io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, sodorConst.M_XRD, sodorConst.M_XWR)
-  // The "&" at the end clears the MSB in case of "signed dword" request, which we treat as an unsigned one
-  io.memPort.req.bits.typ := Mux(s1_slave_req_signed, s1_slave_req_size, s1_slave_req_size + 4.U(3.W) & 3.U)
+  // To convert TileLink signedness and operand size to Sodor type, add 1 to TileLink size (3 bits) and xor the output MSB with TileLink size
+  // If we have a signed dword request (which is illegal and not possible), we have the undecided type (MT_X)
+  // You can try this on all eight possible values to verify the correctness.
+  io.memPort.req.bits.typ := (s1_slave_req_size(2, 0) + 1.U(3.W)) ^ Cat(s1_slave_req_signed, 0.U(2.W))
 }
 
 // This class simply route all memory request that doesn't belong to the scratchpad
