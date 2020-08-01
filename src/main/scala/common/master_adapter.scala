@@ -20,20 +20,16 @@ class SodorMasterAdapter(implicit p: Parameters, val conf: SodorConfiguration) e
   // The node exposed to the crossbar
   val node = TLIdentityNode()
 
-  // The client node
-  val idBits = 4
+  // The client node (only one inflight request supported for Sodor)
   val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(
     clients = Seq(TLClientParameters(
       name = "sodor-mmio-master",
-      sourceId = IdRange(0, 1 << idBits)
+      sourceId = IdRange(0, 1)
     ))
   )))
 
   // Connect nodes
-  (node := TLBuffer()
-    := TLFIFOFixer(TLFIFOFixer.all) // fix FIFO ordering
-    := TLWidthWidget(1) // reduce size of TL to 1
-    := masterNode)
+  (node := TLBuffer() := masterNode)
 
   lazy val module = new SodorMasterAdapterImp(this)
 }
@@ -47,37 +43,53 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
 
   val (tl_out, edge) = outer.masterNode.out(0)
 
-  // The number of inflight request (Pending)
-  val a_source = 0.U
-  // val inflight_limit = (1 << outer.idBits - 1).U(outer.idBits.W)
-  // val inflight_request = RegInit(0.U(outer.idBits.W))
-  // val increment_inflight = inflight_request =/= inflight_limit & tl_out.a.valid & tl_out.a.ready
-  // val decrement_inflight = tl_out.d.valid
-  // inflight_request := Mux(increment_inflight ^ decrement_inflight, 
-  //   Mux(decrement_inflight, inflight_request - 1.U, inflight_request + 1.U),
-  // inflight_request)
-  // val inflight_full = inflight_request === inflight_limit
+  // Register
+  // Inflight request exists
+  val inflight = RegInit(false.B)
+  // Address and signedness of the request to be used by LoadGen
+  val a_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
+  val a_signed_reg = RegInit(false.B)
+
+  // Sign logic
+  // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take MSB as signedness
+  // and the remaining two bits as TileLink size
+  val a_signed = (io.dport.req.bits.typ - 1.U)(2)
+  val a_size = (io.dport.req.bits.typ - 1.U)(1, 0)
 
   // Connect Channel A valid/ready
-  tl_out.a.valid := io.dport.req.valid
-  io.dport.req.ready := tl_out.a.ready
+  // If there is an inflight request, do not allow new request to be sent
+  tl_out.a.valid := io.dport.req.valid & !inflight
+  io.dport.req.ready := tl_out.a.ready & !inflight
   // Connect Channel D valid/ready
   tl_out.d.ready := true.B
   io.dport.resp.valid := tl_out.d.valid
+  // States bookkeeping
+  when (tl_out.a.fire()) {
+    inflight := true.B
+    a_address_reg := io.dport.req.bits.addr
+    a_signed_reg := a_size
+  }
+  when (tl_out.d.fire()) {
+    inflight := false.B
+  }
 
   // Build "Get" message
-  // TODO: check typ signal here
-  val (legal_get, get_bundle) = edge.Get(a_source, io.dport.req.bits.addr, io.dport.req.bits.typ)
+  val (legal_get, get_bundle) = edge.Get(0.U, io.dport.req.bits.addr, a_size)
   // Build "Put" message
-  val (legal_put, put_bundle) = edge.Put(a_source, io.dport.req.bits.addr, io.dport.req.bits.typ, io.dport.req.bits.data)
+  val (legal_put, put_bundle) = edge.Put(0.U, io.dport.req.bits.addr, a_size, io.dport.req.bits.data)
 
   // Connect Channel A bundle
   tl_out.a.bits := Mux(io.dport.req.bits.fcn === M_XRD, get_bundle, put_bundle)
 
   // Connect Channel D bundle (read result)
-  io.dport.resp.bits.data := tl_out.d.bits.data
+  io.dport.resp.bits.data := new LoadGen(tl_out.d.bits.size, a_signed_reg, a_address_reg, tl_out.d.bits.data, false.B, conf.xprlen).data
 
-  // TODO: handle error and deal with bit extension
+  // Handle error
+  val legal_op = Mux(io.dport.req.bits.fcn === M_XRD, legal_get, legal_put)
+  val resp_xp = tl_out.d.bits.corrupt | tl_out.d.bits.denied
+  // Since the core doesn't have an external exception port, we have to kill it
+  assert(legal_op, "Illegal operation")
+  assert(resp_xp, "Responds exception")
 
   // Tie off unused channels
   tl_out.b.valid := false.B

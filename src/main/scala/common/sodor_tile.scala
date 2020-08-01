@@ -25,6 +25,7 @@ case class SodorCoreParams(
   btbEntries: Int = 16,
   bhtEntries: Int = 16,
   enableToFromHostCaching: Boolean = false,
+  internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends CoreParams {
   val useVM: Boolean = true
   val useUser: Boolean = true
@@ -129,6 +130,10 @@ class SodorTile(
   val dtimProperty = dtim_adapter.map(d => Map(
     "sifive,dtim" -> d.device.asProperty)).getOrElse(Nil)
 
+  // Sodor master port adapter
+  val imaster_adapter = LazyModule(new SodorMasterAdapter)
+  val dmaster_adapter = LazyModule(new SodorMasterAdapter)
+
   // Implementation class (See below)
   override lazy val module = new SodorTileModuleImp(this)
 
@@ -149,31 +154,6 @@ class SodorTile(
     Resource(cpuDevice, "reg").bind(ResourceAddress(hartId))
   }
 
-    /**
-   * Setup AXI4 memory interface.
-   * THESE ARE CONSTANTS.
-   */
-  val portName = "ariane-mem-port-axi4"
-  val idBits = 4
-  val beatBytes = masterPortBeatBytes
-  val sourceBits = 1 // equiv. to userBits (i think)
-
-  val memAXI4Node = AXI4MasterNode(
-    Seq(AXI4MasterPortParameters(
-      masters = Seq(AXI4MasterParameters(
-        name = portName,
-        id = IdRange(0, 1 << idBits))))))
-
-  val memoryTap = TLIdentityNode()
-  (tlMasterXbar.node
-    := memoryTap
-    := TLBuffer()
-    := TLFIFOFixer(TLFIFOFixer.all) // fix FIFO ordering
-    := TLWidthWidget(beatBytes) // reduce size of TL
-    := AXI4ToTL() // convert to TL
-    := AXI4UserYanker(Some(2)) // remove user field on AXI interface. need but in reality user intf. not needed
-    := AXI4Fragmenter() // deal with multi-beat xacts
-    := memAXI4Node)
 
   override def makeMasterBoundaryBuffers(implicit p: Parameters) = {
     if (!sodorParams.boundaryBuffers) super.makeMasterBoundaryBuffers
@@ -199,7 +179,7 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   require(outer.dtim_address.get.length == 1, "Sodor core can only have one scratchpad.")
 
   // Tile 
-  val tile = Module(p(SodorInternalTileKey).instantiate(outer.dtim_address.get.apply(0)))
+  val tile = Module(outer.sodorParams.core.internalTile.instantiate(outer.dtim_address.get.apply(0)))
 
   // Add scratchpad adapter
   val scratchpadAdapter = Module(new SodorScratchpadAdapter()(outer.p, conf))
@@ -207,9 +187,14 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 
   // Connect tile
   tile.io.debug_port <> scratchpadAdapter.io.memPort
+  tile.io.master_port <> VecInit(outer.dmaster_adapter.module.io.dport, outer.imaster_adapter.module.io.dport)
 }
 
-class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config((site, here, up) => {
+class WithNSodorCores(
+  n: Int = 1,
+  overrideIdOffset: Option[Int] = None,
+  internalTile: SodorInternalTileFactory = Stage5Factory
+) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
     val prev = up(TilesLocated(InSubsystem), site)
@@ -224,6 +209,9 @@ class WithNSodorCores(n: Int = 1, overrideIdOffset: Option[Int] = None) extends 
             nWays = 1,
             nMSHRs = 0,
             scratch = Some(0x80000000L)
+          ),
+          core = SodorCoreParams(
+            internalTile = internalTile
           )
         ),
         crossingParams = RocketCrossingParams()
