@@ -65,12 +65,14 @@ class d2h2i1(val addrWidth : Int) extends Bundle{
    val clk = Input(Clock())
 }
 
-class AsyncReadMem(val addrWidth : Int) extends BlackBox{
+class AsyncReadMem(val addrWidth : Int) extends BlackBox with HasBlackBoxResource {
    val io = IO(new d2h2i1(addrWidth))
+   addResource("/vsrc/AsyncReadMem.sv")
 }
 
-class SyncMem(val addrWidth : Int) extends BlackBox{
+class SyncMem(val addrWidth : Int) extends BlackBox with HasBlackBoxResource {
    val io = IO(new d2h2i1(addrWidth))
+   addResource("/vsrc/SyncMem.sv")
 }
 
 // from the pov of the datapath

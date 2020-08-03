@@ -21,10 +21,9 @@ abstract class AbstractCore extends Module {
   val mem_ports: Seq[MemPortIo]
 }
 abstract class AbstractInternalTile(implicit val conf: SodorConfiguration) extends Module {
-  protected def nMemPorts: Int
   val io = IO(new Bundle {
     val debug_port = Flipped(new MemPortIo(data_width = conf.debuglen))
-    val master_port = Vec(nMemPorts, new MemPortIo(data_width = conf.debuglen))
+    val master_port = Vec(2, new MemPortIo(data_width = conf.debuglen))
   })
 }
 
@@ -51,21 +50,19 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   core.io := DontCare
   val memory = Module(new SyncScratchPadMemory(num_core_ports = procConst.NUM_MEMORY_PORTS))
 
-  protected val nMemPorts = procConst.NUM_MEMORY_PORTS
-  val mem_ports = Wire(Vec(nMemPorts, new MemPortIo(data_width = conf.debuglen)))
   if (procConst.NUM_MEMORY_PORTS == 1) // Only used in stage3
   {
     val arbiter = Module(new sodor.stage3.SodorMemArbiter) // only used for single port memory
     core.io.imem <> arbiter.io.imem
     core.io.dmem <> arbiter.io.dmem
-    arbiter.io.mem <> mem_ports(0)
+    arbiter.io.mem <> io.master_port(0)
   }
   else
   {
-    core.io.imem <> mem_ports(1)
-    core.io.dmem <> mem_ports(0)
+    core.io.imem <> io.master_port(1)
+    core.io.dmem <> io.master_port(0)
   }
-  ((memory.io.core_ports zip mem_ports) zip io.master_port).foreach({ case ((core_port, mem_port), master_port) => {
+  ((memory.io.core_ports zip io.master_port) zip io.master_port).foreach({ case ((mem_port, core_port), master_port) => {
     val router = Module(new SodorRequestRouter(range))
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port
@@ -84,8 +81,8 @@ class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit 
   core.io := DontCare
   val memory = Module(new AsyncScratchPadMemory(num_core_ports = coreCtor.nMemPorts))
 
-  protected val nMemPorts = coreCtor.nMemPorts
-  ((memory.io.core_ports zip core.mem_ports) zip io.master_port).foreach({ case ((core_port, mem_port), master_port) => {
+  val nMemPorts = coreCtor.nMemPorts
+  ((memory.io.core_ports zip core.mem_ports) zip io.master_port).foreach({ case ((mem_port, core_port), master_port) => {
     val router = Module(new SodorRequestRouter(range))
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port

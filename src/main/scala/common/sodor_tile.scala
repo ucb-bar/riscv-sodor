@@ -27,18 +27,18 @@ case class SodorCoreParams(
   enableToFromHostCaching: Boolean = false,
   internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends CoreParams {
-  val useVM: Boolean = true
-  val useUser: Boolean = true
+  val useVM: Boolean = false
+  val useUser: Boolean = false
   val useSupervisor: Boolean = false
   val useDebug: Boolean = true
-  val useAtomics: Boolean = true
+  val useAtomics: Boolean = false
   val useAtomicsOnlyForIO: Boolean = false // copied from Rocket
-  val useCompressed: Boolean = true
+  val useCompressed: Boolean = false
   override val useVector: Boolean = false
   val useSCIE: Boolean = false
   val useRVE: Boolean = false
   val mulDiv: Option[MulDivParams] = Some(MulDivParams()) // copied from Rocket
-  val fpu: Option[FPUParams] = Some(FPUParams()) // copied fma latencies from Rocket
+  val fpu: Option[FPUParams] = None
   val nLocalInterrupts: Int = 0
   val nPMPs: Int = 0 // TODO: Check
   val pmpGranularity: Int = 4 // copied from Rocket
@@ -51,12 +51,12 @@ case class SodorCoreParams(
   val haveCFlush: Boolean = false
   val nL2TLBEntries: Int = 512 // copied from Rocket
   val mtvecInit: Option[BigInt] = Some(BigInt(0)) // copied from Rocket
-  val mtvecWritable: Boolean = true // copied from Rocket
+  val mtvecWritable: Boolean = false // copied from Rocket
   val instBits: Int = if (useCompressed) 16 else 32
   val lrscCycles: Int = 80 // copied from Rocket
   val decodeWidth: Int = 1 // TODO: Check
   val fetchWidth: Int = 1 // TODO: Check
-  val retireWidth: Int = 2
+  val retireWidth: Int = 1
 }
 
 // DOC include start: CanAttachTile
@@ -98,7 +98,7 @@ class SodorTile(
   with SourcesExternalNotifications
 {
   // Sodor configuration
-  implicit val conf = SodorConfiguration(chipyardBuild = true)
+  implicit val conf = SodorConfiguration(chipyardBuild = true, xprlen = p(XLen))
 
   // Private constructor ensures altered LazyModule.p is used implicitly
   def this(params: SodorTileParams, crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
@@ -133,6 +133,8 @@ class SodorTile(
   // Sodor master port adapter
   val imaster_adapter = LazyModule(new SodorMasterAdapter)
   val dmaster_adapter = LazyModule(new SodorMasterAdapter)
+  tlMasterXbar.node := imaster_adapter.node
+  tlMasterXbar.node := dmaster_adapter.node
 
   // Implementation class (See below)
   override lazy val module = new SodorTileModuleImp(this)
@@ -153,7 +155,6 @@ class SodorTile(
   ResourceBinding {
     Resource(cpuDevice, "reg").bind(ResourceAddress(hartId))
   }
-
 
   override def makeMasterBoundaryBuffers(implicit p: Parameters) = {
     if (!sodorParams.boundaryBuffers) super.makeMasterBoundaryBuffers

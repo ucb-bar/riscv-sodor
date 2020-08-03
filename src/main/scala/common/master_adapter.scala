@@ -82,7 +82,7 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   tl_out.a.bits := Mux(io.dport.req.bits.fcn === M_XRD, get_bundle, put_bundle)
 
   // Connect Channel D bundle (read result)
-  io.dport.resp.bits.data := new LoadGen(tl_out.d.bits.size, a_signed_reg, a_address_reg, tl_out.d.bits.data, false.B, conf.xprlen).data
+  io.dport.resp.bits.data := new LoadGen(tl_out.d.bits.size, a_signed_reg, a_address_reg, tl_out.d.bits.data, false.B, conf.xprlen / 8).data
 
   // Handle error
   val legal_op = Mux(io.dport.req.bits.fcn === M_XRD, legal_get, legal_put)
