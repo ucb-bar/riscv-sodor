@@ -83,7 +83,12 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, sodorConst.M_XRD, sodorConst.M_XWR)
   // Since we don't have dword here (the bus only has 32 bits), s1_slave_req_size <= 2.
   // The expression below convert TileLink size and signedness to Sodor type.
-  io.memPort.req.bits.typ := Cat(s1_slave_req_signed, s1_slave_req_size + 1.U)
+  io.memPort.req.bits.typ := Cat(~s1_slave_req_signed, s1_slave_req_size + 1.U)
+
+  // Debug
+  when(s1_slave_req_valid & s1_slave_cmd === M_XWR & !s1_slave_write_kill) {
+    printf("DEBUG MESSAGE: Scratchpad get %x\n", s1_slave_write_data)
+  }
 }
 
 // This class simply route all memory request that doesn't belong to the scratchpad

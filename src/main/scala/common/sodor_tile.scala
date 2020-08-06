@@ -98,7 +98,7 @@ class SodorTile(
   with SourcesExternalNotifications
 {
   // Sodor configuration
-  implicit val conf = SodorConfiguration(chipyardBuild = true, xprlen = p(XLen))
+  implicit val conf = SodorConfiguration(p, chipyardBuild = true, xprlen = p(XLen))
 
   // Private constructor ensures altered LazyModule.p is used implicitly
   def this(params: SodorTileParams, crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
@@ -189,6 +189,9 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // Connect tile
   tile.io.debug_port <> scratchpadAdapter.io.memPort
   tile.io.master_port <> VecInit(outer.dmaster_adapter.module.io.dport, outer.imaster_adapter.module.io.dport)
+
+  // Connect interrupts
+  outer.decodeCoreInterrupts(tile.io.interrupt)
 }
 
 class WithNSodorCores(

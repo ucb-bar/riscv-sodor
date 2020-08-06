@@ -10,11 +10,11 @@ package sodor.ucode
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSRFile
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
-import sodor.common.Constants._
-
 
 class DatToCtlIo extends Bundle()
 {
@@ -31,6 +31,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val mem  = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
+   val interrupt = Input(new CoreInterrupts()(conf.p))
 }
 
 
@@ -134,9 +135,9 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    }
 
    // Control Status Registers
-   val csr = Module(new CSRFile())
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
-   csr.io.decode.csr  := csr_addr
+   csr.io.decode(0).csr  := csr_addr
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata
@@ -144,6 +145,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.exception := io.ctl.exception
    csr.io.pc        := regfile(PC_IDX) - 4.U
    exception_target := csr.io.evec
+
+   csr.io.interrupts := io.interrupt
 
    io.dat.csr_eret := csr.io.eret
 

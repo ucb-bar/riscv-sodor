@@ -17,10 +17,11 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSRFile
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
-import sodor.common.Constants._
 
 class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
@@ -38,6 +39,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
+   val interrupt = Input(new CoreInterrupts()(conf.p))
 }
 
 class DatPath(implicit val conf: SodorConfiguration) extends Module
@@ -215,9 +217,9 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Writeback Stage
 
    // Control Status Registers
-   val csr = Module(new CSRFile())
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
-   csr.io.decode.csr   := wb_reg_csr_addr
+   csr.io.decode(0).csr   := wb_reg_csr_addr
    csr.io.rw.wdata  := wb_reg_alu
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd
    val wb_csr_out    = csr.io.rw.rdata
@@ -227,6 +229,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.pc        := wb_reg_pc
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
+
+   csr.io.interrupts := io.interrupt
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)

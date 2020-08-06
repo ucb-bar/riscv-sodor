@@ -51,9 +51,9 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val a_signed_reg = RegInit(false.B)
 
   // Sign logic
-  // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take MSB as signedness
+  // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take inversed MSB as signedness
   // and the remaining two bits as TileLink size
-  val a_signed = (io.dport.req.bits.typ - 1.U)(2)
+  val a_signed = ~(io.dport.req.bits.typ - 1.U)(2)
   val a_size = (io.dport.req.bits.typ - 1.U)(1, 0)
 
   // Connect Channel A valid/ready
@@ -78,6 +78,12 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   // Build "Put" message
   val (legal_put, put_bundle) = edge.Put(0.U, io.dport.req.bits.addr, a_size, io.dport.req.bits.data)
 
+  // DEBUG
+  when (tl_out.a.fire()) {
+    printf("DEBUG MESSAGE: A-chan size is %x, with address %x\n", tl_out.a.bits.size, tl_out.a.bits.address)
+    printf("DEBUG MESSAGE: Original typ: %b\n", io.dport.req.bits.typ)
+  }
+
   // Connect Channel A bundle
   tl_out.a.bits := Mux(io.dport.req.bits.fcn === M_XRD, get_bundle, put_bundle)
 
@@ -88,8 +94,8 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val legal_op = Mux(io.dport.req.bits.fcn === M_XRD, legal_get, legal_put)
   val resp_xp = tl_out.d.bits.corrupt | tl_out.d.bits.denied
   // Since the core doesn't have an external exception port, we have to kill it
-  assert(legal_op, "Illegal operation")
-  assert(resp_xp, "Responds exception")
+  assert(legal_op | !tl_out.a.valid, "Illegal operation")
+  assert(!resp_xp | !tl_out.d.valid, "Responds exception")
 
   // Tie off unused channels
   tl_out.b.valid := false.B

@@ -16,14 +16,22 @@ import freechips.rocketchip.util._
 import freechips.rocketchip.tile._
 import freechips.rocketchip.amba.axi4._
 
+// Event sets for core CSR
+// This object simply disable all performance counters
+object CSREvents {
+  val events = new EventSets(Seq(new EventSet((mask, hit) => false.B, Seq(("placeholder", () => false.B)))))
+}
+
 // Abstract core and tile base class for all cores
 abstract class AbstractCore extends Module {
   val mem_ports: Seq[MemPortIo]
+  val interrupt: CoreInterrupts
 }
 abstract class AbstractInternalTile(implicit val conf: SodorConfiguration) extends Module {
   val io = IO(new Bundle {
-    val debug_port = Flipped(new MemPortIo(data_width = conf.debuglen))
-    val master_port = Vec(2, new MemPortIo(data_width = conf.debuglen))
+    val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))
+    val master_port = Vec(2, new MemPortIo(data_width = conf.xprlen))
+    val interrupt = Input(new CoreInterrupts()(conf.p))
   })
 }
 
@@ -70,6 +78,8 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   }})
 
   memory.io.debug_port <> io.debug_port
+
+  core.interrupt <> io.interrupt
 }
 
 // The general Sodor tile for all cores other than 3-stage
@@ -90,6 +100,8 @@ class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit 
   }})
 
   io.debug_port <> memory.io.debug_port
+
+  core.interrupt <> io.interrupt
 }
 
 // Tile constructor

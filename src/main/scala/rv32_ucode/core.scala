@@ -16,11 +16,14 @@ import chisel3.util._
 
 import sodor.common._
 
+import freechips.rocketchip.tile.CoreInterrupts
+
 class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
 {
   val ddpath = Flipped(new DebugDPath())
   val dcpath = Flipped(new DebugCPath())
   val mem  = new MemPortIo(conf.xprlen)
+  val interrupt = Input(new CoreInterrupts()(conf.p))
 }
 
 class Core(implicit val conf: SodorConfiguration) extends AbstractCore
@@ -41,5 +44,8 @@ class Core(implicit val conf: SodorConfiguration) extends AbstractCore
   d.io.ddpath <> io.ddpath
   c.io.dcpath <> io.dcpath
 
+  d.io.interrupt := io.interrupt
+
   val mem_ports = List(io.mem)
+  val interrupt = io.interrupt
 }

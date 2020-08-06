@@ -4,9 +4,11 @@ import chisel3._
 import chisel3.util._
 
 import Constants._
+import freechips.rocketchip.config.Parameters
 
 case class SodorConfiguration(
    // Configuration for Chipyard integration
+   val p: Parameters,
    val chipyardBuild: Boolean = false,
    val debuglen: Int = 32,
    val xprlen: Int = 32

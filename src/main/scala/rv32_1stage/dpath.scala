@@ -10,10 +10,11 @@ package sodor.stage1
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSRFile
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
-import sodor.common.Constants._
 
 class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
@@ -32,6 +33,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
+   val interrupt = Input(new CoreInterrupts()(conf.p))
 }
 
 class DatPath(implicit val conf: SodorConfiguration) extends Module
@@ -66,6 +68,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    pc_plus4 := (pc_reg + 4.asUInt(conf.xprlen.W))
 
 
+   io.imem.req.bits.fcn := M_XRD
+   io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := pc_reg
    io.imem.req.valid := true.B
    val inst = Mux(io.imem.resp.valid, io.imem.resp.bits.data, BUBBLE)
@@ -154,9 +158,9 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    jump_reg_target := (rs1_data.asUInt() + imm_i_sext.asUInt())
 
    // Control Status Registers
-   val csr = Module(new CSRFile())
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
-   csr.io.decode.csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.decode(0).csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := alu_out
 
@@ -164,6 +168,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.exception := io.ctl.exception
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
+
+   csr.io.interrupts := io.interrupt
 
    io.dat.csr_eret := csr.io.eret
 
