@@ -47,6 +47,7 @@ package sodor.ucode
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 
 import Constants._
 import sodor.common._

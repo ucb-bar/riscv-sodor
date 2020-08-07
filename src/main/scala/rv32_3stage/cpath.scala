@@ -10,6 +10,7 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 
 import sodor.common._
 import sodor.common.Instructions._
@@ -27,7 +28,7 @@ class CtrlSignals extends Bundle()
    val wb_sel    = Output(UInt(2.W))
    val rf_wen    = Output(Bool())
    val bypassable = Output(Bool())     // instruction's result can be bypassed
-   val csr_cmd   = Output(UInt(CSR.SZ))
+   val csr_cmd   = Output(UInt(CSR.SZ.W))
 
    val dmem_val  = Output(Bool())
    val dmem_fcn  = Output(UInt(M_X.getWidth.W))

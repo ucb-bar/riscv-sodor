@@ -111,5 +111,8 @@ class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfi
 
   // Mux ready and request signal
   io.corePort.req.ready := Mux(in_range, io.scratchPort.req.ready, io.masterPort.req.ready)
-  io.corePort.resp := Mux(in_range, io.scratchPort.resp, io.masterPort.resp)
+  io.corePort.resp.bits := Mux(in_range, io.scratchPort.resp.bits, io.masterPort.resp.bits)
+  io.corePort.resp.valid := Mux(in_range, io.scratchPort.resp.valid, io.masterPort.resp.valid)
+  // io.scratchPort.resp.ready := in_range & io.corePort.resp.ready
+  // io.masterPort.resp.ready := ~in_range & io.corePort.resp.ready
 }

@@ -9,6 +9,7 @@ package sodor.stage1
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 
 import sodor.common._
 import sodor.common.Instructions._
@@ -23,7 +24,7 @@ class CtlToDatIo extends Bundle()
    val alu_fun   = Output(UInt(ALU_X.getWidth.W))
    val wb_sel    = Output(UInt(WB_X.getWidth.W))
    val rf_wen    = Output(Bool())
-   val csr_cmd   = Output(UInt(CSR.SZ))
+   val csr_cmd   = Output(UInt(CSR.SZ.W))
    val exception = Output(Bool())
 }
 

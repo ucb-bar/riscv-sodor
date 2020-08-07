@@ -61,7 +61,7 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   tl_out.a.valid := io.dport.req.valid & !inflight
   io.dport.req.ready := tl_out.a.ready & !inflight
   // Connect Channel D valid/ready
-  tl_out.d.ready := true.B
+  tl_out.d.ready := true.B // io.dport.resp.ready
   io.dport.resp.valid := tl_out.d.valid
   // States bookkeeping
   when (tl_out.a.fire()) {

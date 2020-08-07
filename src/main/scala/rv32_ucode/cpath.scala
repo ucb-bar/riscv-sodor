@@ -10,6 +10,7 @@ package sodor.ucode
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 
 import sodor.common._
 import sodor.common.Instructions._
@@ -20,7 +21,7 @@ import scala.collection.mutable.ArrayBuffer
 class CtlToDatIo extends Bundle()
 {
    val msk_sel = Output(UInt(MSK_SZ))
-   val csr_cmd = Output(UInt(CSR.SZ))
+   val csr_cmd = Output(UInt(CSR.SZ.W))
    val ld_ir   = Output(Bool())
    val reg_sel = Output(UInt(RS_X.getWidth.W))
    val reg_wr  = Output(Bool())
@@ -76,7 +77,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
   val cs = uop.asTypeOf(new Bundle()
   {
      val msk_sel        = UInt(MSK_SZ)
-     val csr_cmd        = UInt(CSR.SZ)
+     val csr_cmd        = UInt(CSR.SZ.W)
      val ld_ir          = Bool()
      val reg_sel        = UInt(RS_X.getWidth.W)
      val reg_wr         = Bool()

@@ -13,6 +13,7 @@ package sodor.stage5
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 
 import Constants._
 import sodor.common._
@@ -34,7 +35,7 @@ class CtlToDatIo extends Bundle()
    val mem_val    = Output(Bool())
    val mem_fcn    = Output(UInt(2.W))
    val mem_typ    = Output(UInt(3.W))
-   val csr_cmd    = Output(UInt(CSR.SZ))
+   val csr_cmd    = Output(UInt(CSR.SZ.W))
    val fencei     = Output(Bool())    // pipeline is executing a fencei
 
    val pipeline_kill = Output(Bool()) // an exception occurred (detected in mem stage).
@@ -144,14 +145,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                                                             PC_4
                      ))))))))))
 
-   val ifkill  = (ctrl_exe_pc_sel =/= PC_4) || !io.imem.resp.valid || cs_fencei || RegNext(cs_fencei)
+   val ifkill  = (ctrl_exe_pc_sel =/= PC_4) || !io.dat.if_valid_resp || cs_fencei || RegNext(cs_fencei)
    val deckill = (ctrl_exe_pc_sel =/= PC_4)
 
    // Exception Handling ---------------------
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception)
 
-   val dec_exception = (!cs_val_inst && io.imem.resp.valid)
+   val dec_exception = (!cs_val_inst && io.dat.if_valid_resp)
 
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
@@ -212,6 +213,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
       exe_inst_is_load := cs_mem_en && (cs_mem_fcn === M_XRD)
    }
 
+   // Clear instruction exception (from the "instruction" following xret) when returning from trap
+   when (io.dat.csr_eret) {
+      exe_reg_exception := false.B
+   }
 
    // Stall signal stalls instruction fetch & decode stages,
    // inserts NOP into execute stage,  and drains execute, memory, and writeback stages
@@ -240,7 +245,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // stall full pipeline on D$ miss
    val dmem_val   = io.dat.mem_ctrl_dmem_val
-   full_stall := !io.imem.resp.valid || !((dmem_val && io.dmem.resp.valid) || !dmem_val)
+   full_stall := !io.dat.if_valid_resp || !((dmem_val && io.dmem.resp.valid) || !dmem_val)
 
 
    io.ctl.dec_stall  := stall // stall if, dec stage (pipeline hazard)
@@ -259,7 +264,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || RegNext(cs_fencei)
 
-   io.ctl.mem_exception := RegNext(exe_reg_exception)
+   io.ctl.mem_exception := RegNext(exe_reg_exception && !io.dat.csr_eret)
 
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands

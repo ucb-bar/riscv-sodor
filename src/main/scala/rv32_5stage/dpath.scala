@@ -12,6 +12,7 @@ package sodor.stage5
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
 
@@ -29,6 +30,7 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    val mem_ctrl_dmem_val = Output(Bool())
 
    val csr_eret = Output(Bool())
+   val if_valid_resp = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -129,11 +131,34 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       if_pc_next := if_reg_pc
    }
 
+   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
+   // the execution is resumed
+   val if_inst_buffer = RegInit(0.U(32.W))
+   val if_inst_buffer_valid = RegInit(false.B)
+   val if_inst_buffer_killed = RegInit(false.B)
+   when (io.ctl.dec_stall || io.ctl.full_stall) {
+      when (io.imem.resp.valid) {
+         if_inst_buffer_valid := true.B
+         if_inst_buffer := io.imem.resp.bits.data
+      } .elsewhen (io.ctl.pipeline_kill) {
+         if_inst_buffer_killed := true.B
+      }
+   } .otherwise {
+      // If resumed, clear the buffer
+      if_inst_buffer := 0.U(32.W)
+      if_inst_buffer_valid := false.B
+      if_inst_buffer_killed := false.B
+   }
+
+   // Connect CPath valid instruction fetch response to prevent livelock when fetch have multi-cycle delay
+   io.dat.if_valid_resp := !(if_inst_buffer_killed) && (if_inst_buffer_valid || io.imem.resp.valid)
+
    // Instruction Memory
+   io.imem.req.valid := !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill && !if_inst_buffer_killed
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := if_reg_pc
-   val if_inst = io.imem.resp.bits.data
+   val if_inst = Mux(if_inst_buffer_valid, Mux(if_inst_buffer_killed, BUBBLE, if_inst_buffer), io.imem.resp.bits.data)
 
    when (io.ctl.pipeline_kill)
    {
@@ -372,6 +397,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
    csr.io.decode(0).csr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.rw.addr  := mem_reg_inst(31, 20)
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 

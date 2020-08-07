@@ -17,6 +17,7 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.rocket.CSR
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
 
