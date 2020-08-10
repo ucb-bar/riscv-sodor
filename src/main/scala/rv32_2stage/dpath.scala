@@ -12,6 +12,7 @@ import chisel3.util._
 
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.tile.TileInputConstants
 
 import Constants._
 import sodor.common._
@@ -34,6 +35,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts()(conf.p))
+   val constants = new TileInputConstants()(conf.p)
 }
 
 class DatPath(implicit val conf: SodorConfiguration) extends Module
@@ -43,7 +45,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_pc = RegInit(START_ADDR)
+   val if_reg_pc = RegInit(io.constants.reset_vector)
 
    val exe_reg_pc       = RegInit(0.asUInt(conf.xprlen.W))
    val exe_reg_pc_plus4 = RegInit(0.asUInt(conf.xprlen.W))
@@ -197,6 +199,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    csr.io.interrupts := io.interrupt
+   csr.io.hartid := io.constants.hartid
 
    io.dat.csr_eret := csr.io.eret
 

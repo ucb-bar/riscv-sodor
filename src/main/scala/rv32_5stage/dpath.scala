@@ -15,11 +15,12 @@ import chisel3.util._
 import freechips.rocketchip.rocket.CSR
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.tile.TileInputConstants
 
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle() 
 {
    val dec_inst    = Output(UInt(conf.xprlen.W))
    val exe_br_eq   = Output(Bool())
@@ -30,11 +31,12 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    val mem_ctrl_dmem_val = Output(Bool())
 
    val csr_eret = Output(Bool())
+   val csr_interrupt = Output(Bool())
    val if_valid_resp = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DpathIo(implicit val conf: SodorConfiguration) extends Bundle
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
@@ -42,6 +44,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts()(conf.p))
+   val constants = new TileInputConstants()(conf.p)
 }
 
 class DatPath(implicit val conf: SodorConfiguration) extends Module
@@ -53,7 +56,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Pipeline State Registers
 
    // Instruction Fetch State
-   val if_reg_pc             = RegInit(START_ADDR)
+   val if_reg_pc             = RegInit(io.constants.reset_vector)
 
    // Instruction Decode State
    val dec_reg_valid         = RegInit(false.B)
@@ -138,8 +141,14 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val if_inst_buffer_killed = RegInit(false.B)
    when (io.ctl.dec_stall || io.ctl.full_stall) {
       when (io.imem.resp.valid) {
-         if_inst_buffer_valid := true.B
-         if_inst_buffer := io.imem.resp.bits.data
+         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
+         when (if_inst_buffer_killed || io.ctl.pipeline_kill) {
+            if_inst_buffer_valid := false.B
+            if_inst_buffer_killed := false.B
+         } .otherwise {
+            if_inst_buffer_valid := true.B
+            if_inst_buffer := io.imem.resp.bits.data
+         }
       } .elsewhen (io.ctl.pipeline_kill) {
          if_inst_buffer_killed := true.B
       }
@@ -406,7 +415,17 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
 
+   // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
+   val reg_interrupt_edge = RegInit(0.U(2.W))
+   when (true.B) {
+      reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
+   }
+   val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+
    csr.io.interrupts := io.interrupt
+   csr.io.hartid := io.constants.hartid
+   io.dat.csr_interrupt := interrupt_edge
+   csr.io.cause := Mux(io.ctl.mem_exception, ILLEGAL_INST.U(csr.io.cause.getWidth.W), csr.io.interrupt_cause)
 
    io.dat.csr_eret := csr.io.eret
    // TODO replay? stall?
@@ -429,10 +448,10 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    when (!io.ctl.full_stall)
    {
-      wb_reg_valid         := mem_reg_valid && !io.ctl.mem_exception
+      wb_reg_valid         := mem_reg_valid && !io.ctl.mem_exception && !interrupt_edge
       wb_reg_wbaddr        := mem_reg_wbaddr
       wb_reg_wbdata        := mem_wbdata
-      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception, false.B, mem_reg_ctrl_rf_wen)
+      wb_reg_ctrl_rf_wen   := Mux(io.ctl.mem_exception || interrupt_edge, false.B, mem_reg_ctrl_rf_wen)
    }
    .otherwise
    {

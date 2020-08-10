@@ -33,11 +33,14 @@ import chisel3.util._
 import Constants._
 import sodor.common._
 
+import freechips.rocketchip.tile.TileInputConstants
 
 class FrontEndIO(implicit val conf: SodorConfiguration) extends Bundle
 {
    val cpu  = new FrontEndCpuIO
    val imem = new MemPortIo(conf.xprlen)
+
+   val constants = new TileInputConstants()(conf.p)
 
    override def cloneType = { new FrontEndIO().asInstanceOf[this.type] }
 }
@@ -84,7 +87,7 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = RegInit(false.B)
-   val if_reg_pc     = RegInit(START_ADDR - 4.U)
+   val if_reg_pc     = RegInit(io.constants.reset_vector - 4.U)
 
    val exe_reg_valid = RegInit(false.B)
    val exe_reg_pc    = Reg(UInt(conf.xprlen.W))

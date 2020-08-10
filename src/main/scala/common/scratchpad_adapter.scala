@@ -67,8 +67,8 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // HellaCacheIO to MemPortIo logic
   // Connect valid & ready bits
   slave_req_ready := io.memPort.req.ready
-  io.memPort.req.valid := s1_slave_req_valid & s1_slave_cmd === M_XRD & !s1_slave_write_kill
-  slave_resp_valid := io.memPort.resp.valid & s1_slave_cmd === M_XRD
+  io.memPort.req.valid := s1_slave_req_valid & (s1_slave_cmd === M_XRD || !s1_slave_write_kill)
+  slave_resp_valid := io.memPort.resp.valid
 
   // Connect read info
   s1_slave_read_mask := new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreParams.coreDataBytes).mask

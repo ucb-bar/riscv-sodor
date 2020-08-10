@@ -26,12 +26,14 @@ object CSREvents {
 abstract class AbstractCore extends Module {
   val mem_ports: Seq[MemPortIo]
   val interrupt: CoreInterrupts
+  val constants: TileInputConstants
 }
 abstract class AbstractInternalTile(implicit val conf: SodorConfiguration) extends Module {
   val io = IO(new Bundle {
     val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))
     val master_port = Vec(2, new MemPortIo(data_width = conf.xprlen))
     val interrupt = Input(new CoreInterrupts()(conf.p))
+    val constants = new TileInputConstants()(conf.p)
   })
 }
 
@@ -102,6 +104,7 @@ class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit 
   io.debug_port <> memory.io.debug_port
 
   core.interrupt <> io.interrupt
+  core.constants := io.constants
 }
 
 // Tile constructor

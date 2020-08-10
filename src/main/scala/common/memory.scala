@@ -132,14 +132,11 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
       (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
       (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
-   async_data.io.dw.en := Mux((io.core_ports(DPORT).req.bits.fcn === M_XWR),true.B,false.B)
-   when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
-   {
-      async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
-      async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-      async_data.io.dw.mask := Mux(req_typi === MT_B,1.U << req_addri(1,0),
-                              Mux(req_typi === MT_H,3.U << req_addri(1,0),15.U))
-   }
+   async_data.io.dw.en := io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR)
+   async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
+   async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
+   async_data.io.dw.mask := Mux(req_typi === MT_B,1.U << req_addri(1,0),
+                           Mux(req_typi === MT_H,3.U << req_addri(1,0),15.U))
    /////////////////
 
    ///////////// IPORT
@@ -154,13 +151,10 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    // asynchronous read
    async_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := async_data.io.hr.data
-   async_data.io.hw.en := Mux((io.debug_port.req.bits.fcn === M_XWR),true.B,false.B)
-   when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
-   {
-      async_data.io.hw.addr := io.debug_port.req.bits.addr
-      async_data.io.hw.data := io.debug_port.req.bits.data
-      async_data.io.hw.mask := 15.U
-   }
+   async_data.io.hw.en := io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR
+   async_data.io.hw.addr := io.debug_port.req.bits.addr
+   async_data.io.hw.data := io.debug_port.req.bits.data
+   async_data.io.hw.mask := 15.U
 }
 
 class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module

@@ -10,6 +10,7 @@ import chisel3.util._
 import sodor.common._
 
 import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.tile.TileInputConstants
 
 class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
 {
@@ -18,32 +19,36 @@ class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
   val interrupt = Input(new CoreInterrupts()(conf.p))
+  val constants = new TileInputConstants()(conf.p)
 }
 
 class Core(implicit val conf: SodorConfiguration) extends AbstractCore
 {
-   val io = IO(new CoreIo())
+  val io = IO(new CoreIo())
 
-   val frontend = Module(new FrontEnd())
-   val cpath  = Module(new CtlPath())
-   val dpath  = Module(new DatPath())
+  val frontend = Module(new FrontEnd())
+  val cpath  = Module(new CtlPath())
+  val dpath  = Module(new DatPath())
 
-   frontend.io.imem <> io.imem
-   frontend.io.cpu <> cpath.io.imem
-   frontend.io.cpu <> dpath.io.imem
-   frontend.io.cpu.req.valid := cpath.io.imem.req.valid
+  frontend.io.constants := io.constants
+  frontend.io.imem <> io.imem
+  frontend.io.cpu <> cpath.io.imem
+  frontend.io.cpu <> dpath.io.imem
+  frontend.io.cpu.req.valid := cpath.io.imem.req.valid
 
-   cpath.io.ctl  <> dpath.io.ctl
-   cpath.io.dat  <> dpath.io.dat
+  cpath.io.ctl  <> dpath.io.ctl
+  cpath.io.dat  <> dpath.io.dat
 
-   cpath.io.dmem <> io.dmem
-   dpath.io.dmem <> io.dmem
+  cpath.io.dmem <> io.dmem
+  dpath.io.dmem <> io.dmem
 
-   dpath.io.ddpath <> io.ddpath
-   cpath.io.dcpath <> io.dcpath
+  dpath.io.ddpath <> io.ddpath
+  cpath.io.dcpath <> io.dcpath
 
-   dpath.io.interrupt := io.interrupt
+  dpath.io.interrupt := io.interrupt
+  dpath.io.constants := io.constants
 
-   val mem_ports = List(io.dmem, io.imem)
-   val interrupt = io.interrupt
+  val mem_ports = List(io.dmem, io.imem)
+  val interrupt = io.interrupt
+  val constants = io.constants
 }

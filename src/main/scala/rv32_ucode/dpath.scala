@@ -12,6 +12,7 @@ import chisel3.util._
 
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.tile.TileInputConstants
 
 import Constants._
 import sodor.common._
@@ -32,6 +33,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts()(conf.p))
+   val constants = new TileInputConstants()(conf.p)
 }
 
 
@@ -147,6 +149,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    csr.io.interrupts := io.interrupt
+   csr.io.hartid := io.constants.hartid
 
    io.dat.csr_eret := csr.io.eret
 
@@ -173,7 +176,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt() < reg_b.asSInt()).asUInt(),
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  START_ADDR,
+              (io.ctl.alu_op === ALU_INIT_PC) ->  io.constants.reset_vector,
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))

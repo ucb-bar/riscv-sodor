@@ -51,7 +51,7 @@ case class SodorCoreParams(
   val haveCFlush: Boolean = false
   val nL2TLBEntries: Int = 512 // copied from Rocket
   val mtvecInit: Option[BigInt] = Some(BigInt(0)) // copied from Rocket
-  val mtvecWritable: Boolean = false // copied from Rocket
+  val mtvecWritable: Boolean = true // copied from Rocket
   val instBits: Int = if (useCompressed) 16 else 32
   val lrscCycles: Int = 80 // copied from Rocket
   val decodeWidth: Int = 1 // TODO: Check
@@ -192,6 +192,9 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 
   // Connect interrupts
   outer.decodeCoreInterrupts(tile.io.interrupt)
+
+  // Connect constants
+  tile.io.constants := constants
 }
 
 class WithNSodorCores(

@@ -122,7 +122,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
                   FENCE_I-> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.N, Y),
                   // kill pipeline and refetch instructions since the pipeline will be holding stall instructions.
-                  FENCE  -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_1, M_X  , MT_X, CSR.N, N)
+                  FENCE  -> List(Y, BR_N  , OP1_X  , OP2_X     , OEN_0, OEN_0, ALU_X   , WB_X  , REN_0, MEN_0, M_X  , MT_X, CSR.N, N)
                   // we are already sequentially consistent, so no need to honor the fence instruction
                   ))
 
@@ -150,7 +150,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // Exception Handling ---------------------
 
-   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception)
+   io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception || io.dat.csr_interrupt)
 
    val dec_exception = (!cs_val_inst && io.dat.if_valid_resp)
 

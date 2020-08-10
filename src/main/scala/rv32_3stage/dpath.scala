@@ -20,6 +20,7 @@ import chisel3.util._
 import freechips.rocketchip.rocket.CSR
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.tile.TileInputConstants
 
 import Constants._
 import sodor.common._
@@ -41,6 +42,7 @@ class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts()(conf.p))
+   val constants = new TileInputConstants()(conf.p)
 }
 
 class DatPath(implicit val conf: SodorConfiguration) extends Module
@@ -232,6 +234,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dat.csr_eret := csr.io.eret
 
    csr.io.interrupts := io.interrupt
+   csr.io.hartid := io.constants.hartid
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
