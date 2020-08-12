@@ -37,7 +37,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // ===================
   // Slave port signals
   val slave_req_ready = io.slavePort.req.ready
-  val slave_resp_valid = io.slavePort.resp.valid
+  val s2_slave_resp_valid = io.slavePort.resp.valid
   val slave_req_valid = io.slavePort.req.valid
 
   val slave_cmd = io.slavePort.req.bits.cmd
@@ -55,8 +55,10 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   val s1_slave_req_addr = RegNext(slave_req_addr)
   val s1_slave_req_size = RegNext(slave_req_size)
   val s1_slave_req_signed = RegNext(slave_req_signed)
-  val s1_slave_read_data = io.slavePort.resp.bits.data_raw
-  val s1_slave_read_mask = io.slavePort.resp.bits.mask
+
+  // Note that ScratchpadSlavePort requires 2-cycle delay, or it won't even send the response
+  val s2_slave_read_data = io.slavePort.resp.bits.data_raw
+  val s2_slave_read_mask = io.slavePort.resp.bits.mask
 
   val s2_nack = io.slavePort.s2_nack
 
@@ -68,11 +70,11 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // Connect valid & ready bits
   slave_req_ready := io.memPort.req.ready
   io.memPort.req.valid := s1_slave_req_valid & (s1_slave_cmd === M_XRD || !s1_slave_write_kill)
-  slave_resp_valid := io.memPort.resp.valid
+  s2_slave_resp_valid := RegNext(io.memPort.resp.valid)
 
   // Connect read info
-  s1_slave_read_mask := new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreParams.coreDataBytes).mask
-  s1_slave_read_data := io.memPort.resp.bits.data
+  s2_slave_read_mask := RegNext(new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreParams.coreDataBytes).mask)
+  s2_slave_read_data := RegNext(io.memPort.resp.bits.data)
 
   // Connect write info
   io.memPort.req.bits.addr := s1_slave_req_addr
@@ -84,11 +86,6 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // Since we don't have dword here (the bus only has 32 bits), s1_slave_req_size <= 2.
   // The expression below convert TileLink size and signedness to Sodor type.
   io.memPort.req.bits.typ := Cat(~s1_slave_req_signed, s1_slave_req_size + 1.U)
-
-  // Debug
-  when(s1_slave_req_valid & s1_slave_cmd === M_XWR & !s1_slave_write_kill) {
-    printf("DEBUG MESSAGE: Scratchpad get %x\n", s1_slave_write_data)
-  }
 }
 
 // This class simply route all memory request that doesn't belong to the scratchpad

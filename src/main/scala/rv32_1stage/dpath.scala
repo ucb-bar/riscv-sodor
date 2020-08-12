@@ -24,6 +24,8 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
    val csr_eret = Output(Bool())
+   val csr_interrupt = Output(Bool())
+   val if_valid_resp = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -69,6 +71,25 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    pc_plus4 := (pc_reg + 4.asUInt(conf.xprlen.W))
 
+
+   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
+   // the execution is resumed
+   val if_inst_buffer = RegInit(0.U(32.W))
+   val if_inst_buffer_valid = RegInit(false.B)
+   when (io.ctl.stall) {
+      when (io.imem.resp.valid) {
+         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
+         if_inst_buffer_valid := true.B
+         if_inst_buffer := io.imem.resp.bits.data
+      }
+   } .otherwise {
+      // If resumed, clear the buffer
+      if_inst_buffer := 0.U(32.W)
+      if_inst_buffer_valid := false.B
+   }
+
+   // Connect CPath valid instruction fetch response to prevent livelock when fetch have multi-cycle delay
+   io.dat.if_valid_resp := if_inst_buffer_valid || io.imem.resp.valid
 
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
@@ -171,8 +192,17 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
+   // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
+   val reg_interrupt_edge = RegInit(0.U(2.W))
+   when (true.B) {
+      reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
+   }
+   val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid
+   io.dat.csr_interrupt := interrupt_edge
+   csr.io.cause := Mux(io.ctl.exception, ILLEGAL_INST.U(csr.io.cause.getWidth.W), csr.io.interrupt_cause)
 
    io.dat.csr_eret := csr.io.eret
 

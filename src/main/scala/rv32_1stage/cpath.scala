@@ -105,7 +105,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   WFI     -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N), // implemented as a NOP
 
                   FENCE_I -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
-                  FENCE   -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_1, M_X  , MT_X,  CSR.N)
+                  FENCE   -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X  , REN_0, MEN_0, M_X  , MT_X,  CSR.N)
                   // we are already sequentially consistent, so no need to honor the fence instruction
                   ))
 
@@ -115,7 +115,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val (cs_mem_en: Bool)   :: cs_mem_fcn         :: cs_msk_sel            :: cs_csr_cmd :: Nil = cs1
 
    // Branch Logic
-   val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
+   val ctrl_pc_sel = Mux(io.dat.csr_eret      || 
+                         io.dat.csr_interrupt ||
                          io.ctl.exception      ,  PC_EXC,
                      Mux(cs_br_type === BR_N  ,  PC_4,
                      Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
@@ -128,7 +129,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                      Mux(cs_br_type === BR_JR ,  PC_JR,
                                                  PC_4))))))))))
 
-   val stall =  !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
+   val stall =  !io.dat.if_valid_resp || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
 
    // Set the data-path control signals
    io.ctl.stall    := stall
