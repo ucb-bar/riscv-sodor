@@ -37,7 +37,7 @@ case class SodorCoreParams(
   override val useVector: Boolean = false
   val useSCIE: Boolean = false
   val useRVE: Boolean = false
-  val mulDiv: Option[MulDivParams] = Some(MulDivParams()) // copied from Rocket
+  val mulDiv: Option[MulDivParams] = None
   val fpu: Option[FPUParams] = None
   val nLocalInterrupts: Int = 0
   val nPMPs: Int = 0 // TODO: Check

@@ -42,6 +42,7 @@ class CtlToDatIo extends Bundle()
                                     // Kill the entire pipeline disregard stalls
                                     // and kill if,dec,exe stages.
    val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
+   val mem_exception_cause = Output(UInt(32.W))
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -152,7 +153,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception || io.dat.csr_interrupt)
 
-   val dec_exception = (!cs_val_inst && io.dat.if_valid_resp)
+   val dec_reg_misaligned = RegInit(false.B)
+   val dec_illegal = (!cs_val_inst && io.dat.if_valid_resp)
 
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
@@ -169,7 +171,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_rf_wen = RegInit(false.B)
    val mem_reg_ctrl_rf_wen = RegInit(false.B)
    val wb_reg_ctrl_rf_wen  = RegInit(false.B)
-   val exe_reg_exception   = RegInit(false.B)
+   val exe_reg_illegal     = RegInit(false.B)
+   val exe_reg_misaligned  = RegInit(false.B)
 
    val exe_reg_is_csr = RegInit(false.B)
 
@@ -177,19 +180,33 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val full_stall = Wire(Bool())
    when (!stall && !full_stall)
    {
+      when (ifkill)
+      {
+         dec_reg_misaligned := false.B
+      }
+      .otherwise
+      {
+         dec_reg_misaligned := io.dat.if_misaligned
+      }
+   }
+
+   when (!stall && !full_stall)
+   {
       when (deckill)
       {
          exe_reg_wbaddr      := 0.U
          exe_reg_ctrl_rf_wen := false.B
          exe_reg_is_csr      := false.B
-         exe_reg_exception   := false.B
+         exe_reg_illegal     := false.B
+         exe_reg_misaligned  := false.B
       }
       .otherwise
       {
          exe_reg_wbaddr      := dec_wbaddr
          exe_reg_ctrl_rf_wen := cs_rf_wen
          exe_reg_is_csr      := cs_csr_cmd =/= CSR.N && cs_csr_cmd =/= CSR.I
-         exe_reg_exception   := dec_exception
+         exe_reg_illegal     := dec_illegal
+         exe_reg_misaligned  := dec_reg_misaligned
       }
    }
    .elsewhen (stall && !full_stall)
@@ -198,7 +215,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
       exe_reg_wbaddr      := 0.U
       exe_reg_ctrl_rf_wen := false.B
       exe_reg_is_csr      := false.B
-      exe_reg_exception   := false.B
+      exe_reg_illegal     := false.B
+      exe_reg_misaligned  := false.B
    }
 
    mem_reg_wbaddr      := exe_reg_wbaddr
@@ -214,8 +232,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    }
 
    // Clear instruction exception (from the "instruction" following xret) when returning from trap
-   when (io.dat.csr_eret) {
-      exe_reg_exception := false.B
+   when (io.dat.csr_eret)
+   {
+      exe_reg_illegal    := false.B
+      exe_reg_misaligned := false.B
    }
 
    // Stall signal stalls instruction fetch & decode stages,
@@ -264,8 +284,12 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || RegNext(cs_fencei)
 
-   io.ctl.mem_exception := RegNext(exe_reg_exception && !io.dat.csr_eret)
-
+   io.ctl.mem_exception := RegNext((exe_reg_illegal || exe_reg_misaligned) && !io.dat.csr_eret) || io.dat.mem_dmem_misaligned
+   io.ctl.mem_exception_cause := Mux(exe_reg_misaligned, MISALIGNED_INST,
+                                 Mux(exe_reg_illegal,    ILLEGAL_INST,
+                                 Mux(io.dat.mem_store,   MISALIGNED_STORE,
+                                                         MISALIGNED_LOAD
+                                 )))
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
    val rs1_addr = io.dat.dec_inst(RS1_MSB, RS1_LSB)
@@ -277,6 +301,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.imem.req.bits.typ := MT_WU
    io.ctl.mem_val    := cs_mem_en
    io.ctl.mem_fcn    := cs_mem_fcn
-   io.ctl.mem_typ   := cs_msk_sel
+   io.ctl.mem_typ    := cs_msk_sel
 
 }

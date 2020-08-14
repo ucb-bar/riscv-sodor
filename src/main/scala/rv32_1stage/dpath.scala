@@ -202,7 +202,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid
    io.dat.csr_interrupt := interrupt_edge
-   csr.io.cause := Mux(io.ctl.exception, ILLEGAL_INST.U(csr.io.cause.getWidth.W), csr.io.interrupt_cause)
+   csr.io.cause := Mux(io.ctl.exception, ILLEGAL_INST, csr.io.interrupt_cause)
 
    io.dat.csr_eret := csr.io.eret
 

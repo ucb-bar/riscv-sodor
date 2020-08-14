@@ -32,7 +32,10 @@ trait RISCVConstants
    val BUBBLE  = 0x4033.U(32.W)
 
    // Illegal instruction error code
-   val ILLEGAL_INST = 2
+   val MISALIGNED_INST  = 0.U
+   val ILLEGAL_INST     = 2.U
+   val MISALIGNED_LOAD  = 4.U
+   val MISALIGNED_STORE = 6.U
 }
 
 trait PrivilegedConstants
