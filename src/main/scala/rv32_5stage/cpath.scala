@@ -153,7 +153,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception || io.dat.csr_interrupt)
 
-   val dec_reg_misaligned = RegInit(false.B)
    val dec_illegal = (!cs_val_inst && io.dat.if_valid_resp)
 
    // Stall Signal Logic --------------------
@@ -172,24 +171,11 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val mem_reg_ctrl_rf_wen = RegInit(false.B)
    val wb_reg_ctrl_rf_wen  = RegInit(false.B)
    val exe_reg_illegal     = RegInit(false.B)
-   val exe_reg_misaligned  = RegInit(false.B)
 
    val exe_reg_is_csr = RegInit(false.B)
 
    // TODO rename stall==hazard_stall full_stall == cmiss_stall
    val full_stall = Wire(Bool())
-   when (!stall && !full_stall)
-   {
-      when (ifkill)
-      {
-         dec_reg_misaligned := false.B
-      }
-      .otherwise
-      {
-         dec_reg_misaligned := io.dat.if_misaligned
-      }
-   }
-
    when (!stall && !full_stall)
    {
       when (deckill)
@@ -198,7 +184,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
          exe_reg_ctrl_rf_wen := false.B
          exe_reg_is_csr      := false.B
          exe_reg_illegal     := false.B
-         exe_reg_misaligned  := false.B
       }
       .otherwise
       {
@@ -206,7 +191,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
          exe_reg_ctrl_rf_wen := cs_rf_wen
          exe_reg_is_csr      := cs_csr_cmd =/= CSR.N && cs_csr_cmd =/= CSR.I
          exe_reg_illegal     := dec_illegal
-         exe_reg_misaligned  := dec_reg_misaligned
       }
    }
    .elsewhen (stall && !full_stall)
@@ -216,7 +200,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
       exe_reg_ctrl_rf_wen := false.B
       exe_reg_is_csr      := false.B
       exe_reg_illegal     := false.B
-      exe_reg_misaligned  := false.B
    }
 
    mem_reg_wbaddr      := exe_reg_wbaddr
@@ -235,7 +218,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    when (io.dat.csr_eret)
    {
       exe_reg_illegal    := false.B
-      exe_reg_misaligned := false.B
    }
 
    // Stall signal stalls instruction fetch & decode stages,
@@ -284,11 +266,12 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // be a store we need to wait to clear in MEM.
    io.ctl.fencei     := cs_fencei || RegNext(cs_fencei)
 
-   io.ctl.mem_exception := RegNext((exe_reg_illegal || exe_reg_misaligned) && !io.dat.csr_eret) || io.dat.mem_dmem_misaligned
-   io.ctl.mem_exception_cause := Mux(exe_reg_misaligned, MISALIGNED_INST,
-                                 Mux(exe_reg_illegal,    ILLEGAL_INST,
-                                 Mux(io.dat.mem_store,   MISALIGNED_STORE,
-                                                         MISALIGNED_LOAD
+   // Exception priority matters!
+   io.ctl.mem_exception := RegNext((exe_reg_illegal || io.dat.exe_inst_misaligned) && !io.dat.csr_eret) || io.dat.mem_data_misaligned
+   io.ctl.mem_exception_cause := Mux(RegNext(exe_reg_illegal),            ILLEGAL_INST,
+                                 Mux(RegNext(io.dat.exe_inst_misaligned), MISALIGNED_INST,
+                                 Mux(io.dat.mem_store,                    MISALIGNED_STORE,
+                                                                          MISALIGNED_LOAD
                                  )))
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands
