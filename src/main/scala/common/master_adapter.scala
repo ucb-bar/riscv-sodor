@@ -44,8 +44,9 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val (tl_out, edge) = outer.masterNode.out(0)
 
   // Register
-  // Inflight request exists
-  val inflight = RegInit(false.B)
+  // State
+  val s_ready :: s_active :: s_inflight :: Nil = Enum(3)
+  val state = RegInit(s_ready)
   // Address and signedness of the request to be used by LoadGen
   val a_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
   val a_signed_reg = RegInit(false.B)
@@ -56,21 +57,42 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val a_signed = ~(io.dport.req.bits.typ - 1.U)(2)
   val a_size = (io.dport.req.bits.typ - 1.U)(1, 0)
 
-  // Connect Channel A valid/ready
-  // If there is an inflight request, do not allow new request to be sent
-  tl_out.a.valid := io.dport.req.valid & !inflight
-  io.dport.req.ready := tl_out.a.ready & !inflight
-  // Connect Channel D valid/ready
-  tl_out.d.ready := true.B // io.dport.resp.ready
+  // // Connect Channel A valid/ready
+  // // If there is an inflight request, do not allow new request to be sent
+  // tl_out.a.valid := io.dport.req.valid & !inflight
+  // io.dport.req.ready := tl_out.a.ready & !inflight
+  // // Connect Channel D valid/ready
+  // tl_out.d.ready := true.B // io.dport.resp.ready
+  // io.dport.resp.valid := tl_out.d.valid
+  // // States bookkeeping
+  // when (tl_out.a.fire()) {
+  //   inflight := true.B
+  //   a_address_reg := io.dport.req.bits.addr
+  //   a_signed_reg := a_size
+  // }
+  // when (tl_out.d.fire()) {
+  //   inflight := false.B
+  // }
+
+  // State logic
+  when (state === s_ready && io.dport.req.valid) {
+    state := s_active
+  }
+  when (state === s_active && tl_out.a.fire()) {
+    state := s_inflight
+  }
+  when (state === s_inflight && tl_out.d.fire()) {
+    state := s_ready
+  }
+  tl_out.a.valid := state === s_active
+  tl_out.d.ready := true.B
+  io.dport.req.ready := state === s_ready
   io.dport.resp.valid := tl_out.d.valid
-  // States bookkeeping
+
+  // Bookkeeping
   when (tl_out.a.fire()) {
-    inflight := true.B
     a_address_reg := io.dport.req.bits.addr
     a_signed_reg := a_size
-  }
-  when (tl_out.d.fire()) {
-    inflight := false.B
   }
 
   // Build "Get" message

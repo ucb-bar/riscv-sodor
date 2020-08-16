@@ -200,7 +200,7 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 class WithNSodorCores(
   n: Int = 1,
   overrideIdOffset: Option[Int] = None,
-  internalTile: SodorInternalTileFactory = Stage1Factory
+  internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
