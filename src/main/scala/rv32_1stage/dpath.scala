@@ -20,12 +20,14 @@ import sodor.common._
 class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
    val inst   = Output(UInt(32.W))
+   val imiss  = Output(Bool())
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
    val csr_eret = Output(Bool())
    val csr_interrupt = Output(Bool())
-   val if_valid_resp = Output(Bool())
+   val inst_misaligned = Output(Bool())
+   val mem_address_low = Output(UInt(3.W))
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -44,6 +46,13 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
+
+   // Exception handling values
+   val tval_data_ma = Wire(UInt(conf.xprlen.W))
+   val tval_inst_ma = Wire(UInt(conf.xprlen.W))
+
+   // Interrupt kill
+   val interrupt_edge = Wire(Bool())
 
    // Instruction Fetch
    val pc_next          = Wire(UInt(32.W))
@@ -72,31 +81,32 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    pc_plus4 := (pc_reg + 4.asUInt(conf.xprlen.W))
 
 
-   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
-   // the execution is resumed
+   // Instruction memory buffer to store instruction during multicycle data request
+   io.dat.imiss := (io.imem.req.valid && !io.imem.resp.valid)
+   val reg_dmiss = RegNext(io.ctl.dmiss)
    val if_inst_buffer = RegInit(0.U(32.W))
-   val if_inst_buffer_valid = RegInit(false.B)
-   when (io.ctl.stall) {
-      when (io.imem.resp.valid) {
-         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
-         if_inst_buffer_valid := true.B
-         if_inst_buffer := io.imem.resp.bits.data
-      }
-   } .otherwise {
-      // If resumed, clear the buffer
-      if_inst_buffer := 0.U(32.W)
-      if_inst_buffer_valid := false.B
+   when (io.imem.resp.valid) {
+      assert(!reg_dmiss, "instruction arrived during data miss")
+      if_inst_buffer := io.imem.resp.bits.data
    }
-
-   // Connect CPath valid instruction fetch response to prevent livelock when fetch have multi-cycle delay
-   io.dat.if_valid_resp := if_inst_buffer_valid || io.imem.resp.valid
 
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := pc_reg
-   io.imem.req.valid := true.B
-   val inst = Mux(io.imem.resp.valid, io.imem.resp.bits.data, BUBBLE)
+   io.imem.req.valid := !reg_dmiss
+   val inst = Mux(reg_dmiss, if_inst_buffer, io.imem.resp.bits.data)
 
+   // Instruction misalign detection
+   // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
+   // execution stage, regardless whether the pipeline stalls or not
+   io.dat.inst_misaligned :=  (br_target(1, 0).orR       && io.ctl.pc_sel_no_xept === PC_BR) ||
+                              (jmp_target(1, 0).orR      && io.ctl.pc_sel_no_xept === PC_J)  ||
+                              (jump_reg_target(1, 0).orR && io.ctl.pc_sel_no_xept === PC_JR)
+   tval_inst_ma := MuxCase(0.U, Array(
+                     (io.ctl.pc_sel_no_xept === PC_BR) -> br_target,
+                     (io.ctl.pc_sel_no_xept === PC_J)  -> jmp_target,
+                     (io.ctl.pc_sel_no_xept === PC_JR) -> jump_reg_target
+                     ))
 
    // Decode
    val rs1_addr = inst(RS1_MSB, RS1_LSB)
@@ -104,7 +114,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val wb_addr  = inst(RD_MSB,  RD_LSB)
 
    val wb_data = Wire(UInt(conf.xprlen.W))
-   val wb_wen = io.ctl.rf_wen && !io.ctl.exception
+   val wb_wen = io.ctl.rf_wen && !io.ctl.exception && !interrupt_edge
 
    // Register File
    val regfile = Mem(32, UInt(conf.xprlen.W))
@@ -178,33 +188,41 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Branch/Jump Target Calculation
    br_target       := pc_reg + imm_b_sext
    jmp_target      := pc_reg + imm_j_sext
-   jump_reg_target := (rs1_data.asUInt() + imm_i_sext.asUInt())
+   jump_reg_target := (rs1_data.asUInt() + imm_i_sext.asUInt()) & ~1.U(conf.xprlen.W)
 
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
    csr.io.decode(0).csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
-   csr.io.rw.cmd   := io.ctl.csr_cmd
-   csr.io.rw.wdata := alu_out
+   csr.io.rw.addr   := inst(31, 20)
+   csr.io.rw.cmd    := io.ctl.csr_cmd
+   csr.io.rw.wdata  := alu_out
 
    csr.io.retire    := !(io.ctl.stall || io.ctl.exception)
    csr.io.exception := io.ctl.exception
    csr.io.pc        := pc_reg
    exception_target := csr.io.evec
 
+   csr.io.tval := MuxCase(0.U, Array(
+                  (io.ctl.exception_cause === ILLEGAL_INST)     -> inst,
+                  (io.ctl.exception_cause === MISALIGNED_INST)  -> tval_inst_ma,
+                  (io.ctl.exception_cause === MISALIGNED_STORE) -> tval_data_ma,
+                  (io.ctl.exception_cause === MISALIGNED_LOAD)  -> tval_data_ma,
+                  ))
+
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
    val reg_interrupt_edge = RegInit(0.U(2.W))
-   when (true.B) {
+   when (!io.ctl.stall) {
       reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
    }
-   val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+   interrupt_edge := reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+
+   io.dat.csr_eret := csr.io.eret
 
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid
    io.dat.csr_interrupt := interrupt_edge
-   csr.io.cause := Mux(io.ctl.exception, ILLEGAL_INST, csr.io.interrupt_cause)
-
-   io.dat.csr_eret := csr.io.eret
+   csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
@@ -226,8 +244,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
 
    // datapath to data memory outputs
-   io.dmem.req.bits.addr  := alu_out
+   io.dmem.req.bits.addr := alu_out
    io.dmem.req.bits.data := rs2_data.asUInt()
+
+   io.dat.mem_address_low := alu_out(2, 0)
+   tval_data_ma := alu_out
 
    // Printout
    // pass output through the spike-dasm binary (found in riscv-tools) to turn

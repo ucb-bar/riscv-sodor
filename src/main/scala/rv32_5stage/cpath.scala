@@ -41,7 +41,7 @@ class CtlToDatIo extends Bundle()
    val pipeline_kill = Output(Bool()) // an exception occurred (detected in mem stage).
                                     // Kill the entire pipeline disregard stalls
                                     // and kill if,dec,exe stages.
-   val mem_exception = Output(Bool()) // tell the CSR that decode detected an exception
+   val mem_exception = Output(Bool()) // tell the CSR that the core detected an exception
    val mem_exception_cause = Output(UInt(32.W))
 }
 

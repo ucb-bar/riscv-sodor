@@ -75,11 +75,36 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                   (io.ctl.pc_sel === PC_EXC)-> exception_target
                   ))
 
+   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
+   // the execution is resumed
+   val if_inst_buffer = RegInit(0.U(32.W))
+   val if_inst_buffer_valid = RegInit(false.B)
+   val if_inst_buffer_killed = RegInit(false.B)
+   when (io.ctl.stall) {
+      when (io.imem.resp.valid) {
+         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
+         when (if_inst_buffer_killed || io.ctl.if_kill) {
+            if_inst_buffer_valid := false.B
+            if_inst_buffer_killed := false.B
+         } .otherwise {
+            if_inst_buffer_valid := true.B
+            if_inst_buffer := io.imem.resp.bits.data
+         }
+      } .elsewhen (io.ctl.if_kill) {
+         if_inst_buffer_killed := true.B
+      }
+   } .otherwise {
+      // If resumed, clear the buffer
+      if_inst_buffer := 0.U(32.W)
+      if_inst_buffer_valid := false.B
+      if_inst_buffer_killed := false.B
+   }
+
    //Instruction Memory
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := if_reg_pc
-   val if_inst = io.imem.resp.bits.data
+   val if_inst = Mux(if_inst_buffer_valid, if_inst_buffer, io.imem.resp.bits.data)
 
    when(io.ctl.stall)
    {
@@ -184,11 +209,18 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exe_jmp_target      := exe_reg_pc + imm_j_sext
    exe_jump_reg_target := (exe_rs1_data.asUInt() + imm_i_sext.asUInt())
 
+   // Instruction misalign detection
+   // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
+   // execution stage, regardless whether the pipeline stalls or not
+   // io.dat.exe_inst_misaligned := (exe_brjmp_target(1, 0).orR    && io.ctl.exe_pc_sel === PC_BRJMP) ||
+   //                               (exe_jump_reg_target(1, 0).orR && io.ctl.exe_pc_sel === PC_JALR)
+   // mem_tval_inst_ma := RegNext(Mux(io.ctl.exe_pc_sel === PC_BRJMP, exe_brjmp_target, exe_jump_reg_target))
 
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
    csr.io.decode(0).csr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.rw.addr  := exe_reg_inst(31, 20)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := exe_alu_out
    val csr_out = csr.io.rw.rdata
@@ -198,8 +230,24 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
 
-   csr.io.interrupts := io.interrupt
-   csr.io.hartid := io.constants.hartid
+   // csr.io.tval := MuxCase(0.U, Array(
+   //                (io.ctl.mem_exception_cause === ILLEGAL_INST)     -> RegNext(exe_reg_inst),
+   //                (io.ctl.mem_exception_cause === MISALIGNED_INST)  -> mem_tval_inst_ma,
+   //                (io.ctl.mem_exception_cause === MISALIGNED_STORE) -> mem_tval_data_ma,
+   //                (io.ctl.mem_exception_cause === MISALIGNED_LOAD)  -> mem_tval_data_ma,
+   //                ))
+
+   // // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
+   // val reg_interrupt_edge = RegInit(0.U(2.W))
+   // when (true.B) {
+   //    reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
+   // }
+   // val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+
+   // csr.io.interrupts := io.interrupt
+   // csr.io.hartid := io.constants.hartid
+   // io.dat.csr_interrupt := interrupt_edge
+   // csr.io.cause := Mux(io.ctl.mem_exception, io.ctl.mem_exception_cause, csr.io.interrupt_cause)
 
    io.dat.csr_eret := csr.io.eret
 

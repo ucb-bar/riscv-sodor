@@ -460,7 +460,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Data misalignment detection
    // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
-   val misaligned_mask = ~(Fill(3, mem_reg_ctrl_mem_val.asUInt()) << (mem_reg_ctrl_mem_typ - 1.U)(1, 0))(2, 0)
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (mem_reg_ctrl_mem_typ - 1.U)(1, 0))
    io.dat.mem_data_misaligned := (misaligned_mask & mem_reg_alu_out.asUInt.apply(2, 0)).orR && mem_reg_ctrl_mem_val
    io.dat.mem_store := mem_reg_ctrl_mem_fcn === M_XWR
    mem_tval_data_ma := mem_reg_alu_out.asUInt

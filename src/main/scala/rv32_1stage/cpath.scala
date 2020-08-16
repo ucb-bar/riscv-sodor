@@ -18,6 +18,7 @@ import sodor.stage1.Constants._
 class CtlToDatIo extends Bundle()
 {
    val stall     = Output(Bool())
+   val dmiss     = Output(Bool())
    val pc_sel    = Output(UInt(PC_4.getWidth.W))
    val op1_sel   = Output(UInt(OP1_X.getWidth.W))
    val op2_sel   = Output(UInt(OP2_X.getWidth.W))
@@ -26,6 +27,8 @@ class CtlToDatIo extends Bundle()
    val rf_wen    = Output(Bool())
    val csr_cmd   = Output(UInt(CSR.SZ.W))
    val exception = Output(Bool())
+   val exception_cause = Output(UInt(32.W))
+   val pc_sel_no_xept = Output(UInt(PC_4.getWidth.W))    // Use only for instuction misalignment detection
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -115,21 +118,33 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val (cs_mem_en: Bool)   :: cs_mem_fcn         :: cs_msk_sel            :: cs_csr_cmd :: Nil = cs1
 
    // Branch Logic
-   val ctrl_pc_sel = Mux(io.dat.csr_eret      || 
-                         io.dat.csr_interrupt ||
-                         io.ctl.exception      ,  PC_EXC,
-                     Mux(cs_br_type === BR_N  ,  PC_4,
-                     Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_GE ,  Mux(!io.dat.br_lt,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_GEU,  Mux(!io.dat.br_ltu, PC_BR, PC_4),
-                     Mux(cs_br_type === BR_LT ,  Mux( io.dat.br_lt,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_LTU,  Mux( io.dat.br_ltu, PC_BR, PC_4),
-                     Mux(cs_br_type === BR_J  ,  PC_J,
-                     Mux(cs_br_type === BR_JR ,  PC_JR,
-                                                 PC_4))))))))))
+   val ctrl_pc_sel_no_xept =  Mux(io.dat.csr_interrupt ,  PC_EXC,
+                              Mux(cs_br_type === BR_N  ,  PC_4,
+                              Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_GE ,  Mux(!io.dat.br_lt,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_GEU,  Mux(!io.dat.br_ltu, PC_BR, PC_4),
+                              Mux(cs_br_type === BR_LT ,  Mux( io.dat.br_lt,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_LTU,  Mux( io.dat.br_ltu, PC_BR, PC_4),
+                              Mux(cs_br_type === BR_J  ,  PC_J,
+                              Mux(cs_br_type === BR_JR ,  PC_JR,
+                                                          PC_4))))))))))
+   val ctrl_pc_sel = Mux(io.ctl.exception || io.dat.csr_eret, PC_EXC, ctrl_pc_sel_no_xept)
 
-   val stall =  !io.dat.if_valid_resp || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
+   // mem_en suppression: no new memory request shall be issued after the memory operation of the current instruction is done.
+   // Once we get a new instruction, we reset this flag.
+   val reg_mem_en = RegInit(false.B)
+   when (io.dmem.resp.valid) {
+      reg_mem_en := false.B
+   } .elsewhen (io.imem.resp.valid) {
+      reg_mem_en := cs_mem_en
+   }
+   val mem_en = Mux(io.imem.resp.valid, cs_mem_en, reg_mem_en)
+
+   val data_misaligned = Wire(Bool())
+   io.ctl.dmiss := !((mem_en && (io.dmem.resp.valid || data_misaligned)) || !mem_en)
+   val stall =  io.dat.imiss || io.ctl.dmiss
+
 
    // Set the data-path control signals
    io.ctl.stall    := stall
@@ -148,20 +163,28 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.ctl.csr_cmd  := Mux(stall, CSR.N, csr_cmd)
 
    // Memory Requests
-   io.imem.req.valid    := true.B
-   io.imem.req.bits.fcn := M_XRD
-   io.imem.req.bits.typ := MT_WU
-
-   io.dmem.req.valid    := cs_mem_en
+   io.dmem.req.valid    := mem_en && !io.ctl.exception
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
 
    // Exception Handling ---------------------
-   // We only need to check if the instruction is illegal (or unsupported)
-   // or if the CSR file wants us to be interrupted.
-   // Other exceptions are detected later in the pipeline by passing the
-   // instruction to the CSR File and letting it redirect the PC as it sees
-   // fit.
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
+   io.ctl.pc_sel_no_xept := ctrl_pc_sel_no_xept
+   val illegal = (!cs_val_inst && io.imem.resp.valid)
+
+   // Data misalignment detection
+   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (cs_msk_sel - 1.U)(1, 0))
+   data_misaligned := (misaligned_mask & io.dat.mem_address_low).orR && mem_en
+   val mem_store = cs_mem_fcn === M_XWR
+
+   // Set exception flag and cause
+   // Exception priority matters!
+   io.ctl.exception := illegal || io.dat.inst_misaligned || data_misaligned
+   io.ctl.exception_cause :=  Mux(illegal,                ILLEGAL_INST,
+                              Mux(io.dat.inst_misaligned, MISALIGNED_INST,
+                              Mux(mem_store,              MISALIGNED_STORE,
+                                                          MISALIGNED_LOAD
+                              )))
 
 }
