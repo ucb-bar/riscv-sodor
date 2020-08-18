@@ -26,7 +26,12 @@ class CtlToDatIo extends Bundle()
    val wb_sel   = Output(UInt(2.W))
    val rf_wen   = Output(Bool())
    val csr_cmd  = Output(UInt(CSR.SZ.W))
+   val mem_val = Output(Bool())
+   val mem_fcn    = Output(UInt(2.W))
+   val mem_typ    = Output(UInt(3.W))
    val exception = Output(Bool())
+   val exception_cause = Output(UInt(32.W))
+   val pc_sel_no_xept = Output(UInt(PC_4.getWidth.W))    // Use only for instuction misalignment detection
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -106,7 +111,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   WFI    -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X , REN_0, MEN_0, M_X  , MT_X,  CSR.N), // implemented as a NOP
 
                   FENCE_I-> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X , REN_0, MEN_0, M_X  , MT_X,  CSR.N),
-                  FENCE  -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X , REN_0, MEN_1, M_X  , MT_X,  CSR.N)
+                  FENCE  -> List(Y, BR_N  , OP1_X  , OP2_X  ,  ALU_X    , WB_X , REN_0, MEN_0, M_X  , MT_X,  CSR.N)
                   // we are already sequentially consistent, so no need to honor the fence instruction
 
                   ))
@@ -117,21 +122,21 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
 
    // Branch Logic
-   val ctrl_pc_sel = Mux(io.dat.csr_eret  ||
-                         io.ctl.exception     , PC_EXC,
-                     Mux(cs_br_type === BR_N , PC_4,
-                     Mux(cs_br_type === BR_NE ,  Mux(!io.dat.br_eq,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_EQ ,  Mux( io.dat.br_eq,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_GE ,  Mux(!io.dat.br_lt,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_GEU,  Mux(!io.dat.br_ltu, PC_BR, PC_4),
-                     Mux(cs_br_type === BR_LT ,  Mux( io.dat.br_lt,  PC_BR, PC_4),
-                     Mux(cs_br_type === BR_LTU,  Mux( io.dat.br_ltu, PC_BR, PC_4),
-                     Mux(cs_br_type === BR_J  ,  PC_J,
-                     Mux(cs_br_type === BR_JR ,  PC_JR,
-                                                 PC_4))))))))))
+   val ctrl_pc_sel_no_xept =  Mux(io.dat.csr_interrupt , PC_EXC,
+                              Mux(cs_br_type === BR_N  , PC_4,
+                              Mux(cs_br_type === BR_NE , Mux(!io.dat.br_eq,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_EQ , Mux( io.dat.br_eq,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_GE , Mux(!io.dat.br_lt,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_GEU, Mux(!io.dat.br_ltu, PC_BR, PC_4),
+                              Mux(cs_br_type === BR_LT , Mux( io.dat.br_lt,  PC_BR, PC_4),
+                              Mux(cs_br_type === BR_LTU, Mux( io.dat.br_ltu, PC_BR, PC_4),
+                              Mux(cs_br_type === BR_J  , PC_J,
+                              Mux(cs_br_type === BR_JR , PC_JR,
+                                                         PC_4))))))))))
+   val ctrl_pc_sel = Mux(io.ctl.exception || io.dat.csr_eret, PC_EXC, ctrl_pc_sel_no_xept)
 
    // stall entire pipeline on I$ or D$ miss
-   val stall = !io.imem.resp.valid || !((cs_mem_en && io.dmem.resp.valid) || !cs_mem_en)
+   val stall = !io.dat.if_valid_resp || !((cs_mem_en && (io.dmem.resp.valid || io.dat.data_misaligned)) || !cs_mem_en)
 
    val ifkill = !(ctrl_pc_sel === PC_4)
 
@@ -152,16 +157,23 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    io.ctl.csr_cmd    := Mux(stall, CSR.N, csr_cmd)
 
-   io.imem.req.valid    := true.B
-   io.imem.req.bits.fcn := M_XRD
-   io.imem.req.bits.typ := MT_WU
-
-   io.dmem.req.valid    := cs_mem_en
+   io.dmem.req.valid    := cs_mem_en && !io.dat.data_misaligned
    io.dmem.req.bits.fcn := cs_mem_fcn
    io.dmem.req.bits.typ := cs_msk_sel
 
-   // Exception Handling ---------------------
-   io.ctl.exception := (!cs_val_inst && io.imem.resp.valid)
+   io.ctl.mem_val    := cs_mem_en
+   io.ctl.mem_fcn    := cs_mem_fcn
+   io.ctl.mem_typ    := cs_msk_sel
 
+   // Exception Handling ---------------------
+   io.ctl.pc_sel_no_xept := ctrl_pc_sel_no_xept
+   val illegal = (!cs_val_inst && io.imem.resp.valid)
+   // Exception priority matters!
+   io.ctl.exception := (illegal || io.dat.inst_misaligned || io.dat.data_misaligned) && !io.dat.csr_eret
+   io.ctl.exception_cause :=  Mux(illegal,                ILLEGAL_INST,
+                              Mux(io.dat.inst_misaligned, MISALIGNED_INST,
+                              Mux(io.dat.mem_store,       MISALIGNED_STORE,
+                                                          MISALIGNED_LOAD
+                              )))
 
 }

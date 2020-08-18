@@ -19,11 +19,16 @@ import sodor.common._
 
 class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
 {
+   val if_valid_resp = Output(Bool())
    val inst  = Output(UInt(32.W))
    val br_eq = Output(Bool())
    val br_lt = Output(Bool())
    val br_ltu= Output(Bool())
+   val inst_misaligned = Output(Bool())
+   val data_misaligned = Output(Bool())
+   val mem_store = Output(Bool())
    val csr_eret = Output(Bool())
+   val csr_interrupt = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -42,6 +47,10 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
+
+   // Exception handling values
+   val tval_data_ma = Wire(UInt(conf.xprlen.W))
+   val tval_inst_ma = Wire(UInt(conf.xprlen.W))
 
    //**********************************
    // Pipeline State Registers
@@ -79,28 +88,22 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // the execution is resumed
    val if_inst_buffer = RegInit(0.U(32.W))
    val if_inst_buffer_valid = RegInit(false.B)
-   val if_inst_buffer_killed = RegInit(false.B)
    when (io.ctl.stall) {
       when (io.imem.resp.valid) {
-         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
-         when (if_inst_buffer_killed || io.ctl.if_kill) {
-            if_inst_buffer_valid := false.B
-            if_inst_buffer_killed := false.B
-         } .otherwise {
-            if_inst_buffer_valid := true.B
-            if_inst_buffer := io.imem.resp.bits.data
-         }
-      } .elsewhen (io.ctl.if_kill) {
-         if_inst_buffer_killed := true.B
+         if_inst_buffer_valid := true.B
+         if_inst_buffer := io.imem.resp.bits.data
       }
    } .otherwise {
       // If resumed, clear the buffer
       if_inst_buffer := 0.U(32.W)
       if_inst_buffer_valid := false.B
-      if_inst_buffer_killed := false.B
    }
 
+   // Connect CPath valid instruction fetch response to prevent livelock when fetch have multi-cycle delay
+   io.dat.if_valid_resp := if_inst_buffer_valid || io.imem.resp.valid
+
    //Instruction Memory
+   io.imem.req.valid    := !if_inst_buffer_valid
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := if_reg_pc
@@ -207,14 +210,19 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Branch/Jump Target Calculation
    exe_br_target       := exe_reg_pc + imm_b_sext
    exe_jmp_target      := exe_reg_pc + imm_j_sext
-   exe_jump_reg_target := (exe_rs1_data.asUInt() + imm_i_sext.asUInt())
+   exe_jump_reg_target := (exe_rs1_data.asUInt() + imm_i_sext.asUInt()) & ~1.U(conf.xprlen.W)
 
    // Instruction misalign detection
    // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
    // execution stage, regardless whether the pipeline stalls or not
-   // io.dat.exe_inst_misaligned := (exe_brjmp_target(1, 0).orR    && io.ctl.exe_pc_sel === PC_BRJMP) ||
-   //                               (exe_jump_reg_target(1, 0).orR && io.ctl.exe_pc_sel === PC_JALR)
-   // mem_tval_inst_ma := RegNext(Mux(io.ctl.exe_pc_sel === PC_BRJMP, exe_brjmp_target, exe_jump_reg_target))
+   io.dat.inst_misaligned :=  (exe_br_target(1, 0).orR       && io.ctl.pc_sel_no_xept === PC_BR) ||
+                              (exe_jmp_target(1, 0).orR      && io.ctl.pc_sel_no_xept === PC_J)  ||
+                              (exe_jump_reg_target(1, 0).orR && io.ctl.pc_sel_no_xept === PC_JR)
+   tval_inst_ma := MuxCase(0.U, Array(
+                  (io.ctl.pc_sel_no_xept === PC_BR) -> exe_br_target,
+                  (io.ctl.pc_sel_no_xept === PC_J)  -> exe_jmp_target,
+                  (io.ctl.pc_sel_no_xept === PC_JR) -> exe_jump_reg_target
+                  ))
 
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
@@ -230,24 +238,24 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.pc        := exe_reg_pc
    exception_target := csr.io.evec
 
-   // csr.io.tval := MuxCase(0.U, Array(
-   //                (io.ctl.mem_exception_cause === ILLEGAL_INST)     -> RegNext(exe_reg_inst),
-   //                (io.ctl.mem_exception_cause === MISALIGNED_INST)  -> mem_tval_inst_ma,
-   //                (io.ctl.mem_exception_cause === MISALIGNED_STORE) -> mem_tval_data_ma,
-   //                (io.ctl.mem_exception_cause === MISALIGNED_LOAD)  -> mem_tval_data_ma,
-   //                ))
+   csr.io.tval := MuxCase(0.U, Array(
+                  (io.ctl.exception_cause === ILLEGAL_INST)     -> exe_reg_inst,
+                  (io.ctl.exception_cause === MISALIGNED_INST)  -> tval_inst_ma,
+                  (io.ctl.exception_cause === MISALIGNED_STORE) -> tval_data_ma,
+                  (io.ctl.exception_cause === MISALIGNED_LOAD)  -> tval_data_ma,
+                  ))
 
-   // // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
-   // val reg_interrupt_edge = RegInit(0.U(2.W))
-   // when (true.B) {
-   //    reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
-   // }
-   // val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+   // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
+   val reg_interrupt_edge = RegInit(0.U(2.W))
+   when (!io.ctl.stall) {
+      reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
+   }
+   val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
 
-   // csr.io.interrupts := io.interrupt
-   // csr.io.hartid := io.constants.hartid
-   // io.dat.csr_interrupt := interrupt_edge
-   // csr.io.cause := Mux(io.ctl.mem_exception, io.ctl.mem_exception_cause, csr.io.interrupt_cause)
+   csr.io.interrupts := io.interrupt
+   csr.io.hartid := io.constants.hartid
+   io.dat.csr_interrupt := interrupt_edge
+   csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
 
    io.dat.csr_eret := csr.io.eret
 
@@ -270,6 +278,13 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dat.br_lt  := (exe_rs1_data.asSInt() < exe_rs2_data.asSInt())
    io.dat.br_ltu := (exe_rs1_data.asUInt() < exe_rs2_data.asUInt())
 
+   // Data misalignment detection
+   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (io.ctl.mem_typ - 1.U)(1, 0))
+   io.dat.data_misaligned := (misaligned_mask & exe_alu_out.asUInt.apply(2, 0)).orR && io.ctl.mem_val
+   io.dat.mem_store := io.ctl.mem_fcn === M_XWR
+   tval_data_ma := exe_alu_out.asUInt
 
    // datapath to data memory outputs
    io.dmem.req.bits.addr := exe_alu_out

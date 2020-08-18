@@ -279,9 +279,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
    io.ctl.csr_cmd := Mux(csr_ren, CSR.R, cs_csr_cmd)
 
-   io.imem.req.valid := true.B
-   io.imem.req.bits.fcn := M_XRD
-   io.imem.req.bits.typ := MT_WU
    io.ctl.mem_val    := cs_mem_en
    io.ctl.mem_fcn    := cs_mem_fcn
    io.ctl.mem_typ    := cs_msk_sel
