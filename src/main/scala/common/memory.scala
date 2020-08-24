@@ -191,7 +191,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
       (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
    ))
 
-   sync_data.io.dw.en := io.core_ports(DPORT).req.bits.fcn === M_XWR
+   sync_data.io.dw.en := io.core_ports(DPORT).req.valid && io.core_ports(DPORT).req.bits.fcn === M_XWR
    when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
    {
       sync_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
@@ -208,17 +208,14 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 
    // DEBUG PORT-------
    io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := RegNext(io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XRD)
+   io.debug_port.resp.valid := RegNext(io.debug_port.req.valid)
    // asynchronous read
    sync_data.io.hr.addr := io.debug_port.req.bits.addr
    io.debug_port.resp.bits.data := sync_data.io.hr.data
-   sync_data.io.hw.en := io.debug_port.req.bits.fcn === M_XWR
-   when (io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR)
-   {
-      sync_data.io.hw.addr := io.debug_port.req.bits.addr
-      sync_data.io.hw.data := io.debug_port.req.bits.data
-      sync_data.io.hw.mask := 15.U
-   }
+   sync_data.io.hw.en := io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR
+   sync_data.io.hw.addr := io.debug_port.req.bits.addr
+   sync_data.io.hw.data := io.debug_port.req.bits.data
+   sync_data.io.hw.mask := 15.U
 }
 
 
@@ -273,7 +270,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
       when (req_valid && req_fcn === M_XWR)
       {
          val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0))
-         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).toBools)
+         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).asBools)
          // move the wdata into position on the sub-line
       }
       .elsewhen (req_valid && req_fcn === M_XRD){
@@ -293,7 +290,7 @@ class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read
    io.htif_port.resp.bits.data := data_bank.read(htif_idx).asUInt
    when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
    {
-      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.toBools)
+      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.asBools)
    }
 }
 

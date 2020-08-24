@@ -44,12 +44,12 @@ case class SodorCoreParams(
   val pmpGranularity: Int = 4 // copied from Rocket
   val nBreakpoints: Int = 0 // TODO: Check
   val useBPWatch: Boolean = false
-  val nPerfCounters: Int = 29
+  val nPerfCounters: Int = 0
   val haveBasicCounters: Boolean = true
   val haveFSDirty: Boolean = false
   val misaWritable: Boolean = false
   val haveCFlush: Boolean = false
-  val nL2TLBEntries: Int = 512 // copied from Rocket
+  val nL2TLBEntries: Int = 0 // copied from Rocket
   val mtvecInit: Option[BigInt] = Some(BigInt(0)) // copied from Rocket
   val mtvecWritable: Boolean = true // copied from Rocket
   val instBits: Int = if (useCompressed) 16 else 32
@@ -128,7 +128,7 @@ class SodorTile(
   dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
 
   val dtimProperty = dtim_adapter.map(d => Map(
-    "sifive,dtim" -> d.device.asProperty)).getOrElse(Nil)
+    "ucb-bar,dtim" -> d.device.asProperty)).getOrElse(Nil)
 
   // Sodor master port adapter
   val imaster_adapter = LazyModule(new SodorMasterAdapter)
@@ -200,7 +200,7 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 class WithNSodorCores(
   n: Int = 1,
   overrideIdOffset: Option[Int] = None,
-  internalTile: SodorInternalTileFactory = Stage2Factory
+  internalTile: SodorInternalTileFactory = Stage3Factory
 ) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)

@@ -10,9 +10,8 @@ package sodor.stage2
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSRFile
-import freechips.rocketchip.tile.CoreInterrupts
-import freechips.rocketchip.tile.TileInputConstants
+import freechips.rocketchip.rocket.{CSRFile, Causes}
+import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
 
 import Constants._
 import sodor.common._
@@ -212,7 +211,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exe_jmp_target      := exe_reg_pc + imm_j_sext
    exe_jump_reg_target := (exe_rs1_data.asUInt() + imm_i_sext.asUInt()) & ~1.U(conf.xprlen.W)
 
-   // Instruction misalign detection
+   // Instruction misalignment detection
    // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
    // execution stage, regardless whether the pipeline stalls or not
    io.dat.inst_misaligned :=  (exe_br_target(1, 0).orR       && io.ctl.pc_sel_no_xept === PC_BR) ||
@@ -239,10 +238,10 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    csr.io.tval := MuxCase(0.U, Array(
-                  (io.ctl.exception_cause === ILLEGAL_INST)     -> exe_reg_inst,
-                  (io.ctl.exception_cause === MISALIGNED_INST)  -> tval_inst_ma,
-                  (io.ctl.exception_cause === MISALIGNED_STORE) -> tval_data_ma,
-                  (io.ctl.exception_cause === MISALIGNED_LOAD)  -> tval_data_ma,
+                  (io.ctl.exception_cause === Causes.illegal_instruction.U)     -> exe_reg_inst,
+                  (io.ctl.exception_cause === Causes.misaligned_fetch.U)  -> tval_inst_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_store.U) -> tval_data_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_load.U)  -> tval_data_ma,
                   ))
 
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)

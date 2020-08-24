@@ -17,10 +17,8 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSR
-import freechips.rocketchip.rocket.CSRFile
-import freechips.rocketchip.tile.CoreInterrupts
-import freechips.rocketchip.tile.TileInputConstants
+import freechips.rocketchip.rocket.{CSR, CSRFile, Causes}
+import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
 
 import Constants._
 import sodor.common._
@@ -30,7 +28,11 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
+   val inst_misaligned = Output(Bool())
+   val mem_address_low = Output(UInt(3.W))
+   val wb_hazard_stall = Output(Bool())
    val csr_eret = Output(Bool())
+   val csr_interrupt = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -50,9 +52,13 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val io = IO(new DpathIo())
    io := DontCare
 
+   // Exception handling values
+   val tval_data_ma = Wire(UInt(conf.xprlen.W))
+   val tval_inst_ma = Wire(UInt(conf.xprlen.W))
 
    //**********************************
    // Pipeline State Registers
+   val wb_reg_inst     = RegInit(BUBBLE)
    val wb_reg_valid    = RegInit(false.B)
    val wb_reg_ctrl     = Reg(new CtrlSignals)
    val wb_reg_pc       = Reg(UInt(conf.xprlen.W))
@@ -75,6 +81,15 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                  Mux(io.ctl.pc_sel === PC_JR,    exe_jump_reg_target,
                                                  exe_brjmp_target)) // PC_BR or PC_J
 
+   // Instruction misalignment detection
+   // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
+   // execution stage, regardless whether the pipeline stalls or not
+   io.dat.inst_misaligned :=  (exe_brjmp_target(1, 0).orR    && (io.ctl.pc_sel === PC_BR || io.ctl.pc_sel === PC_J)) ||
+                              (exe_jump_reg_target(1, 0).orR && io.ctl.pc_sel === PC_JR)
+   tval_inst_ma := MuxCase(exe_brjmp_target, Array(
+                  (io.ctl.pc_sel === PC_JR) -> exe_brjmp_target
+                  ))
+
    io.imem.req.bits.pc := take_pc
 
 
@@ -92,6 +107,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val wb_wbdata    = Wire(UInt(conf.xprlen.W))
 
    // Hazard Stall Logic
+   io.dat.wb_hazard_stall := wb_hazard_stall
    if(NUM_MEMORY_PORTS == 1) {
       // stall for more cycles incase of store after load with read after write conflict
       val count = RegInit(1.asUInt(2.W))
@@ -180,7 +196,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Branch/Jump Target Calculation
    val imm_brjmp = Mux(io.ctl.brjmp_sel, imm_j_sext, imm_b_sext)
    exe_brjmp_target := exe_pc + imm_brjmp
-   exe_jump_reg_target := alu.io.adder_out
+   exe_jump_reg_target := alu.io.adder_out & ~1.U(conf.xprlen.W)
 
 
    // datapath to controlpath outputs
@@ -198,13 +214,18 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dmem.req.bits.addr := exe_alu_out
    io.dmem.req.bits.data := exe_rs2_data
 
+   // Data misalignment detection related signals
+   io.dat.mem_address_low := exe_alu_out(2, 0)
+   tval_data_ma := exe_alu_out
 
    // execute to wb registers
+   wb_reg_inst := exe_inst
    wb_reg_valid := exe_valid
    wb_reg_ctrl :=  io.ctl
    wb_reg_pc := exe_pc
-   when (wb_hazard_stall || io.ctl.exe_kill)
+   when (wb_hazard_stall || io.ctl.exe_kill || !exe_valid)
    {
+      wb_reg_inst           := BUBBLE
       wb_reg_valid          := false.B
       wb_reg_ctrl.rf_wen    := false.B
       wb_reg_ctrl.csr_cmd   := CSR.N
@@ -223,6 +244,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
    csr.io.decode(0).csr   := wb_reg_csr_addr
+   csr.io.rw.addr   := wb_reg_inst(31, 20)
    csr.io.rw.wdata  := wb_reg_alu
    csr.io.rw.cmd    := wb_reg_ctrl.csr_cmd
    val wb_csr_out    = csr.io.rw.rdata
@@ -233,8 +255,26 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
 
+   csr.io.tval := MuxCase(0.U, Array(
+                  (io.ctl.exception_cause === Causes.illegal_instruction.U)     -> wb_reg_inst,
+                  (io.ctl.exception_cause === Causes.misaligned_fetch.U)  -> tval_inst_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_store.U) -> tval_data_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_load.U)  -> tval_data_ma,
+                  ))
+
+   // Interrupt handle flag
+   val reg_interrupt_flag = RegInit(false.B)
+   val interrupt_edge = csr.io.interrupt && !reg_interrupt_flag
+   when (csr.io.interrupt && io.imem.if_pc_change) {
+      reg_interrupt_flag := true.B
+   } .elsewhen (!csr.io.interrupt) {
+      reg_interrupt_flag := false.B
+   }
+
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid
+   io.dat.csr_interrupt := interrupt_edge
+   csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)

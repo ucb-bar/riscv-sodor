@@ -13,7 +13,7 @@ package sodor.stage5
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSR
+import freechips.rocketchip.rocket.{CSR, Causes}
 
 import Constants._
 import sodor.common._
@@ -268,10 +268,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // Exception priority matters!
    io.ctl.mem_exception := RegNext((exe_reg_illegal || io.dat.exe_inst_misaligned) && !io.dat.csr_eret) || io.dat.mem_data_misaligned
-   io.ctl.mem_exception_cause := Mux(RegNext(exe_reg_illegal),            ILLEGAL_INST,
-                                 Mux(RegNext(io.dat.exe_inst_misaligned), MISALIGNED_INST,
-                                 Mux(io.dat.mem_store,                    MISALIGNED_STORE,
-                                                                          MISALIGNED_LOAD
+   io.ctl.mem_exception_cause := Mux(RegNext(exe_reg_illegal),            Causes.illegal_instruction.U,
+                                 Mux(RegNext(io.dat.exe_inst_misaligned), Causes.misaligned_fetch.U,
+                                 Mux(io.dat.mem_store,                    Causes.misaligned_store.U,
+                                                                          Causes.misaligned_load.U
                                  )))
 
    // convert CSR instructions with raddr1 == 0 to read-only CSR commands

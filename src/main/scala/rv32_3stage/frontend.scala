@@ -76,6 +76,9 @@ class FrontEndCpuIO(implicit val conf: SodorConfiguration) extends Bundle
 
    val debug = new FrontEndDebug(conf.xprlen)
 
+   // Instruction-fetch PC change flag - raise for one cycle every time the PC is changed
+   val if_pc_change = Output(Bool())
+
    override def cloneType = { new FrontEndCpuIO().asInstanceOf[this.type] }
 }
 
@@ -84,10 +87,16 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    val io = IO(new FrontEndIO)
    io := DontCare
 
+   // PC change flag (see the IO port above)
+   val reg_if_pc_change = RegInit(false.B)
+   io.cpu.if_pc_change := reg_if_pc_change
+
    //**********************************
    // Pipeline State Registers
    val if_reg_valid  = RegInit(false.B)
-   val if_reg_pc     = RegInit(io.constants.reset_vector - 4.U)
+   val if_reg_kill   = RegInit(false.B)
+   val if_reg_pc     = RegInit(io.constants.reset_vector)
+   val if_reg_inst   = Reg(UInt(conf.xprlen.W))
 
    val exe_reg_valid = RegInit(false.B)
    val exe_reg_pc    = Reg(UInt(conf.xprlen.W))
@@ -95,54 +104,70 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Next PC Stage (if we can call it that)
-   val if_pc_next = Wire(UInt(conf.xprlen.W))
-   val if_val_next = WireInit(true.B) // for now, always true. But instruction
-                                // buffers, etc., could make that not the case.
-
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))
+   val if_pc_next = Mux(io.cpu.req.valid, io.cpu.req.bits.pc, if_pc_plus4)
 
-   // stall IF/EXE if backend not ready
-   when (io.cpu.resp.ready)
-   {
-      if_pc_next := if_pc_plus4
-      when (io.cpu.req.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         if_pc_next := io.cpu.req.bits.pc
+   // io.cpu.req.valid signal a change to PC from PC+4, which requires us to kill the next instruction coming in.
+   // Note that this should not affect the instruction already available in this cycle.
+   when (io.cpu.req.valid) {
+      when (if_reg_valid && !io.cpu.resp.ready) {
+         // If there is an instruction in the buffer and it is not leaving the buffer this cycle, simply invalidate it.
+         // This will take effect next cycle.
+         if_reg_valid := false.B
+      } .otherwise {
+         if_reg_kill := true.B
       }
-   }
-   .otherwise
-   {
-      if_pc_next  := if_reg_pc
+      
    }
 
-   when (io.cpu.resp.ready)
+   // A instruction is ready when it arrives or has been stored in buffer and hasn't been killed. Again, 
+   // io.cpu.req.valid do not affect instruction that's already available.
+   val if_valid = (if_reg_valid || io.imem.resp.valid) && !if_reg_kill
+   // And when a new instruction arrived, the if_reg_kill must be cleared. That instruction will be invalidated.
+   when (io.imem.resp.valid) { if_reg_kill := false.B }
+   
+
+   // If the current instruction is taken or the instruction stream changes, go to next instruction
+   when ((io.cpu.resp.ready && if_valid) || io.cpu.req.valid)
    {
-      if_reg_pc    := if_pc_next
-      if_reg_valid := if_val_next
+      if_reg_pc := if_pc_next
+      // Produce a pulse when PC changes
+      reg_if_pc_change := true.B
+   } .elsewhen (reg_if_pc_change) {
+      reg_if_pc_change := false.B
    }
+
+   // And if the insturction is valid, put the pc into the next stage register
+   when (io.cpu.resp.ready && if_valid) { exe_reg_pc := if_reg_pc }
+
+   // If the instruction is not immediately taken by the core, put it into the buffer.
+   when (!io.cpu.resp.ready && io.imem.resp.valid) {
+      // If the fetched instruction is killed, simply throw away the data
+      when (if_reg_kill) { if_reg_valid := false.B }
+      .otherwise {
+         // If not, and if the core is not ready, store it to the buffer.
+         if_reg_valid := true.B
+         if_reg_inst := io.imem.resp.bits.data
+      }
+   } .otherwise {
+      // If resumed, clear the buffer.
+      if_reg_inst := BUBBLE
+      if_reg_valid := false.B
+   }
+   
 
    // set up outputs to the instruction memory
-   io.imem.req.bits.addr := if_pc_next
-   io.imem.req.valid     := if_val_next
+   io.imem.req.bits.addr := if_reg_pc
+   io.imem.req.valid     := io.cpu.resp.ready  // New request should be sent only if the core can accept instruction.
    io.imem.req.bits.fcn  := M_XRD
    io.imem.req.bits.typ  := MT_WU
 
    //**********************************
-   // Inst Fetch/Return Stage
-   when (io.cpu.resp.ready)
-   {
-      exe_reg_valid := if_reg_valid && !io.cpu.req.valid
-      exe_reg_pc    := if_reg_pc
-      exe_reg_inst  := io.imem.resp.bits.data
-   }
-
-   //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
-   io.cpu.resp.valid     := exe_reg_valid
-   io.cpu.resp.bits.inst := exe_reg_inst
-   io.cpu.resp.bits.pc   := exe_reg_pc
+   io.cpu.resp.valid     := if_valid
+   io.cpu.resp.bits.inst := Mux(if_reg_kill, BUBBLE, Mux(if_reg_valid, if_reg_inst, io.imem.resp.bits.data))
+   io.cpu.resp.bits.pc   := if_reg_pc
 
    //**********************************
    // only used for debugging

@@ -10,9 +10,8 @@ package sodor.stage1
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSRFile
-import freechips.rocketchip.tile.CoreInterrupts
-import freechips.rocketchip.tile.TileInputConstants
+import freechips.rocketchip.rocket.{CSRFile, Causes}
+import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
 
 import Constants._
 import sodor.common._
@@ -204,10 +203,10 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    csr.io.tval := MuxCase(0.U, Array(
-                  (io.ctl.exception_cause === ILLEGAL_INST)     -> inst,
-                  (io.ctl.exception_cause === MISALIGNED_INST)  -> tval_inst_ma,
-                  (io.ctl.exception_cause === MISALIGNED_STORE) -> tval_data_ma,
-                  (io.ctl.exception_cause === MISALIGNED_LOAD)  -> tval_data_ma,
+                  (io.ctl.exception_cause === Causes.illegal_instruction.U)     -> inst,
+                  (io.ctl.exception_cause === Causes.misaligned_fetch.U)  -> tval_inst_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_store.U) -> tval_data_ma,
+                  (io.ctl.exception_cause === Causes.misaligned_load.U)  -> tval_data_ma,
                   ))
 
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)

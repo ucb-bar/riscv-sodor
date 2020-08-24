@@ -21,6 +21,7 @@ class SodorMasterAdapter(implicit p: Parameters, val conf: SodorConfiguration) e
   val node = TLIdentityNode()
 
   // The client node (only one inflight request supported for Sodor)
+  // This node handles core requests to addresses not managed in the tile-local scratchpad
   val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(
     clients = Seq(TLClientParameters(
       name = "sodor-mmio-master",
@@ -50,6 +51,10 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   // Address and signedness of the request to be used by LoadGen
   val a_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
   val a_signed_reg = RegInit(false.B)
+  // Request register - store the request when the input port fires to avoid value changes when sending the TileLink request
+  val req_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
+  val req_size_reg = RegInit(0.U(2.W))
+  val req_data_reg = RegInit(0.U(io.dport.req.bits.data.getWidth.W))
 
   // Sign logic
   // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take inversed MSB as signedness
@@ -57,26 +62,12 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val a_signed = ~(io.dport.req.bits.typ - 1.U)(2)
   val a_size = (io.dport.req.bits.typ - 1.U)(1, 0)
 
-  // // Connect Channel A valid/ready
-  // // If there is an inflight request, do not allow new request to be sent
-  // tl_out.a.valid := io.dport.req.valid & !inflight
-  // io.dport.req.ready := tl_out.a.ready & !inflight
-  // // Connect Channel D valid/ready
-  // tl_out.d.ready := true.B // io.dport.resp.ready
-  // io.dport.resp.valid := tl_out.d.valid
-  // // States bookkeeping
-  // when (tl_out.a.fire()) {
-  //   inflight := true.B
-  //   a_address_reg := io.dport.req.bits.addr
-  //   a_signed_reg := a_size
-  // }
-  // when (tl_out.d.fire()) {
-  //   inflight := false.B
-  // }
-
   // State logic
   when (state === s_ready && io.dport.req.valid) {
     state := s_active
+    req_address_reg := io.dport.req.bits.addr
+    req_size_reg := a_size
+    req_data_reg := io.dport.req.bits.data
   }
   when (state === s_active && tl_out.a.fire()) {
     state := s_inflight
@@ -96,9 +87,9 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   }
 
   // Build "Get" message
-  val (legal_get, get_bundle) = edge.Get(0.U, io.dport.req.bits.addr, a_size)
+  val (legal_get, get_bundle) = edge.Get(0.U, req_address_reg, req_size_reg)
   // Build "Put" message
-  val (legal_put, put_bundle) = edge.Put(0.U, io.dport.req.bits.addr, a_size, io.dport.req.bits.data)
+  val (legal_put, put_bundle) = edge.Put(0.U, req_address_reg, req_size_reg, req_data_reg)
 
   // DEBUG
   when (tl_out.a.fire()) {

@@ -10,7 +10,7 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSR
+import freechips.rocketchip.rocket.{CSR, Causes}
 
 import sodor.common._
 import sodor.common.Instructions._
@@ -35,6 +35,7 @@ class CtrlSignals extends Bundle()
    val dmem_typ  = Output(UInt(3.W))
 
    val exception = Output(Bool())
+   val exception_cause = Output(UInt(32.W))
 }
 
 class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
@@ -117,14 +118,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                   WFI     -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.I, M_FD),
 
                   FENCE_I -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_SI),
-                  FENCE   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_1, M_X  , MT_X,  CSR.N, M_SD)
+                  FENCE   -> List(Y, BR_N  , N, OP1_X  , OP2_X   , ALU_X   , WB_X  , REN_0, N, MEN_0, M_X  , MT_X,  CSR.N, M_SD)
                   // we are already sequentially consistent, so no need to honor the fence instruction
                   ))
 
    // Put these control signals in variables
-   val (cs_inst_val: Bool) :: cs_br_type :: cs_brjmp_sel      :: cs_op1_sel            :: cs_op2_sel  :: cs0 = csignals
-   val cs_alu_fun          :: cs_wb_sel  :: (cs_rf_wen: Bool) :: (cs_bypassable: Bool) ::                cs1 = cs0
-   val (cs_mem_en: Bool)   :: cs_mem_fcn :: cs_msk_sel        :: cs_csr_cmd            :: cs_sync_fcn :: Nil = cs1
+   val (cs_inst_val: Bool) :: cs_br_type :: (cs_brjmp_sel: Bool) :: cs_op1_sel            :: cs_op2_sel  :: cs0 = csignals
+   val cs_alu_fun          :: cs_wb_sel  :: (cs_rf_wen: Bool)    :: (cs_bypassable: Bool) ::                cs1 = cs0
+   val (cs_mem_en: Bool)   :: cs_mem_fcn :: cs_msk_sel           :: cs_csr_cmd            :: cs_sync_fcn :: Nil = cs1
 
 
    // Is the instruction valid? If not, mux off all control signals!
@@ -147,17 +148,17 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
 
-   io.imem.req.valid := !(ctrl_pc_sel === PC_4) && ctrl_valid
+   io.imem.req.valid := (!(ctrl_pc_sel === PC_4) && ctrl_valid) || ctrl_pc_sel === PC_EXC
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
-   io.ctl.brjmp_sel  := cs_brjmp_sel.toBool
+   io.ctl.brjmp_sel  := cs_brjmp_sel
    io.ctl.op1_sel    := cs_op1_sel
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
    io.ctl.wb_sel     := cs_wb_sel
-   io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen.toBool)
-   io.ctl.bypassable := cs_bypassable.toBool
+   io.ctl.rf_wen     := Mux(!ctrl_valid, false.B, cs_rf_wen)
+   io.ctl.bypassable := cs_bypassable
 
    val rs1_addr = io.imem.resp.bits.inst(RS1_MSB, RS1_LSB)
    val csr_ren = (cs_csr_cmd === CSR.S || cs_csr_cmd === CSR.C) && rs1_addr === 0.U
@@ -166,17 +167,46 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // Memory Requests
    if(NUM_MEMORY_PORTS == 1)
-      io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid && !take_evec
+      io.ctl.dmem_val   := cs_mem_en && ctrl_valid && !take_evec
    else
-      io.ctl.dmem_val   := cs_mem_en.toBool && ctrl_valid
+      io.ctl.dmem_val   := cs_mem_en && ctrl_valid
    io.ctl.dmem_fcn   := cs_mem_fcn
    io.ctl.dmem_typ   := cs_msk_sel
 
 
    //-------------------------------
    // Exception Handling
-   io.ctl.exception := !cs_inst_val && io.imem.resp.valid
-   take_evec        := RegNext(io.ctl.exception) || io.dat.csr_eret
+   // Illegal instruction detection
+   val exe_illegal = !cs_inst_val && io.imem.resp.valid
 
+   // Data misalignment detection
+   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (io.ctl.dmem_typ - 1.U)(1, 0))
+   val exe_data_misaligned = (misaligned_mask & io.dat.mem_address_low).orR && io.ctl.dmem_val
 
+   // Exception signal propagation across stages
+   val wb_reg_illegal = RegInit(false.B)
+   val wb_reg_data_misaligned = RegInit(false.B)
+   val wb_reg_inst_misaligned = RegInit(false.B)
+   val wb_reg_mem_fcn = RegInit(M_X)
+   wb_reg_illegal := exe_illegal
+   wb_reg_data_misaligned := exe_data_misaligned
+   wb_reg_inst_misaligned := io.dat.inst_misaligned
+   wb_reg_mem_fcn := cs_mem_fcn
+   when (io.dat.wb_hazard_stall || io.ctl.exe_kill) {
+      wb_reg_illegal := false.B
+      wb_reg_data_misaligned := false.B
+      wb_reg_inst_misaligned := false.B
+      wb_reg_mem_fcn := false.B
+   }
+
+   take_evec        := io.ctl.exception || io.dat.csr_eret || io.dat.csr_interrupt
+
+   io.ctl.exception := (wb_reg_illegal || wb_reg_inst_misaligned || wb_reg_data_misaligned) && !io.dat.csr_eret
+   io.ctl.exception_cause :=  Mux(wb_reg_illegal,           Causes.illegal_instruction.U,
+                              Mux(wb_reg_inst_misaligned,   Causes.misaligned_fetch.U,
+                              Mux(wb_reg_mem_fcn === M_XWR, Causes.misaligned_store.U,
+                                                            Causes.misaligned_load.U
+                              )))
 }

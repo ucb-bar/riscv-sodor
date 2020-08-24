@@ -30,20 +30,10 @@ trait RISCVConstants
    // Reasoning for this is to let visualizers and stat-trackers differentiate
    // between software NOPs and machine-generated Bubbles in the pipeline.
    val BUBBLE  = 0x4033.U(32.W)
-
-   // Illegal instruction error code
-   val MISALIGNED_INST  = 0.U
-   val ILLEGAL_INST     = 2.U
-   val MISALIGNED_LOAD  = 4.U
-   val MISALIGNED_STORE = 6.U
 }
 
 trait PrivilegedConstants
 {
-   val MTVEC = 0x100
-   // val START_ADDR = "h80000000".U //MTVEC + 0x100
-   val START_ADDR = "h10000".U(32.W)
-
    val SZ_PRV = 2
    val PRV_U = 0
    val PRV_S = 1

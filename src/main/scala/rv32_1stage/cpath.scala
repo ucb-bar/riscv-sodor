@@ -9,7 +9,7 @@ package sodor.stage1
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.rocket.CSR
+import freechips.rocketchip.rocket.{CSR, Causes}
 
 import sodor.common._
 import sodor.common.Instructions._
@@ -181,10 +181,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // Set exception flag and cause
    // Exception priority matters!
    io.ctl.exception := illegal || io.dat.inst_misaligned || data_misaligned
-   io.ctl.exception_cause :=  Mux(illegal,                ILLEGAL_INST,
-                              Mux(io.dat.inst_misaligned, MISALIGNED_INST,
-                              Mux(mem_store,              MISALIGNED_STORE,
-                                                          MISALIGNED_LOAD
+   io.ctl.exception_cause :=  Mux(illegal,                Causes.illegal_instruction.U,
+                              Mux(io.dat.inst_misaligned, Causes.misaligned_fetch.U,
+                              Mux(mem_store,              Causes.misaligned_store.U,
+                                                          Causes.misaligned_load.U
                               )))
 
 }
