@@ -88,7 +88,8 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   io.memPort.req.bits.typ := Cat(~s1_slave_req_signed, s1_slave_req_size + 1.U)
 }
 
-// This class simply route all memory request that doesn't belong to the scratchpad
+// This class simply route all memory request that doesn't belong to the scratchpad.
+// DO NOT USE this adapter if the master support multiple inflight request or it may break.
 class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfiguration) extends Module {
   val io = IO(new Bundle() {
     val masterPort = new MemPortIo(data_width = conf.xprlen)
@@ -98,18 +99,28 @@ class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfi
 
   val in_range = cacheAddress.contains(io.corePort.req.bits.addr)
 
+  // Unfinished request: if the memory request switch from bus to scratchpad with inflight request, prevent 
+  // next request from being send until the previous request returned. 
+  val inflight_request = RegInit(false.B)
+  val scratchpad_request = RegInit(false.B)
+  when (io.corePort.req.fire() && !io.corePort.resp.valid) {
+    inflight_request := true.B
+    scratchpad_request := in_range
+  } .elsewhen (io.corePort.resp.valid) {
+    inflight_request := false.B
+  }
+  val range_switched = inflight_request && (scratchpad_request ^ in_range)
+
   // Connect other signals
   io.masterPort.req.bits <> io.corePort.req.bits
   io.scratchPort.req.bits <> io.corePort.req.bits
 
   // Connect valid signal 
-  io.masterPort.req.valid := io.corePort.req.valid & !in_range
-  io.scratchPort.req.valid := io.corePort.req.valid & in_range
+  io.masterPort.req.valid := io.corePort.req.valid && !in_range && !range_switched
+  io.scratchPort.req.valid := io.corePort.req.valid && in_range && !range_switched
 
   // Mux ready and request signal
-  io.corePort.req.ready := Mux(in_range, io.scratchPort.req.ready, io.masterPort.req.ready)
-  io.corePort.resp.bits := Mux(in_range, io.scratchPort.resp.bits, io.masterPort.resp.bits)
-  io.corePort.resp.valid := Mux(in_range, io.scratchPort.resp.valid, io.masterPort.resp.valid)
-  // io.scratchPort.resp.ready := in_range & io.corePort.resp.ready
-  // io.masterPort.resp.ready := ~in_range & io.corePort.resp.ready
+  io.corePort.req.ready := Mux(in_range, io.scratchPort.req.ready, io.masterPort.req.ready) && !range_switched
+  io.corePort.resp.bits := Mux(Mux(inflight_request, scratchpad_request, in_range), io.scratchPort.resp.bits, io.masterPort.resp.bits)
+  io.corePort.resp.valid := Mux(Mux(inflight_request, scratchpad_request, in_range), io.scratchPort.resp.valid, io.masterPort.resp.valid)
 }

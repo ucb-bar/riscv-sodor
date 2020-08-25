@@ -137,9 +137,6 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
       reg_if_pc_change := false.B
    }
 
-   // And if the insturction is valid, put the pc into the next stage register
-   when (io.cpu.resp.ready && if_valid) { exe_reg_pc := if_reg_pc }
-
    // If the instruction is not immediately taken by the core, put it into the buffer.
    when (!io.cpu.resp.ready && io.imem.resp.valid) {
       // If the fetched instruction is killed, simply throw away the data
@@ -155,6 +152,12 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
       if_reg_valid := false.B
    }
    
+   // Instruction repeated: when we start executing on SyncMem scratchpad (with fetch request sent in cycle 0),
+   // the request will still be up in cycle 1 with PC remains the same, causing us to get the same instruction
+   // at cycle 2. We will need to invalidate the instruction we get on cycle 2 in this case.
+   // This will not affect the bus since the bus will not interpret the req.valid signal on the same cycle when the
+   // previous request returns as a new request.
+   //val inst_repeated = RegNext(!reg_if_pc_change && io.cpu.resp.fire())
 
    // set up outputs to the instruction memory
    io.imem.req.bits.addr := if_reg_pc
@@ -165,9 +168,15 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    //**********************************
    // Execute Stage
    // (pass the instruction to the backend)
-   io.cpu.resp.valid     := if_valid
-   io.cpu.resp.bits.inst := Mux(if_reg_kill, BUBBLE, Mux(if_reg_valid, if_reg_inst, io.imem.resp.bits.data))
-   io.cpu.resp.bits.pc   := if_reg_pc
+   when (io.cpu.resp.ready && if_valid) {
+      exe_reg_valid  := if_valid //&& !inst_repeated
+      exe_reg_inst   := Mux(if_reg_kill, BUBBLE, Mux(if_reg_valid, if_reg_inst, io.imem.resp.bits.data))
+      exe_reg_pc     := if_reg_pc
+   }
+
+   io.cpu.resp.valid     := exe_reg_valid
+   io.cpu.resp.bits.inst := exe_reg_inst
+   io.cpu.resp.bits.pc   := exe_reg_pc
 
    //**********************************
    // only used for debugging
