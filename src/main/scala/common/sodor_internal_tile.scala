@@ -77,9 +77,11 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   }
   ((memory.io.core_ports zip mem_ports) zip io.master_port).foreach({ case ((mem_port, core_port), master_port) => {
     val router = Module(new SodorRequestRouter(range))
+    val master_buffer = Module(new SameCycleRequestBuffer)
+    master_buffer.io.out <> master_port
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port
-    router.io.masterPort <> master_port
+    router.io.masterPort <> master_buffer.io.in
   }})
 
   memory.io.debug_port <> io.debug_port

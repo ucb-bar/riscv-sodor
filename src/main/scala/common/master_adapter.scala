@@ -115,3 +115,14 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   tl_out.c.ready := true.B
   tl_out.e.ready := true.B
 }
+
+// This class allows the next memory request to be sent when the response of the previous request come back. 
+class SameCycleRequestBuffer(implicit val conf: SodorConfiguration) extends Module {
+  val io = IO(new Bundle() {
+    val in = Flipped(new MemPortIo(data_width = conf.xprlen))
+    val out = new MemPortIo(data_width = conf.xprlen)
+  })
+  
+  io.out.req <> io.in.req
+  io.in.resp := RegNext(io.out.resp)
+}
