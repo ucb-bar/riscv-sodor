@@ -148,7 +148,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                      PC_4
                      ))))))))))
 
-   io.imem.req.valid := (!(ctrl_pc_sel === PC_4) && ctrl_valid) || ctrl_pc_sel === PC_EXC
+   io.imem.req.valid := ((!(ctrl_pc_sel === PC_4) && ctrl_valid) || ctrl_pc_sel === PC_EXC) && !io.dat.wb_hazard_stall
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel
@@ -179,19 +179,13 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // Illegal instruction detection
    val exe_illegal = !cs_inst_val && io.imem.resp.valid
 
-   // Data misalignment detection
-   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
-   val misaligned_mask = Wire(UInt(3.W))
-   misaligned_mask := ~(7.U(3.W) << (io.ctl.dmem_typ - 1.U)(1, 0))
-   val exe_data_misaligned = (misaligned_mask & io.dat.mem_address_low).orR && io.ctl.dmem_val
-
    // Exception signal propagation across stages
    val wb_reg_illegal = RegInit(false.B)
    val wb_reg_data_misaligned = RegInit(false.B)
    val wb_reg_inst_misaligned = RegInit(false.B)
    val wb_reg_mem_fcn = RegInit(M_X)
    wb_reg_illegal := exe_illegal
-   wb_reg_data_misaligned := exe_data_misaligned
+   wb_reg_data_misaligned := io.dat.data_misaligned
    wb_reg_inst_misaligned := io.dat.inst_misaligned
    wb_reg_mem_fcn := cs_mem_fcn
    when (io.dat.wb_hazard_stall || io.ctl.exe_kill) {

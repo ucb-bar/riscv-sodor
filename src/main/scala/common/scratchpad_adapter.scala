@@ -94,6 +94,7 @@ class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfi
     val masterPort = new MemPortIo(data_width = conf.xprlen)
     val scratchPort = new MemPortIo(data_width = conf.xprlen)
     val corePort = Flipped(new MemPortIo(data_width = conf.xprlen))
+    val respAddress = Input(UInt(conf.xprlen.W))
   })
 
   val in_range = cacheAddress.contains(io.corePort.req.bits.addr)
@@ -108,8 +109,8 @@ class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfi
 
   // Mux ready and request signal
   io.corePort.req.ready := Mux(in_range, io.scratchPort.req.ready, io.masterPort.req.ready)
-  io.corePort.resp.bits := Mux(in_range, io.scratchPort.resp.bits, io.masterPort.resp.bits)
-  io.corePort.resp.valid := Mux(in_range, io.scratchPort.resp.valid, io.masterPort.resp.valid)
-  // io.scratchPort.resp.ready := in_range & io.corePort.resp.ready
-  // io.masterPort.resp.ready := ~in_range & io.corePort.resp.ready
+  // Use respAddress to route response
+  val resp_in_range = cacheAddress.contains(io.respAddress)
+  io.corePort.resp.bits := Mux(resp_in_range, io.scratchPort.resp.bits, io.masterPort.resp.bits)
+  io.corePort.resp.valid := Mux(resp_in_range, io.scratchPort.resp.valid, io.masterPort.resp.valid)
 }

@@ -29,7 +29,7 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    val br_lt  = Output(Bool())
    val br_ltu = Output(Bool())
    val inst_misaligned = Output(Bool())
-   val mem_address_low = Output(UInt(3.W))
+   val data_misaligned = Output(Bool())
    val wb_hazard_stall = Output(Bool())
    val csr_eret = Output(Bool())
    val csr_interrupt = Output(Bool())
@@ -58,16 +58,17 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-   val wb_reg_inst     = RegInit(BUBBLE)
-   val wb_reg_valid    = RegInit(false.B)
-   val wb_reg_ctrl     = Reg(new CtrlSignals)
-   val wb_reg_pc       = Reg(UInt(conf.xprlen.W))
-   val wb_reg_alu      = Reg(UInt(conf.xprlen.W))
-   val wb_reg_csr_addr = Reg(UInt(12.W))
-   val wb_reg_wbaddr   = Reg(UInt(log2Ceil(32).W))
+   val wb_reg_inst      = RegInit(BUBBLE)
+   val wb_reg_valid     = RegInit(false.B)
+   val wb_reg_ctrl      = Reg(new CtrlSignals)
+   val wb_reg_pc        = Reg(UInt(conf.xprlen.W))
+   val wb_reg_alu       = Reg(UInt(conf.xprlen.W))
+   val wb_reg_csr_addr  = Reg(UInt(12.W))
+   val wb_reg_wbaddr    = Reg(UInt(log2Ceil(32).W))
+   val wb_reg_target_pc = Reg(UInt(conf.xprlen.W))
 
-   val wb_hazard_stall = Wire(Bool()) // hazard detected, stall in IF/EXE required
-   val wb_dmiss_stall  = Wire(Bool()) // Data operation miss stall
+   val wb_hazard_stall  = Wire(Bool()) // hazard detected, stall in IF/EXE required
+   val wb_dmiss_stall   = Wire(Bool()) // Data operation miss stall
 
    //**********************************
    // Instruction Fetch Stage
@@ -87,9 +88,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // execution stage, regardless whether the pipeline stalls or not
    io.dat.inst_misaligned :=  (exe_brjmp_target(1, 0).orR    && (io.ctl.pc_sel === PC_BR || io.ctl.pc_sel === PC_J)) ||
                               (exe_jump_reg_target(1, 0).orR && io.ctl.pc_sel === PC_JR)
-   tval_inst_ma := MuxCase(exe_brjmp_target, Array(
-                  (io.ctl.pc_sel === PC_JR) -> exe_brjmp_target
-                  ))
+   val exe_target_pc = Mux((io.ctl.pc_sel === PC_JR), exe_jump_reg_target, exe_brjmp_target)
 
    io.imem.req.bits.pc := take_pc
 
@@ -140,7 +139,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    }
    ///
 
-   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr =/= 0.U) && !wb_dmiss_stall)
+   when (wb_reg_ctrl.rf_wen && (wb_reg_wbaddr =/= 0.U) && !wb_dmiss_stall && !io.ctl.exception)
    {
       regfile(wb_reg_wbaddr) := wb_wbdata
    }
@@ -205,8 +204,15 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dat.br_lt  := (exe_rs1_data.asSInt() < exe_rs2_data.asSInt())
    io.dat.br_ltu := (exe_rs1_data.asUInt() < exe_rs2_data.asUInt())
 
+   // Data misalignment detection
+   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
+   val mem_address_low = exe_alu_out(2, 0)
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (io.ctl.dmem_typ - 1.U)(1, 0))
+   io.dat.data_misaligned := (misaligned_mask & mem_address_low).orR && io.ctl.dmem_val
+
    // datapath to data memory outputs
-   io.dmem.req.valid     := io.ctl.dmem_val
+   io.dmem.req.valid     := io.ctl.dmem_val && !io.dat.data_misaligned
    if(NUM_MEMORY_PORTS == 1)
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else
@@ -217,10 +223,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Data memory miss detection
    wb_dmiss_stall := !io.dmem.req.ready
-
-   // Data misalignment detection related signals
-   io.dat.mem_address_low := exe_alu_out(2, 0)
-   tval_data_ma := exe_alu_out
 
    // execute to wb registers
    when (!wb_dmiss_stall)
@@ -242,6 +244,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          wb_reg_alu      := exe_alu_out
          wb_reg_wbaddr   := exe_wbaddr
          wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+         wb_reg_target_pc := exe_target_pc
       }
    }
 
@@ -257,12 +260,14 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.cmd    := Mux(wb_dmiss_stall, CSR.N, wb_reg_ctrl.csr_cmd)
    val wb_csr_out    = csr.io.rw.rdata
 
-   csr.io.retire    := wb_reg_valid && !wb_reg_ctrl.exception
-   csr.io.exception := wb_reg_ctrl.exception
+   csr.io.retire    := wb_reg_valid && !io.ctl.exception
+   csr.io.exception := io.ctl.exception
    csr.io.pc        := wb_reg_pc
    exception_target := csr.io.evec
    io.dat.csr_eret := csr.io.eret
 
+   tval_data_ma := wb_reg_alu
+   tval_inst_ma := wb_reg_target_pc
    csr.io.tval := MuxCase(0.U, Array(
                   (io.ctl.exception_cause === Causes.illegal_instruction.U)     -> wb_reg_inst,
                   (io.ctl.exception_cause === Causes.misaligned_fetch.U)  -> tval_inst_ma,
@@ -273,11 +278,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Interrupt handle flag
    val reg_interrupt_flag = RegNext(csr.io.interrupt)
    val interrupt_edge = csr.io.interrupt && !reg_interrupt_flag
-   // when (csr.io.interrupt && io.imem.if_pc_change) {
-   //    reg_interrupt_flag := true.B
-   // } .elsewhen (!csr.io.interrupt) {
-   //    reg_interrupt_flag := false.B
-   // }
 
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid

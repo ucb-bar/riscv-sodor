@@ -92,7 +92,6 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Pipeline State Registers
-   val if_reg_valid  = RegInit(false.B)
    val if_reg_pc     = RegInit(io.constants.reset_vector - 4.U)
 
    val exe_reg_valid = RegInit(false.B)
@@ -134,7 +133,6 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    when (io.cpu.resp.ready && io.imem.req.ready)
    {
       if_reg_pc    := if_pc_next
-      if_reg_valid := if_val_next && io.imem.resp.valid && !if_redirected
       when (!io.cpu.req.valid)
       {
          if_redirected := false.B

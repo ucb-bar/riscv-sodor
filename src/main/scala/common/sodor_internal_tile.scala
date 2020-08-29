@@ -82,6 +82,8 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port
     router.io.masterPort <> master_buffer.io.in
+    // For sync memory, use the request address from the previous cycle
+    router.io.respAddress := RegNext(core_port.req.bits.addr)
   }})
 
   memory.io.debug_port <> io.debug_port
@@ -105,6 +107,8 @@ class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit 
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port
     router.io.masterPort <> master_port
+    // For async memory, simply use the current request address
+    router.io.respAddress := core_port.req.bits.addr
   }})
 
   io.debug_port <> memory.io.debug_port
