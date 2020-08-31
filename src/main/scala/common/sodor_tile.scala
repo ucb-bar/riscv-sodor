@@ -131,9 +131,9 @@ class SodorTile(
     "ucb-bar,dtim" -> d.device.asProperty)).getOrElse(Nil)
 
   // Sodor master port adapter
-  val imaster_adapter = LazyModule(new SodorMasterAdapter)
+  val imaster_adapter = if (conf.ports == 2) Some(LazyModule(new SodorMasterAdapter)) else None
+  if (conf.ports == 2) tlMasterXbar.node := imaster_adapter.get.node
   val dmaster_adapter = LazyModule(new SodorMasterAdapter)
-  tlMasterXbar.node := imaster_adapter.node
   tlMasterXbar.node := dmaster_adapter.node
 
   // Implementation class (See below)
@@ -188,7 +188,8 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 
   // Connect tile
   tile.io.debug_port <> scratchpadAdapter.io.memPort
-  tile.io.master_port <> VecInit(outer.dmaster_adapter.module.io.dport, outer.imaster_adapter.module.io.dport)
+  tile.io.master_port(0) <> outer.dmaster_adapter.module.io.dport
+  if (outer.conf.ports == 2) tile.io.master_port(1) <> outer.imaster_adapter.get.module.io.dport
 
   // Connect interrupts
   outer.decodeCoreInterrupts(tile.io.interrupt)

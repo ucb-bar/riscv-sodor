@@ -31,7 +31,7 @@ abstract class AbstractCore extends Module {
 abstract class AbstractInternalTile(implicit val conf: SodorConfiguration) extends Module {
   val io = IO(new Bundle {
     val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))
-    val master_port = Vec(2, new MemPortIo(data_width = conf.xprlen))
+    val master_port = Vec(conf.ports, new MemPortIo(data_width = conf.xprlen))
     val interrupt = Input(new CoreInterrupts()(conf.p))
     val constants = new TileInputConstants()(conf.p)
   })
@@ -49,33 +49,24 @@ trait SodorInternalTileFactory {
 }
 
 // Original sodor tile in this repo.
-// This tile is only for 3-stage core since it has a special structure (SyncMem and possibly one memory port)
+// This tile is only for 3-stage core since it has a special structure (SyncMem and possibly one memory port).
 class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfiguration) extends AbstractInternalTile
 {
-  val procConst = {
-    class C extends sodor.stage3.constants.SodorProcConstants
-    new C
-  }
-
+  // Core memory port
   val core   = Module(new sodor.stage3.Core())
   core.io := DontCare
-  val memory = Module(new SyncScratchPadMemory(num_core_ports = procConst.NUM_MEMORY_PORTS))
+  val core_ports = Wire(Vec(2, new MemPortIo(data_width = conf.xprlen)))
+  core.io.imem <> core_ports(1)
+  core.io.dmem <> core_ports(0)
 
-  val mem_ports = Wire(Vec(procConst.NUM_MEMORY_PORTS, new MemPortIo(data_width = conf.xprlen)))
+  // scratchpad memory port
+  val memory = Module(new SyncScratchPadMemory(num_core_ports = conf.ports))
+  val mem_ports = Wire(Vec(2, new MemPortIo(data_width = conf.xprlen)))
+  // master memory port
+  val master_ports = Wire(Vec(2, new MemPortIo(data_width = conf.xprlen)))
 
-  if (procConst.NUM_MEMORY_PORTS == 1) // Only used in stage3
-  {
-    val arbiter = Module(new sodor.stage3.SodorMemArbiter) // only used for single port memory
-    core.io.imem <> arbiter.io.imem
-    core.io.dmem <> arbiter.io.dmem
-    arbiter.io.mem <> mem_ports(0)
-  }
-  else
-  {
-    core.io.imem <> mem_ports(1)
-    core.io.dmem <> mem_ports(0)
-  }
-  ((memory.io.core_ports zip mem_ports) zip io.master_port).foreach({ case ((mem_port, core_port), master_port) => {
+  // Connect ports
+  ((mem_ports zip core_ports) zip master_ports).foreach({ case ((mem_port, core_port), master_port) => {
     val router = Module(new SodorRequestRouter(range))
     val master_buffer = Module(new SameCycleRequestBuffer)
     master_buffer.io.out <> master_port
@@ -85,6 +76,29 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
     // For sync memory, use the request address from the previous cycle
     router.io.respAddress := RegNext(core_port.req.bits.addr)
   }})
+
+  // If we only use one port, arbitrate
+  if (conf.ports == 1)
+  {
+    // Arbitrate scratchpad
+    val scratchpad_arbiter = Module(new sodor.stage3.SodorMemArbiter)
+    mem_ports(1) <> scratchpad_arbiter.io.imem
+    mem_ports(0) <> scratchpad_arbiter.io.dmem
+    scratchpad_arbiter.io.mem <> memory.io.core_ports(0)
+
+    // Arbitrate master
+    val master_arbiter = Module(new sodor.stage3.SodorMemArbiter)
+    master_ports(1) <> master_arbiter.io.imem
+    master_ports(0) <> master_arbiter.io.dmem
+    master_arbiter.io.mem <> io.master_port(0)
+  }
+  else
+  {
+    mem_ports(1) <> memory.io.core_ports(1)
+    mem_ports(0) <> memory.io.core_ports(0)
+    master_ports(1) <> io.master_port(1)
+    master_ports(0) <> io.master_port(0)
+  }
 
   memory.io.debug_port <> io.debug_port
 

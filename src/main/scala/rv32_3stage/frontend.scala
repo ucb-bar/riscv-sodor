@@ -101,7 +101,7 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    //**********************************
    // Next PC Stage (if we can call it that)
    val if_pc_next = Wire(UInt(conf.xprlen.W))
-   val if_val_next = WireInit(true.B) // for now, always true. But instruction
+   val if_val_next = Wire(Bool()) // for now, always true. But instruction
                                 // buffers, etc., could make that not the case.
 
    val if_pc_plus4 = (if_reg_pc + 4.asUInt(conf.xprlen.W))
@@ -110,24 +110,25 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
    val if_redirected = RegInit(false.B)
    val if_redirected_pc = Reg(UInt(conf.xprlen.W))
 
+   // Instruction buffer
+   val if_buffer_in = Wire(new DecoupledIO(new MemResp(conf.xprlen)))
+   if_buffer_in.valid := io.imem.resp.valid 
+   if_buffer_in.bits := io.imem.resp.bits
+   if_val_next := io.cpu.resp.ready || (if_buffer_in.ready && !io.imem.resp.valid) // If the incoming inst goes to buffer, don't send the next req
+   assert(if_buffer_in.ready || !if_buffer_in.valid, "Inst buffer overflow")
+   val if_buffer_out = Queue(if_buffer_in, entries = 1, pipe = true, flow = true)
+
    // stall IF/EXE if backend not ready
-   when (io.cpu.resp.ready)
+   if_pc_next := if_pc_plus4
+   when (io.cpu.req.valid && io.cpu.resp.ready)
    {
-      if_pc_next := if_pc_plus4
-      when (io.cpu.req.valid)
-      {
-         // datapath is redirecting the PC stream (misspeculation)
-         if_redirected := true.B
-         if_redirected_pc := io.cpu.req.bits.pc
-      }
-      when (if_redirected)
-      {
-         if_pc_next := if_redirected_pc
-      }
+      // datapath is redirecting the PC stream (misspeculation)
+      if_redirected := true.B
+      if_redirected_pc := io.cpu.req.bits.pc
    }
-   .otherwise
+   when (if_redirected)
    {
-      if_pc_next  := if_reg_pc
+      if_pc_next := if_redirected_pc
    }
 
    when (io.cpu.resp.ready && io.imem.req.ready)
@@ -147,11 +148,12 @@ class FrontEnd(implicit val conf: SodorConfiguration) extends Module
 
    //**********************************
    // Inst Fetch/Return Stage
+   if_buffer_out.ready := io.cpu.resp.ready
    when (io.cpu.resp.ready)
    {
-      exe_reg_valid := io.imem.resp.valid && !io.cpu.req.valid && !if_redirected
+      exe_reg_valid := if_buffer_out.valid && !io.cpu.req.valid && !if_redirected
       exe_reg_pc    := if_reg_pc
-      exe_reg_inst  := io.imem.resp.bits.data
+      exe_reg_inst  := if_buffer_out.bits.data
    }
 
    //**********************************

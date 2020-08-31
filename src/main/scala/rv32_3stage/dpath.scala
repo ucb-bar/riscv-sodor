@@ -66,6 +66,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val wb_reg_csr_addr  = Reg(UInt(12.W))
    val wb_reg_wbaddr    = Reg(UInt(log2Ceil(32).W))
    val wb_reg_target_pc = Reg(UInt(conf.xprlen.W))
+   val wb_reg_mem       = RegInit(false.B)
 
    val wb_hazard_stall  = Wire(Bool()) // hazard detected, stall in IF/EXE required
    val wb_dmiss_stall   = Wire(Bool()) // Data operation miss stall
@@ -108,7 +109,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Hazard Stall Logic
    io.dat.wb_hazard_stall := wb_hazard_stall
-   if(NUM_MEMORY_PORTS == 1) {
+   if(conf.ports == 1) {
       // stall for more cycles incase of store after load with read after write conflict
       val count = RegInit(1.asUInt(2.W))
       when (io.ctl.dmem_val && (wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
@@ -213,7 +214,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // datapath to data memory outputs
    io.dmem.req.valid     := io.ctl.dmem_val && !io.dat.data_misaligned
-   if(NUM_MEMORY_PORTS == 1)
+   if(conf.ports == 1)
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & !wb_hazard_stall & exe_valid
@@ -222,7 +223,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dmem.req.bits.data := exe_rs2_data
 
    // Data memory miss detection
-   wb_dmiss_stall := !io.dmem.req.ready
+   wb_dmiss_stall := (!io.dmem.req.ready && io.dmem.req.valid) || (wb_reg_mem && !io.dmem.resp.valid)
 
    // execute to wb registers
    when (!wb_dmiss_stall)
@@ -235,6 +236,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          wb_reg_ctrl.csr_cmd   := CSR.N
          wb_reg_ctrl.dmem_val  := false.B
          wb_reg_ctrl.exception := false.B
+         wb_reg_mem := false.B
       }
       .otherwise {
          wb_reg_inst := exe_inst
@@ -245,6 +247,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          wb_reg_wbaddr   := exe_wbaddr
          wb_reg_csr_addr := exe_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
          wb_reg_target_pc := exe_target_pc
+         wb_reg_mem := io.dmem.req.valid
       }
    }
 
