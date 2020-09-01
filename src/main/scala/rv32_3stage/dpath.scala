@@ -236,7 +236,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
          wb_reg_ctrl.csr_cmd   := CSR.N
          wb_reg_ctrl.dmem_val  := false.B
          wb_reg_ctrl.exception := false.B
-         wb_reg_mem := false.B
+         wb_reg_mem            := false.B
       }
       .otherwise {
          wb_reg_inst := exe_inst

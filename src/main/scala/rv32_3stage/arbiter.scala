@@ -46,7 +46,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
   when (io.dmem.req.valid && nextdreq)
   {
     d_fire := io.mem.req.ready
-    when (io.mem.req.ready)
+    when (io.mem.resp.valid)
     {
       nextdreq := false.B // allow only instr in next cycle
       d_resp := true.B
@@ -55,7 +55,7 @@ class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
   .elsewhen(io.dmem.req.valid && !nextdreq)
   {
     d_fire := false.B
-    when (io.mem.req.ready)
+    when (io.mem.resp.valid)
     {
       nextdreq := true.B  // allow any future data request
       d_resp := false.B
