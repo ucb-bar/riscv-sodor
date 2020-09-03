@@ -56,7 +56,7 @@ object Microcode
 {
 
    val codes = Array[MicroOp](
-                         /*      State     |          | LD_IR | Reg   | Reg  | En   | Ld A | Ld B |   ALUOP    | En   | Ld MA | Mem  | Mem  | Im  | En   |  UBr | NextState */
+                         /*      State     |    CSR   | LD_IR | Reg   | Reg  | En   | Ld A | Ld B |   ALUOP    | En   | Ld MA | Mem  | Mem  | Im  | En   |  UBr | NextState */
                          /*                |          |       |  Sel  |  Wr  | Reg  |      |      |            | ALU  |       |  Wr  |  En  | Sel | Imm  |      |           */
 
   /* --- Misc. Operations -------------------------- */
@@ -64,7 +64,7 @@ object Microcode
    /* Instruction Fetch*/
    /* MA <- PC         */ Label("FETCH"),   Signals(Cat(MT_X , CSR.N, LDIR_X, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_1, MWR_X, MEN_0, IS_X, IEN_0, UBR_N), "X")
    /* A  <- PC         */
-   /* IR <- Mem        */,                  Signals(Cat(MT_X , CSR.N, LDIR_1, RS_X  , RWR_X, REN_0, LDA_0, LDB_X, ALU_X      , AEN_0, LDMA_0, MWR_0, MEN_1, IS_X, IEN_0, UBR_S), "X")
+   /* IR <- Mem        */,                  Signals(Cat(MT_W , CSR.N, LDIR_1, RS_X  , RWR_X, REN_0, LDA_0, LDB_X, ALU_X      , AEN_0, LDMA_0, MWR_0, MEN_1, IS_X, IEN_0, UBR_S), "X")
    /* PC <- A + 4      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_X, ALU_INC_A_4, AEN_1, LDMA_X, MWR_X, MEN_0, IS_X, IEN_0, UBR_D), "X")
    /*Dispatch on Opcode*/
 
@@ -262,17 +262,19 @@ object Microcode
 
    /* JAL              */
    /* A  <- PC         */,Label("JAL"),     Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* Reg[x1] <- A     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_A,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* A  <- A - 4      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_1, LDB_X, ALU_DEC_A_4,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* B  <- Sext(Imm25)*/,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_0, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_J  , IEN_1, UBR_N),  "X")
-   /* PC <- A + B      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_0, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
+   /* A  <- A + B      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_1, LDB_X, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* B  <- PC         */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_X, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* PC <- A - 4      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_X, ALU_DEC_A_4,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* Reg[x1] <- B     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_X, LDB_0, ALU_COPY_B,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
 
    /* JALR             */
-   /* A  <- PC         */,Label("JALR"),    Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* Reg[rd] <- A     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_A,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
-   /* A  <- Reg[rs1]   */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* A  <- Reg[rs1]   */,Label("JALR"),    Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
    /* B  <- Sext(Imm12)*/,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_0, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_I  , IEN_1, UBR_N),  "X")
-   /* PC,A <- A + B    */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_1, LDB_0, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
+   /* A  <- A + B      */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_X  , RWR_X, REN_0, LDA_1, LDB_0, ALU_ADD  , AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* B  <- PC         */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_X, LDB_1, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* PC <- A          */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_A,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")
+   /* Reg[rd] <- B     */,                  Signals(Cat(MT_X , CSR.N, LDIR_0, RS_RD , RWR_1, REN_1, LDA_0, LDB_X, ALU_COPY_B,AEN_1, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_J),  "FETCH")
 
    /* AUIPC            */
    /* A  <- PC         */,Label("AUIPC"),   Signals(Cat(MT_X , CSR.N, LDIR_0, RS_PC , RWR_0, REN_1, LDA_1, LDB_X, ALU_X    , AEN_0, LDMA_X, MWR_X, MEN_0, IS_X  , IEN_0, UBR_N),  "X")

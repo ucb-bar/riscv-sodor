@@ -22,6 +22,8 @@ class DatToCtlIo extends Bundle()
    val inst     = Output(UInt(32.W))
    val alu_zero = Output(Bool())
    val csr_eret = Output(Bool())
+   val interrupt = Output(Bool())
+   val addr_exception = Output(Bool())
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
@@ -95,6 +97,14 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
 
 
+  // Exception
+  val tval_data_ma = Wire(UInt(conf.xprlen.W))
+  val tval_inst_ma = Wire(UInt(conf.xprlen.W)) 
+  val inst_misaligned = Wire(Bool())
+  val data_misaligned = Wire(Bool())
+  val mem_store = Wire(Bool())
+  io.dat.addr_exception := inst_misaligned || data_misaligned
+
    // Register File (Single Port)
    // also holds the PC register
    val rs1 = ir(RS1_MSB, RS1_LSB)
@@ -115,9 +125,21 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    //32 x-registers, 1 pc-register
    val regfile = Reg(Vec(33, UInt(32.W)))
 
+   inst_misaligned := false.B
+   tval_inst_ma := RegNext(bus & ~1.U(conf.xprlen.W))
    when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr =/= 0.U)
    {
-      regfile(reg_addr) := bus
+      when (reg_addr === PC_IDX)
+      { 
+        // Check bit 1 of the address for misalignment
+        inst_misaligned := bus(1)
+        // Clear LSB of the write data if we are writing to PC (required by JALR, but doesn't hurt doing this for all req)
+        regfile(reg_addr) := bus & ~1.U(conf.xprlen.W)
+      }
+      .elsewhen (!io.ctl.exception) 
+      {
+        regfile(reg_addr) := bus
+      }
    }
 
    // This is a hack to make it look like the CSRFile is part of the regfile
@@ -140,11 +162,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
    csr.io := DontCare
    csr.io.decode(0).csr  := csr_addr
+   csr.io.rw.addr  := csr_addr
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr_rdata       := csr.io.rw.rdata
    csr.io.retire    := io.ctl.retire
-   csr.io.exception := io.ctl.exception
    csr.io.pc        := regfile(PC_IDX) - 4.U
    exception_target := csr.io.evec
 
@@ -152,6 +174,28 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.hartid := io.constants.hartid
 
    io.dat.csr_eret := csr.io.eret
+
+   val interrupt_handled = RegInit(false.B)
+   when (io.ctl.retire) { interrupt_handled := csr.io.interrupt }
+   val interrupt_edge = csr.io.interrupt && ! interrupt_handled
+   io.dat.interrupt := interrupt_edge
+
+  // Delay exception for CSR to avoid combinational loop
+  // If there is an exception, we will enter ILLEGAL state in the next cycle
+  val delayed_exception = io.ctl.illegal_exception || RegNext(io.dat.addr_exception)
+  val exception_cause = Mux(io.ctl.illegal_exception,   Causes.illegal_instruction.U,
+                        Mux(RegNext(inst_misaligned),   Causes.misaligned_fetch.U,
+                        Mux(RegNext(mem_store),         Causes.misaligned_store.U,
+                                                        Causes.misaligned_load.U
+                        )))
+  csr.io.exception := delayed_exception
+  csr.io.cause := Mux(delayed_exception, exception_cause, csr.io.interrupt_cause)
+  csr.io.tval := MuxCase(0.U, Array(
+              (exception_cause === Causes.illegal_instruction.U)  -> io.dat.inst,
+              (exception_cause === Causes.misaligned_fetch.U)     -> tval_inst_ma,
+              (exception_cause === Causes.misaligned_store.U)     -> tval_data_ma,
+              (exception_cause === Causes.misaligned_load.U)      -> tval_data_ma,
+              ))
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
@@ -187,6 +231,14 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Output Signals to the Memory
    io.mem.req.bits.addr := reg_ma.asUInt()
    io.mem.req.bits.data := bus
+
+   // Data misalignment detection
+   // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
+   val misaligned_mask = Wire(UInt(3.W))
+   misaligned_mask := ~(7.U(3.W) << (io.ctl.msk_sel - 1.U)(1, 0))
+   data_misaligned := (misaligned_mask & reg_ma.asUInt.apply(2, 0)).orR && io.ctl.en_mem
+   mem_store := io.ctl.mem_wr
+   tval_data_ma := RegNext(reg_ma.asUInt)
 
    // Printout
    printf("Cyc= %d [%d] PCReg=[%x] uPC=[%x] Bus=[%x] RegSel=[%d] RegAddr=[%d] A=[%x] B=[%x] MA=[%x] InstReg=[%x] %c%c%c DASM(%x)\n",

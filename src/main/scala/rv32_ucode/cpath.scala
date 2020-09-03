@@ -37,6 +37,7 @@ class CtlToDatIo extends Bundle()
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes
    val upc_is_fetch = Output(Bool()) // for debugging purposes
+   val illegal_exception = Output(Bool())
    val exception = Output(Bool())
    val retire = Output(Bool())
 }
@@ -52,7 +53,7 @@ class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
 
 class CtlPath(implicit val conf: SodorConfiguration) extends Module
 {
-   val io = IO(new CpathIo())
+  val io = IO(new CpathIo())
   io := DontCare
 
    // Compile the Micro-code down into a ROM
@@ -97,7 +98,10 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
   })
   require(label_sz == 8, "Label size must be 8")
 
-  val mem_is_busy = !io.mem.resp.valid && cs.en_mem.toBool
+  val mem_is_busy = !io.mem.resp.valid && cs.en_mem.asBool
+
+  val interrupt_trigger = io.dat.interrupt && io.ctl.upc_is_fetch
+  val non_illegal_trap = interrupt_trigger || io.dat.addr_exception
 
    // Micro-PC State Logic
   val upc_sel     = MuxCase(UPC_CURRENT, Array(
@@ -111,6 +115,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
 
    upc_state_next := MuxCase(upc_state, Array(
+                      (non_illegal_trap)         -> label_target_map("ILLEGAL").asUInt(label_sz.W),
                       (upc_sel === UPC_DISPATCH) -> upc_opgroup_target,
                       (upc_sel === UPC_ABSOLUTE) -> cs.upc_rom_target,
                       (upc_sel === UPC_NEXT)     -> (upc_state + 1.U),
@@ -119,7 +124,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
 
    // Exception Handling ---------------------
-   io.ctl.exception := label_target_map("ILLEGAL").U === upc_state
+   io.ctl.illegal_exception := label_target_map("ILLEGAL").U === upc_state && RegNext(cs.ubr) === UBR_D
+   io.ctl.exception := io.ctl.illegal_exception || io.dat.addr_exception
 
    // Cpath Control Interface
    io.ctl.msk_sel := cs.msk_sel
@@ -159,6 +165,6 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // Memory Interface
    io.mem.req.bits.fcn := Mux(cs.en_mem && cs.mem_wr , M_XWR, M_XRD)
    io.mem.req.bits.typ := cs.msk_sel
-   io.mem.req.valid   := cs.en_mem.toBool
+   io.mem.req.valid   := cs.en_mem.asBool && !io.dat.addr_exception
 
 }

@@ -12,7 +12,7 @@ case class SodorConfiguration(
    val chipyardBuild: Boolean = false,
    val debuglen: Int = 32,
    val xprlen: Int = 32,
-   val ports: Int = 2
+   val ports: Int = 1
 )
 {
    val nxpr = 32
