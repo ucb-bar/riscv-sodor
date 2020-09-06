@@ -146,14 +146,14 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                                                             PC_4
                      ))))))))))
 
-   val ifkill  = (ctrl_exe_pc_sel =/= PC_4) || !io.dat.if_valid_resp || cs_fencei || RegNext(cs_fencei)
+   val ifkill  = (ctrl_exe_pc_sel =/= PC_4) || cs_fencei || RegNext(cs_fencei)
    val deckill = (ctrl_exe_pc_sel =/= PC_4)
 
    // Exception Handling ---------------------
 
    io.ctl.pipeline_kill := (io.dat.csr_eret || io.ctl.mem_exception || io.dat.csr_interrupt)
 
-   val dec_illegal = (!cs_val_inst && io.dat.if_valid_resp)
+   val dec_illegal = (!cs_val_inst && io.dat.dec_valid)
 
    // Stall Signal Logic --------------------
    val stall   = Wire(Bool())
@@ -247,7 +247,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
 
    // stall full pipeline on D$ miss
    val dmem_val   = io.dat.mem_ctrl_dmem_val
-   full_stall := !io.dat.if_valid_resp || !((dmem_val && io.dmem.resp.valid) || !dmem_val)
+   full_stall := !((dmem_val && io.dmem.resp.valid) || !dmem_val)
 
 
    io.ctl.dec_stall  := stall // stall if, dec stage (pipeline hazard)

@@ -31,7 +31,6 @@ class Core()(implicit val conf: SodorConfiguration) extends AbstractCore
 
    io.imem <> c.io.imem
    io.imem <> d.io.imem
-   io.imem.req.valid := c.io.imem.req.valid
 
    io.dmem <> c.io.dmem
    io.dmem <> d.io.dmem

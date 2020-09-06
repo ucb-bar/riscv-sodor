@@ -20,8 +20,8 @@ import sodor.common._
 
 class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle() 
 {
-   val if_valid_resp = Output(Bool())
    val dec_inst    = Output(UInt(conf.xprlen.W))
+   val dec_valid   = Output(Bool())
    val exe_br_eq   = Output(Bool())
    val exe_br_lt   = Output(Bool())
    val exe_br_ltu  = Output(Bool())
@@ -123,7 +123,36 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_jump_reg_target = Wire(UInt(32.W))
    val exception_target    = Wire(UInt(32.W))
 
-   when ((!io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill)
+   // Instruction fetch buffer
+   val if_buffer_in = Wire(new DecoupledIO(new MemResp(conf.xprlen)))
+   if_buffer_in.bits := io.imem.resp.bits
+   if_buffer_in.valid := io.imem.resp.valid
+   assert(!(if_buffer_in.valid && !if_buffer_in.ready), "Instruction backlog")
+
+   val if_buffer_out = Queue(if_buffer_in, entries = 1, pipe = false, flow = true)
+   if_buffer_out.ready := !io.ctl.dec_stall && !io.ctl.full_stall
+
+   // Instruction PC buffer
+   val if_pc_buffer_in = Wire(new DecoupledIO(UInt(conf.xprlen.W)))
+   if_pc_buffer_in.bits := if_reg_pc
+   if_pc_buffer_in.valid := if_buffer_in.valid
+
+   val if_pc_buffer_out = Queue(if_pc_buffer_in, entries = 1, pipe = false, flow = true)
+   if_pc_buffer_out.ready := if_buffer_out.ready
+
+   // Instruction fetch kill flag buffer
+   val if_reg_killed = RegInit(false.B)
+   when ((io.ctl.pipeline_kill || io.ctl.if_kill) && !if_buffer_out.fire())
+   {
+      if_reg_killed := true.B
+   }
+   when (if_reg_killed && if_buffer_out.fire())
+   {
+      if_reg_killed := false.B
+   }
+
+   // Do not change the PC again if the instruction is killed in previous cycles (when the PC has changed)
+   when ((if_buffer_in.fire() && !if_reg_killed) || io.ctl.if_kill || io.ctl.pipeline_kill)
    {
       if_reg_pc := if_pc_next
    }
@@ -142,40 +171,11 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       if_pc_next := if_reg_pc
    }
 
-   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
-   // the execution is resumed
-   val if_inst_buffer = RegInit(0.U(32.W))
-   val if_inst_buffer_valid = RegInit(false.B)
-   val if_inst_buffer_killed = RegInit(false.B)
-   when (io.ctl.dec_stall || io.ctl.full_stall) {
-      when (io.imem.resp.valid) {
-         // If the fetched instruction is killed before or at the time it arrived, simply throw away the data and reset the kill flag
-         when (if_inst_buffer_killed || io.ctl.pipeline_kill) {
-            if_inst_buffer_valid := false.B
-            if_inst_buffer_killed := false.B
-         } .otherwise {
-            if_inst_buffer_valid := true.B
-            if_inst_buffer := io.imem.resp.bits.data
-         }
-      } .elsewhen (io.ctl.pipeline_kill) {
-         if_inst_buffer_killed := true.B
-      }
-   } .otherwise {
-      // If resumed, clear the buffer
-      if_inst_buffer := 0.U(32.W)
-      if_inst_buffer_valid := false.B
-      if_inst_buffer_killed := false.B
-   }
-
-   // Connect CPath valid instruction fetch response to prevent livelock when fetch have multi-cycle delay
-   io.dat.if_valid_resp := !(if_inst_buffer_killed) && (if_inst_buffer_valid || io.imem.resp.valid)
-
    // Instruction Memory
-   io.imem.req.valid := !io.ctl.dec_stall && !io.ctl.full_stall && !io.ctl.pipeline_kill && !if_inst_buffer_killed
+   io.imem.req.valid := if_buffer_in.ready
    io.imem.req.bits.fcn := M_XRD
    io.imem.req.bits.typ := MT_WU
    io.imem.req.bits.addr := if_reg_pc
-   val if_inst = Mux(if_inst_buffer_valid, Mux(if_inst_buffer_killed, BUBBLE, if_inst_buffer), io.imem.resp.bits.data)
 
    when (io.ctl.pipeline_kill)
    {
@@ -184,18 +184,23 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    }
    .elsewhen (!io.ctl.dec_stall && !io.ctl.full_stall)
    {
-      when (io.ctl.if_kill)
+      when (io.ctl.if_kill || if_reg_killed)
       {
          dec_reg_valid := false.B
          dec_reg_inst := BUBBLE
       }
-      .otherwise
+      .elsewhen (if_buffer_out.valid)
       {
          dec_reg_valid := true.B
-         dec_reg_inst := if_inst
+         dec_reg_inst := if_buffer_out.bits.data
+      }
+      .otherwise
+      {
+         dec_reg_valid := false.B
+         dec_reg_inst := BUBBLE
       }
 
-      dec_reg_pc := if_reg_pc
+      dec_reg_pc := if_pc_buffer_out.bits
    }
 
 
@@ -438,11 +443,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                   ))
 
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
-   val reg_interrupt_edge = RegInit(0.U(2.W))
-   when (true.B) {
-      reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
-   }
-   val interrupt_edge = reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+   val reg_interrupt_handled = RegNext(csr.io.interrupt)
+   val interrupt_edge = csr.io.interrupt && !reg_interrupt_handled
 
    csr.io.interrupts := io.interrupt
    csr.io.hartid := io.constants.hartid
@@ -495,6 +497,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // External Signals
 
    // datapath to controlpath outputs
+   io.dat.dec_valid  := dec_reg_valid
    io.dat.dec_inst   := dec_reg_inst
    io.dat.exe_br_eq  := (exe_reg_op1_data === exe_reg_rs2_data)
    io.dat.exe_br_lt  := (exe_reg_op1_data.asSInt() < exe_reg_rs2_data.asSInt())
