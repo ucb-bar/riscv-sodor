@@ -32,7 +32,7 @@ object ALU
 }
 import ALU._
 
-class ALUIO(implicit val conf: SodorConfiguration) extends Bundle {
+class ALUIO(implicit val conf: SodorCoreParams) extends Bundle {
   val fn = Input(UInt(SZ_ALU_FN.W))
   val in2 = Input(UInt(conf.xprlen.W))
   val in1 = Input(UInt(conf.xprlen.W))
@@ -40,7 +40,7 @@ class ALUIO(implicit val conf: SodorConfiguration) extends Bundle {
   val adder_out = Output(UInt(conf.xprlen.W))
 }
 
-class ALU(implicit val conf: SodorConfiguration) extends Module
+class ALU(implicit val conf: SodorCoreParams) extends Module
 {
   val io = IO(new ALUIO)
 

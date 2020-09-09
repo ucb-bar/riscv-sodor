@@ -16,7 +16,7 @@ import freechips.rocketchip.util._
 import freechips.rocketchip.tile._
 import freechips.rocketchip.amba.axi4._
 
-class SodorMasterAdapter(implicit p: Parameters, val conf: SodorConfiguration) extends LazyModule {
+class SodorMasterAdapter(implicit p: Parameters, val conf: SodorCoreParams) extends LazyModule {
   // The node exposed to the crossbar
   val node = TLIdentityNode()
 
@@ -117,7 +117,7 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
 }
 
 // This class allows the next memory request to be sent when the response of the previous request come back. 
-class SameCycleRequestBuffer(implicit val conf: SodorConfiguration) extends Module {
+class SameCycleRequestBuffer(implicit val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle() {
     val in = Flipped(new MemPortIo(data_width = conf.xprlen))
     val out = new MemPortIo(data_width = conf.xprlen)

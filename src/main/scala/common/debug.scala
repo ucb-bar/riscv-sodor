@@ -51,7 +51,7 @@ class DMIResp() extends Bundle {
   *  DebugModule is the consumer of this interface.
   *  Therefore it has the 'flipped' version of this.
   */
-class DMIIO(implicit val conf: SodorConfiguration) extends Bundle {
+class DMIIO(implicit val conf: SodorCoreParams) extends Bundle {
   val req = new  DecoupledIO(new DMIReq(DMConsts.nDMIAddrSize))
   val resp = Flipped(new DecoupledIO(new DMIResp))
 }
@@ -61,7 +61,7 @@ class DMIIO(implicit val conf: SodorConfiguration) extends Bundle {
   *
   */
 
-class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
+class SimDTM(implicit val conf: SodorCoreParams) extends BlackBox {
   val io = IO(new Bundle {
       val clk = Input(Clock())
       val reset = Input(Bool())
@@ -82,7 +82,7 @@ class SimDTM(implicit val conf: SodorConfiguration) extends BlackBox {
   }
 }
 
-class DebugDPath(implicit val conf: SodorConfiguration) extends Bundle
+class DebugDPath(implicit val conf: SodorCoreParams) extends Bundle
 {
   // REG access
   val addr = Output(UInt(5.W))
@@ -92,12 +92,12 @@ class DebugDPath(implicit val conf: SodorConfiguration) extends Bundle
   val resetpc = Output(Bool())
 }
 
-class DebugCPath(implicit val conf: SodorConfiguration) extends Bundle
+class DebugCPath(implicit val conf: SodorCoreParams) extends Bundle
 {
   val halt = Output(Bool())
 }
 
-class DebugIo(implicit val conf: SodorConfiguration) extends Bundle
+class DebugIo(implicit val conf: SodorCoreParams) extends Bundle
 {
   val dmi = Flipped(new DMIIO())
   val ddpath = new DebugDPath()
@@ -106,7 +106,7 @@ class DebugIo(implicit val conf: SodorConfiguration) extends Bundle
   val resetcore = Output(Bool())
 }
 
-class DebugModule(implicit val conf: SodorConfiguration) extends Module {
+class DebugModule(implicit val conf: SodorCoreParams) extends Module {
   val io = IO(new DebugIo())
   io := DontCare
 

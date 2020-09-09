@@ -10,13 +10,14 @@ package sodor.stage1
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.{CSRFile, Causes}
-import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val inst   = Output(UInt(32.W))
    val imiss  = Output(Bool())
@@ -30,18 +31,19 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle()
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
-   val interrupt = Input(new CoreInterrupts()(conf.p))
-   val constants = new TileInputConstants()(conf.p)
+   val interrupt = Input(new CoreInterrupts())
+   val hartid = Input(UInt())
+   val reset_vector = Input(UInt())
 }
 
-class DatPath(implicit val conf: SodorConfiguration) extends Module
+class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
@@ -70,7 +72,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                   (io.ctl.pc_sel === PC_EXC) -> exception_target
                   ))
 
-   val pc_reg = RegInit(io.constants.reset_vector)
+   val pc_reg = RegInit(io.reset_vector)
 
    when (!io.ctl.stall)
    {
@@ -190,7 +192,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    jump_reg_target := (rs1_data.asUInt() + imm_i_sext.asUInt()) & ~1.U(conf.xprlen.W)
 
    // Control Status Registers
-   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
    csr.io.decode(0).csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.addr   := inst(31, 20)
@@ -210,16 +212,16 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
                   ))
 
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
-   val reg_interrupt_edge = RegInit(0.U(2.W))
+   val reg_interrupt_edge = RegInit(false.B)
    when (!io.ctl.stall) {
-      reg_interrupt_edge := Cat(reg_interrupt_edge(0), csr.io.interrupt)
+      reg_interrupt_edge := csr.io.interrupt
    }
-   interrupt_edge := reg_interrupt_edge(0) && !reg_interrupt_edge(1)
+   interrupt_edge := csr.io.interrupt && !reg_interrupt_edge
 
    io.dat.csr_eret := csr.io.eret
 
    csr.io.interrupts := io.interrupt
-   csr.io.hartid := io.constants.hartid
+   csr.io.hartid := io.hartid
    io.dat.csr_interrupt := interrupt_edge
    csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
 

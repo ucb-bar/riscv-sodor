@@ -12,7 +12,7 @@ import chisel3.util._
 import Constants._
 import sodor.common._
 
-class RFileIo(implicit val conf: SodorConfiguration) extends Bundle()
+class RFileIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val rs1_addr = Input(UInt(5.W))
    val rs1_data = Output(UInt(conf.xprlen.W))
@@ -28,7 +28,7 @@ class RFileIo(implicit val conf: SodorConfiguration) extends Bundle()
    val wen      = Input(Bool())
 }
 
-class RegisterFile(implicit val conf: SodorConfiguration) extends Module
+class RegisterFile(implicit val conf: SodorCoreParams) extends Module
 {
    val io = IO(new RFileIo())
 

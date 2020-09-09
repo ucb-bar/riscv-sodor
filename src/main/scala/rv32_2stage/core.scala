@@ -19,20 +19,21 @@ import chisel3.util._
 
 import sodor.common._
 
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.tile.CoreInterrupts
-import freechips.rocketchip.tile.TileInputConstants
 
-class CoreIo(implicit val conf: SodorConfiguration) extends Bundle
+class CoreIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle
 {
   val imem = new MemPortIo(conf.xprlen)
   val dmem = new MemPortIo(conf.xprlen)
   val ddpath = Flipped(new DebugDPath())
   val dcpath = Flipped(new DebugCPath())
-  val interrupt = Input(new CoreInterrupts()(conf.p))
-  val constants = new TileInputConstants()(conf.p)
+  val interrupt = Input(new CoreInterrupts())
+  val hartid = Input(UInt())
+  val reset_vector = Input(UInt())
 }
 
-class Core(implicit val conf: SodorConfiguration) extends AbstractCore
+class Core(implicit val p: Parameters, val conf: SodorCoreParams) extends AbstractCore
 {
   val io = IO(new CoreIo())
   val c  = Module(new CtlPath())
@@ -54,9 +55,11 @@ class Core(implicit val conf: SodorConfiguration) extends AbstractCore
   c.io.dcpath <> io.dcpath
 
   d.io.interrupt := io.interrupt
-  d.io.constants := io.constants
+  d.io.hartid := io.hartid
+  d.io.reset_vector := io.reset_vector
 
   val mem_ports = List(io.dmem, io.imem)
   val interrupt = io.interrupt
-  val constants = io.constants
+  val hartid = io.hartid
+  val reset_vector = io.reset_vector
 }

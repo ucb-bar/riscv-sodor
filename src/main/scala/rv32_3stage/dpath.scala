@@ -17,13 +17,14 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.{CSR, CSRFile, Causes}
-import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val br_eq  = Output(Bool())
    val br_lt  = Output(Bool())
@@ -36,18 +37,18 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle()
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = Flipped(new FrontEndCpuIO())
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
-   val interrupt = Input(new CoreInterrupts()(conf.p))
-   val constants = new TileInputConstants()(conf.p)
+   val interrupt = Input(new CoreInterrupts())
+   val hartid = Input(UInt())
 }
 
-class DatPath(implicit val conf: SodorConfiguration) extends Module
+class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
@@ -255,7 +256,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Writeback Stage
 
    // Control Status Registers
-   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
    csr.io.decode(0).csr   := wb_reg_csr_addr
    csr.io.rw.addr   := wb_reg_inst(31, 20)
@@ -283,7 +284,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val interrupt_edge = csr.io.interrupt && !reg_interrupt_flag
 
    csr.io.interrupts := io.interrupt
-   csr.io.hartid := io.constants.hartid
+   csr.io.hartid := io.hartid
    io.dat.csr_interrupt := interrupt_edge
    csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
 

@@ -13,7 +13,7 @@ import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: SodorConfiguration) extends Module {
+class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: SodorCoreParams) extends Module {
   // Parameter traits
   val coreParams = {
     class C(implicit val p: Parameters) extends HasCoreParameters
@@ -89,7 +89,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
 }
 
 // This class simply route all memory request that doesn't belong to the scratchpad
-class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorConfiguration) extends Module {
+class SodorRequestRouter(cacheAddress: AddressSet)(implicit val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle() {
     val masterPort = new MemPortIo(data_width = conf.xprlen)
     val scratchPort = new MemPortIo(data_width = conf.xprlen)

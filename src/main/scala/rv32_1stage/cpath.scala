@@ -31,7 +31,7 @@ class CtlToDatIo extends Bundle()
    val pc_sel_no_xept = Output(UInt(PC_4.getWidth.W))    // Use only for instuction misalignment detection
 }
 
-class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
+class CpathIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val dcpath = Flipped(new DebugCPath())
    val imem = new MemPortIo(conf.xprlen)
@@ -42,7 +42,7 @@ class CpathIo(implicit val conf: SodorConfiguration) extends Bundle()
 }
 
 
-class CtlPath(implicit val conf: SodorConfiguration) extends Module
+class CtlPath(implicit val conf: SodorCoreParams) extends Module
 {
   val io = IO(new CpathIo())
   io := DontCare

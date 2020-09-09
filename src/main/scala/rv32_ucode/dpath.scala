@@ -10,9 +10,9 @@ package sodor.ucode
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
-import freechips.rocketchip.tile.TileInputConstants
 
 import Constants._
 import sodor.common._
@@ -28,18 +28,19 @@ class DatToCtlIo extends Bundle()
 }
 
 
-class DpathIo(implicit val conf: SodorConfiguration) extends Bundle()
+class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle()
 {
    val ddpath = Flipped(new DebugDPath())
    val mem  = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
-   val interrupt = Input(new CoreInterrupts()(conf.p))
-   val constants = new TileInputConstants()(conf.p)
+   val interrupt = Input(new CoreInterrupts())
+    val hartid = Input(UInt())
+    val reset_vector = Input(UInt())
 }
 
 
-class DatPath(implicit val conf: SodorConfiguration) extends Module
+class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
@@ -159,7 +160,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    }
 
    // Control Status Registers
-   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
    csr.io.decode(0).csr  := csr_addr
    csr.io.rw.addr  := csr_addr
@@ -171,7 +172,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exception_target := csr.io.evec
 
    csr.io.interrupts := io.interrupt
-   csr.io.hartid := io.constants.hartid
+   csr.io.hartid := io.hartid
 
    io.dat.csr_eret := csr.io.eret
 
@@ -220,7 +221,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt() < reg_b.asSInt()).asUInt(),
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  io.constants.reset_vector,
+              (io.ctl.alu_op === ALU_INIT_PC) ->  io.reset_vector,
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))

@@ -76,14 +76,14 @@ class SyncMem(val addrWidth : Int) extends BlackBox with HasBlackBoxResource {
 }
 
 // from the pov of the datapath
-class MemPortIo(data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle
+class MemPortIo(data_width: Int)(implicit val conf: SodorCoreParams) extends Bundle
 {
    val req    = new DecoupledIO(new MemReq(data_width))
    val resp   = Flipped(new ValidIO(new MemResp(data_width)))
   override def cloneType = { new MemPortIo(data_width).asInstanceOf[this.type] }
 }
 
-class MemReq(data_width: Int)(implicit val conf: SodorConfiguration) extends Bundle
+class MemReq(data_width: Int)(implicit val conf: SodorCoreParams) extends Bundle
 {
    val addr = Output(UInt(conf.xprlen.W))
    val data = Output(UInt(data_width.W))
@@ -102,7 +102,7 @@ class MemResp(data_width: Int) extends Bundle
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
 //for 1,2 and 5 stage need for combinational reads
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
+class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorCoreParams) extends Module
 {
    val io = IO(new Bundle
    {
@@ -157,7 +157,7 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    async_data.io.hw.mask := 15.U
 }
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorConfiguration) extends Module
+class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorCoreParams) extends Module
 {
    val io = IO(new Bundle
    {
@@ -219,7 +219,7 @@ class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(impl
 }
 
 
-class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit val conf: SodorConfiguration) extends Module
+class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit val conf: SodorCoreParams) extends Module
 {
    val io = IO(new Bundle
    {

@@ -25,6 +25,8 @@ case class SodorCoreParams(
   btbEntries: Int = 16,
   bhtEntries: Int = 16,
   enableToFromHostCaching: Boolean = false,
+  ports: Int = 2,
+  xprlen: Int = 32,
   internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends CoreParams {
   val useVM: Boolean = false
@@ -97,9 +99,6 @@ class SodorTile(
   with SinksExternalInterrupts
   with SourcesExternalNotifications
 {
-  // Sodor configuration
-  implicit val conf = SodorConfiguration(p, chipyardBuild = true, xprlen = p(XLen))
-
   // Private constructor ensures altered LazyModule.p is used implicitly
   def this(params: SodorTileParams, crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
     this(params, crossing.crossingType, lookup, p)
@@ -131,9 +130,9 @@ class SodorTile(
     "ucb-bar,dtim" -> d.device.asProperty)).getOrElse(Nil)
 
   // Sodor master port adapter
-  val imaster_adapter = if (conf.ports == 2) Some(LazyModule(new SodorMasterAdapter)) else None
-  if (conf.ports == 2) tlMasterXbar.node := imaster_adapter.get.node
-  val dmaster_adapter = LazyModule(new SodorMasterAdapter)
+  val imaster_adapter = if (sodorParams.core.ports == 2) Some(LazyModule(new SodorMasterAdapter()(p, sodorParams.core))) else None
+  if (sodorParams.core.ports == 2) tlMasterXbar.node := imaster_adapter.get.node
+  val dmaster_adapter = LazyModule(new SodorMasterAdapter()(p, sodorParams.core))
   tlMasterXbar.node := dmaster_adapter.node
 
   // Implementation class (See below)
@@ -153,16 +152,16 @@ class SodorTile(
   }
 
   ResourceBinding {
-    Resource(cpuDevice, "reg").bind(ResourceAddress(hartId))
+    Resource(cpuDevice, "reg").bind(ResourceAddress(staticIdForMetadataUseOnly))
   }
 
-  override def makeMasterBoundaryBuffers(implicit p: Parameters) = {
-    if (!sodorParams.boundaryBuffers) super.makeMasterBoundaryBuffers
+  override def makeMasterBoundaryBuffers(crossing: ClockCrossingType)(implicit p: Parameters) = {
+    if (!sodorParams.boundaryBuffers) super.makeMasterBoundaryBuffers(crossing)
     else TLBuffer(BufferParams.none, BufferParams.flow, BufferParams.none, BufferParams.flow, BufferParams(1))
   }
 
-  override def makeSlaveBoundaryBuffers(implicit p: Parameters) = {
-    if (!sodorParams.boundaryBuffers) super.makeSlaveBoundaryBuffers
+  override def makeSlaveBoundaryBuffers(crossing: ClockCrossingType)(implicit p: Parameters) = {
+    if (!sodorParams.boundaryBuffers) super.makeSlaveBoundaryBuffers(crossing)
     else TLBuffer(BufferParams.flow, BufferParams.none, BufferParams.none, BufferParams.none, BufferParams.none)
   }
 
@@ -172,8 +171,8 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // annotate the parameters
   Annotated.params(this, outer.sodorParams)
 
-  // Sodor configuration
-  implicit val conf = outer.conf
+  // Sodor core parameters
+  implicit val conf = outer.sodorParams.core
 
   // Scratchpad checking
   require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad: make sure that tileParams.dcache.scratch is defined.")
@@ -189,19 +188,20 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   // Connect tile
   tile.io.debug_port <> scratchpadAdapter.io.memPort
   tile.io.master_port(0) <> outer.dmaster_adapter.module.io.dport
-  if (outer.conf.ports == 2) tile.io.master_port(1) <> outer.imaster_adapter.get.module.io.dport
+  if (outer.sodorParams.core.ports == 2) tile.io.master_port(1) <> outer.imaster_adapter.get.module.io.dport
 
   // Connect interrupts
   outer.decodeCoreInterrupts(tile.io.interrupt)
 
   // Connect constants
-  tile.io.constants := constants
+  tile.io.hartid := outer.hartIdSinkNode.bundle
+  tile.io.reset_vector := outer.resetVectorSinkNode.bundle
 }
 
 class WithNSodorCores(
   n: Int = 1,
   overrideIdOffset: Option[Int] = None,
-  internalTile: SodorInternalTileFactory = Stage5Factory
+  internalTile: SodorInternalTileFactory = Stage3Factory()
 ) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
@@ -219,6 +219,7 @@ class WithNSodorCores(
             scratch = Some(0x80000000L)
           ),
           core = SodorCoreParams(
+            ports = internalTile.nMemPorts,
             internalTile = internalTile
           )
         ),

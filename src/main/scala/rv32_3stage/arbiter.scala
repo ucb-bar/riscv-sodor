@@ -12,7 +12,7 @@ import chisel3.util._
 import sodor.common._
 
 // arbitrates memory access
-class SodorMemArbiter(implicit val conf: SodorConfiguration) extends Module
+class SodorMemArbiter(implicit val conf: SodorCoreParams) extends Module
 {
   val io = IO(new Bundle
     {

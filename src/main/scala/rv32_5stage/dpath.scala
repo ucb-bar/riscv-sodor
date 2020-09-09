@@ -12,13 +12,14 @@ package sodor.stage5
 import chisel3._
 import chisel3.util._
 
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.{CSR, CSRFile, Causes}
-import freechips.rocketchip.tile.{CoreInterrupts, TileInputConstants}
+import freechips.rocketchip.tile.CoreInterrupts
 
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle() 
+class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle() 
 {
    val dec_inst    = Output(UInt(conf.xprlen.W))
    val dec_valid   = Output(Bool())
@@ -37,18 +38,19 @@ class DatToCtlIo(implicit val conf: SodorConfiguration) extends Bundle()
    override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
-class DpathIo(implicit val conf: SodorConfiguration) extends Bundle
+class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle
 {
    val ddpath = Flipped(new DebugDPath())
    val imem = new MemPortIo(conf.xprlen)
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
-   val interrupt = Input(new CoreInterrupts()(conf.p))
-   val constants = new TileInputConstants()(conf.p)
+   val interrupt = Input(new CoreInterrupts())
+   val hartid = Input(UInt())
+   val reset_vector = Input(UInt())
 }
 
-class DatPath(implicit val conf: SodorConfiguration) extends Module
+class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Module
 {
    val io = IO(new DpathIo())
    io := DontCare
@@ -64,7 +66,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    // Pipeline State Registers
 
    // Instruction Fetch State
-   val if_reg_pc             = RegInit(io.constants.reset_vector)
+   val if_reg_pc             = RegInit(io.reset_vector)
 
    // Instruction Decode State
    val dec_reg_valid         = RegInit(false.B)
@@ -423,7 +425,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Control Status Registers
    // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
-   val csr = Module(new CSRFile(perfEventSets=CSREvents.events)(conf.p))
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
    csr.io.decode(0).csr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.addr   := mem_reg_inst(31, 20)
@@ -447,7 +449,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val interrupt_edge = csr.io.interrupt && !reg_interrupt_handled
 
    csr.io.interrupts := io.interrupt
-   csr.io.hartid := io.constants.hartid
+   csr.io.hartid := io.hartid
    io.dat.csr_interrupt := interrupt_edge
    csr.io.cause := Mux(io.ctl.mem_exception, io.ctl.mem_exception_cause, csr.io.interrupt_cause)
 

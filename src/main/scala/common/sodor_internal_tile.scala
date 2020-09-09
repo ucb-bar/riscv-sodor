@@ -26,31 +26,34 @@ object CSREvents {
 abstract class AbstractCore extends Module {
   val mem_ports: Seq[MemPortIo]
   val interrupt: CoreInterrupts
-  val constants: TileInputConstants
+  val hartid: UInt
+  val reset_vector: UInt
 }
-abstract class AbstractInternalTile(implicit val conf: SodorConfiguration) extends Module {
+abstract class AbstractInternalTile(ports: Int)(implicit val p: Parameters, val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle {
     val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))
-    val master_port = Vec(conf.ports, new MemPortIo(data_width = conf.xprlen))
-    val interrupt = Input(new CoreInterrupts()(conf.p))
-    val constants = new TileInputConstants()(conf.p)
+    val master_port = Vec(ports, new MemPortIo(data_width = conf.xprlen))
+    val interrupt = Input(new CoreInterrupts())
+    val hartid = Input(UInt())
+    val reset_vector = Input(UInt())
   })
 }
 
 // Cores and internal tiles constructors
 trait SodorCoreFactory {
   def nMemPorts: Int
-  def instantiate(implicit conf: SodorConfiguration): AbstractCore
+  def instantiate(implicit p: Parameters, conf: SodorCoreParams): AbstractCore
 }
 
 trait SodorInternalTileFactory {
   def nMemPorts: Int
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration): AbstractInternalTile
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams): AbstractInternalTile
 }
 
 // Original sodor tile in this repo.
 // This tile is only for 3-stage core since it has a special structure (SyncMem and possibly one memory port).
-class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfiguration) extends AbstractInternalTile
+class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Parameters, conf: SodorCoreParams)
+  extends AbstractInternalTile(ports)
 {
   // Core memory port
   val core   = Module(new sodor.stage3.Core())
@@ -60,7 +63,7 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   core.io.dmem <> core_ports(0)
 
   // scratchpad memory port
-  val memory = Module(new SyncScratchPadMemory(num_core_ports = conf.ports))
+  val memory = Module(new SyncScratchPadMemory(num_core_ports = ports))
   val mem_ports = Wire(Vec(2, new MemPortIo(data_width = conf.xprlen)))
   // master memory port
   val master_ports = Wire(Vec(2, new MemPortIo(data_width = conf.xprlen)))
@@ -78,7 +81,7 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   }})
 
   // If we only use one port, arbitrate
-  if (conf.ports == 1)
+  if (ports == 1)
   {
     // Arbitrate scratchpad
     val scratchpad_arbiter = Module(new sodor.stage3.SodorMemArbiter)
@@ -103,11 +106,13 @@ class SodorInternalTileStage3(range: AddressSet)(implicit conf: SodorConfigurati
   memory.io.debug_port <> io.debug_port
 
   core.interrupt <> io.interrupt
-  core.constants := io.constants
+  core.hartid := io.hartid
+  core.reset_vector := io.reset_vector
 }
 
 // The general Sodor tile for all cores other than 3-stage
-class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit conf: SodorConfiguration) extends AbstractInternalTile
+class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams) 
+  extends AbstractInternalTile(coreCtor.nMemPorts)
 {
   // notice that while the core is put into reset, the scratchpad needs to be
   // alive so that the HTIF can load in the program.
@@ -128,47 +133,48 @@ class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit 
   io.debug_port <> memory.io.debug_port
 
   core.interrupt <> io.interrupt
-  core.constants := io.constants
+  core.hartid := io.hartid
+  core.reset_vector := io.reset_vector
 }
 
 // Tile constructor
 case object Stage1Factory extends SodorInternalTileFactory {
   case object Stage1CoreFactory extends SodorCoreFactory {
     val nMemPorts = 2
-    def instantiate(implicit conf: SodorConfiguration) = new sodor.stage1.Core()(conf)
+    def instantiate(implicit p: Parameters, conf: SodorCoreParams) = new sodor.stage1.Core()
   }
   def nMemPorts = Stage1CoreFactory.nMemPorts
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration) = new SodorInternalTile(range, Stage1CoreFactory)
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams) = new SodorInternalTile(range, Stage1CoreFactory)
 }
 
 case object Stage2Factory extends SodorInternalTileFactory {
   case object Stage2CoreFactory extends SodorCoreFactory {
     val nMemPorts = 2
-    def instantiate(implicit conf: SodorConfiguration) = new sodor.stage2.Core()(conf)
+    def instantiate(implicit p: Parameters, conf: SodorCoreParams) = new sodor.stage2.Core()
   }
   def nMemPorts = Stage2CoreFactory.nMemPorts
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration) = new SodorInternalTile(range, Stage2CoreFactory)
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams) = new SodorInternalTile(range, Stage2CoreFactory)
 }
 
-case object Stage3Factory extends SodorInternalTileFactory {
-  def nMemPorts = 2
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration) = new SodorInternalTileStage3(range)
+case class Stage3Factory(ports: Int = 2) extends SodorInternalTileFactory {
+  def nMemPorts = ports
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams) = new SodorInternalTileStage3(range, ports)
 }
 
 case object Stage5Factory extends SodorInternalTileFactory {
   case object Stage5CoreFactory extends SodorCoreFactory {
     val nMemPorts = 2
-    def instantiate(implicit conf: SodorConfiguration) = new sodor.stage5.Core()(conf)
+    def instantiate(implicit p: Parameters, conf: SodorCoreParams) = new sodor.stage5.Core()
   }
   def nMemPorts = Stage5CoreFactory.nMemPorts
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration) = new SodorInternalTile(range, Stage5CoreFactory)
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams) = new SodorInternalTile(range, Stage5CoreFactory)
 }
 
 case object UCodeFactory extends SodorInternalTileFactory {
   case object UCodeCoreFactory extends SodorCoreFactory {
     val nMemPorts = 1
-    def instantiate(implicit conf: SodorConfiguration) = new sodor.ucode.Core()(conf)
+    def instantiate(implicit p: Parameters, conf: SodorCoreParams) = new sodor.ucode.Core()
   }
   def nMemPorts = UCodeCoreFactory.nMemPorts
-  def instantiate(range: AddressSet)(implicit conf: SodorConfiguration) = new SodorInternalTile(range, UCodeCoreFactory)
+  def instantiate(range: AddressSet)(implicit p: Parameters, conf: SodorCoreParams) = new SodorInternalTile(range, UCodeCoreFactory)
 }
