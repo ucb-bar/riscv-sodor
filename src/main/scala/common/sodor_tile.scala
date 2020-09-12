@@ -202,6 +202,7 @@ class WithNSodorCores(
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
     val prev = up(TilesLocated(InSubsystem), site)
+    require(prev.length == 0, "Sodor doesn't support multiple core.")
     val idOffset = overrideIdOffset.getOrElse(prev.size)
     // Create TileAttachParams for every core to be instantiated
     (0 until n).map { i =>

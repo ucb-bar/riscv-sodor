@@ -259,7 +259,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
    csr.io.decode(0).csr   := wb_reg_csr_addr
-   csr.io.rw.addr   := wb_reg_inst(31, 20)
+   csr.io.rw.addr   := wb_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata  := wb_reg_alu
    csr.io.rw.cmd    := Mux(wb_dmiss_stall, CSR.N, wb_reg_ctrl.csr_cmd)
    val wb_csr_out    = csr.io.rw.rdata

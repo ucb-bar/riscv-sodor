@@ -14,12 +14,6 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
 class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: SodorCoreParams) extends CoreModule {
-  // Sodor constants
-  val sodorConst = {
-    class S extends MemoryOpConstants
-    new S
-  }
-
   val io = IO(new Bundle() {
     val slavePort = Flipped(new HellaCacheIO())
     val memPort = new MemPortIo(data_width = coreDataBits)
@@ -32,9 +26,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   val slave_req_valid = io.slavePort.req.valid
 
   val slave_cmd = io.slavePort.req.bits.cmd
-  val slave_req_addr = io.slavePort.req.bits.addr(log2Ceil(tileParams.dcache.get.dataScratchpadBytes), 0)
-  val slave_req_size = io.slavePort.req.bits.size
-  val slave_req_signed = io.slavePort.req.bits.signed
+  val slave_req = io.slavePort.req.bits
 
   // All request are delayed for one cycle to avoid being killed
   val s1_slave_write_kill = io.slavePort.s1_kill
@@ -43,9 +35,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
 
   val s1_slave_req_valid = RegNext(slave_req_valid, false.B)
   val s1_slave_cmd = RegNext(slave_cmd)
-  val s1_slave_req_addr = RegNext(slave_req_addr)
-  val s1_slave_req_size = RegNext(slave_req_size)
-  val s1_slave_req_signed = RegNext(slave_req_signed)
+  val s1_slave_req = RegNext(slave_req)
 
   // Note that ScratchpadSlavePort requires 2-cycle delay, or it won't even send the response
   val s2_slave_read_data = io.slavePort.resp.bits.data_raw
@@ -64,20 +54,21 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   s2_slave_resp_valid := RegNext(io.memPort.resp.valid, false.B)
 
   // Connect read info
-  s2_slave_read_mask := RegNext(new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreDataBytes).mask)
+  s2_slave_read_mask := RegNext(new StoreGen(s1_slave_req.size, s1_slave_req.addr, 0.U, coreDataBytes).mask)
   s2_slave_read_data := RegNext(io.memPort.resp.bits.data)
 
   // Connect write info
-  io.memPort.req.bits.addr := s1_slave_req_addr
+  io.memPort.req.bits.addr := s1_slave_req.addr
   io.memPort.req.bits.data := s1_slave_write_data
 
   // Other connections
   s2_nack := false.B
-  io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, sodorConst.M_XRD, sodorConst.M_XWR)
-  // Since we don't have dword here (the bus only has 32 bits), s1_slave_req_size <= 2.
+  io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, M_XRD, M_XWR)
+  // Since we don't have dword here (the bus only has 32 bits), s1_slave_req.size <= 2.
   // The expression below convert TileLink size and signedness to Sodor type.
-  assert (s1_slave_req_size <= 2.U, "Slave port received a bus request with unsupported size: %d", s1_slave_req_size)
-  io.memPort.req.bits.typ := Cat(~s1_slave_req_signed, s1_slave_req_size + 1.U)
+  require(io.slavePort.req.bits.addr.getWidth == 32, "Slave port only support 32 bit address")
+  assert (s1_slave_req.size <= 2.U, "Slave port received a bus request with unsupported size: %d", s1_slave_req.size)
+  io.memPort.req.bits.setType(s1_slave_req.signed, s1_slave_req.size)
 }
 
 // This class simply route all memory request that doesn't belong to the scratchpad

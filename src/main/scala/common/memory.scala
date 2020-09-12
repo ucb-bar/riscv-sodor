@@ -94,6 +94,7 @@ class MemReq(data_width: Int)(implicit val conf: SodorCoreParams) extends Bundle
   // and the remaining two bits as TileLink size
   def getTLSize = (typ - 1.U)(1, 0)
   def getTLSigned = ~(typ - 1.U)(2)
+  def setType(tlSigned: Bool, tlSize: UInt) = { typ := Cat(~tlSigned, tlSize + 1.U) }
 }
 
 class MemResp(data_width: Int) extends Bundle

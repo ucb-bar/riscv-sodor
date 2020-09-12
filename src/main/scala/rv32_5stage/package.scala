@@ -11,7 +11,6 @@ object Constants extends
    SodorProcConstants with
    ScalarOpConstants with
    sodor.common.constants.RISCVConstants with
-   sodor.common.MemoryOpConstants with
-   sodor.common.constants.PrivilegedConstants
+   sodor.common.MemoryOpConstants
 {
 }
