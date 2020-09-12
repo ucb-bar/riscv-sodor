@@ -90,6 +90,10 @@ class MemReq(data_width: Int)(implicit val conf: SodorCoreParams) extends Bundle
    val fcn  = Output(UInt(M_X.getWidth.W))  // memory function code
    val typ  = Output(UInt(MT_X.getWidth.W)) // memory type
   override def cloneType = { new MemReq(data_width).asInstanceOf[this.type] }
+   // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take inversed MSB as signedness
+  // and the remaining two bits as TileLink size
+  def getTLSize = (typ - 1.U)(1, 0)
+  def getTLSigned = ~(typ - 1.U)(2)
 }
 
 class MemResp(data_width: Int) extends Bundle

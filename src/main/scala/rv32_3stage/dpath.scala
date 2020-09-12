@@ -280,7 +280,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                   ))
 
    // Interrupt handle flag
-   val reg_interrupt_flag = RegNext(csr.io.interrupt)
+   val reg_interrupt_flag = RegNext(csr.io.interrupt, false.B)
    val interrupt_edge = csr.io.interrupt && !reg_interrupt_flag
 
    csr.io.interrupts := io.interrupt

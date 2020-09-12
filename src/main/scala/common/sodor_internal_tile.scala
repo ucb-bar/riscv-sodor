@@ -114,8 +114,6 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
 class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams) 
   extends AbstractInternalTile(coreCtor.nMemPorts)
 {
-  // notice that while the core is put into reset, the scratchpad needs to be
-  // alive so that the HTIF can load in the program.
   val core   = Module(coreCtor.instantiate)
   core.io := DontCare
   val memory = Module(new AsyncScratchPadMemory(num_core_ports = coreCtor.nMemPorts))

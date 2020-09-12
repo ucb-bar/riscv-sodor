@@ -49,18 +49,15 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   val s_ready :: s_active :: s_inflight :: Nil = Enum(3)
   val state = RegInit(s_ready)
   // Address and signedness of the request to be used by LoadGen
-  val a_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
-  val a_signed_reg = RegInit(false.B)
+  val a_address_reg = Reg(UInt(io.dport.req.bits.addr.getWidth.W))
+  val a_signed_reg = Reg(Bool())
   // Request register - store the request when the input port fires to avoid value changes when sending the TileLink request
-  val req_address_reg = RegInit(0.U(io.dport.req.bits.addr.getWidth.W))
-  val req_size_reg = RegInit(0.U(2.W))
-  val req_data_reg = RegInit(0.U(io.dport.req.bits.data.getWidth.W))
-
-  // Sign logic
-  // To convert MemPortIO type to sign and size in TileLink format: subtract 1 from type, then take inversed MSB as signedness
-  // and the remaining two bits as TileLink size
-  val a_signed = ~(io.dport.req.bits.typ - 1.U)(2)
-  val a_size = (io.dport.req.bits.typ - 1.U)(1, 0)
+  val req_address_reg = Reg(UInt(io.dport.req.bits.addr.getWidth.W))
+  val req_size_reg = Reg(UInt(2.W))
+  val req_data_reg = Reg(UInt(io.dport.req.bits.data.getWidth.W))
+  // Sign and size
+  val a_signed = io.dport.req.bits.getTLSigned
+  val a_size = io.dport.req.bits.getTLSize
 
   // State logic
   when (state === s_ready && io.dport.req.valid) {
@@ -124,5 +121,5 @@ class SameCycleRequestBuffer(implicit val conf: SodorCoreParams) extends Module 
   })
   
   io.out.req <> io.in.req
-  io.in.resp := RegNext(io.out.resp)
+  io.in.resp := Pipe(io.out.resp)
 }

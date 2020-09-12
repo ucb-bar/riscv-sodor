@@ -84,7 +84,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    // Instruction memory buffer to store instruction during multicycle data request
    io.dat.imiss := (io.imem.req.valid && !io.imem.resp.valid)
-   val reg_dmiss = RegNext(io.ctl.dmiss)
+   val reg_dmiss = RegNext(io.ctl.dmiss, false.B)
    val if_inst_buffer = RegInit(0.U(32.W))
    when (io.imem.resp.valid) {
       assert(!reg_dmiss, "instruction arrived during data miss")

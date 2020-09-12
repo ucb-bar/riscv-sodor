@@ -13,16 +13,7 @@ import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: SodorCoreParams) extends Module {
-  // Parameter traits
-  val coreParams = {
-    class C(implicit val p: Parameters) extends HasCoreParameters
-    new C
-  }
-  // Extract tileParams from HasNonDiplomaticTileParameters, which is the base trait of HasCoreParameters above
-  val tileParams = coreParams.tileParams
-  // Sodor config class
-
+class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: SodorCoreParams) extends CoreModule {
   // Sodor constants
   val sodorConst = {
     class S extends MemoryOpConstants
@@ -31,7 +22,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
 
   val io = IO(new Bundle() {
     val slavePort = Flipped(new HellaCacheIO())
-    val memPort = new MemPortIo(data_width = coreParams.coreDataBits)
+    val memPort = new MemPortIo(data_width = coreDataBits)
   })
 
   // ===================
@@ -50,7 +41,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   val s1_slave_write_data = io.slavePort.s1_data.data
   val s1_slave_write_mask = io.slavePort.s1_data.mask
 
-  val s1_slave_req_valid = RegNext(slave_req_valid)
+  val s1_slave_req_valid = RegNext(slave_req_valid, false.B)
   val s1_slave_cmd = RegNext(slave_cmd)
   val s1_slave_req_addr = RegNext(slave_req_addr)
   val s1_slave_req_size = RegNext(slave_req_size)
@@ -70,10 +61,10 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   // Connect valid & ready bits
   slave_req_ready := io.memPort.req.ready
   io.memPort.req.valid := s1_slave_req_valid & (s1_slave_cmd === M_XRD || !s1_slave_write_kill)
-  s2_slave_resp_valid := RegNext(io.memPort.resp.valid)
+  s2_slave_resp_valid := RegNext(io.memPort.resp.valid, false.B)
 
   // Connect read info
-  s2_slave_read_mask := RegNext(new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreParams.coreDataBytes).mask)
+  s2_slave_read_mask := RegNext(new StoreGen(s1_slave_req_size, s1_slave_req_addr, 0.U, coreDataBytes).mask)
   s2_slave_read_data := RegNext(io.memPort.resp.bits.data)
 
   // Connect write info
@@ -85,6 +76,7 @@ class SodorScratchpadAdapter(implicit p: Parameters, implicit val sodorConf: Sod
   io.memPort.req.bits.fcn := Mux(s1_slave_cmd === M_XRD, sodorConst.M_XRD, sodorConst.M_XWR)
   // Since we don't have dword here (the bus only has 32 bits), s1_slave_req_size <= 2.
   // The expression below convert TileLink size and signedness to Sodor type.
+  assert (s1_slave_req_size <= 2.U, "Slave port received a bus request with unsupported size: %d", s1_slave_req_size)
   io.memPort.req.bits.typ := Cat(~s1_slave_req_signed, s1_slave_req_size + 1.U)
 }
 

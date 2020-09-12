@@ -438,14 +438,14 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    exception_target := csr.io.evec
 
    csr.io.tval := MuxCase(0.U, Array(
-                  (io.ctl.mem_exception_cause === Causes.illegal_instruction.U)     -> RegNext(exe_reg_inst),
-                  (io.ctl.mem_exception_cause === Causes.misaligned_fetch.U)  -> mem_tval_inst_ma,
-                  (io.ctl.mem_exception_cause === Causes.misaligned_store.U) -> mem_tval_data_ma,
-                  (io.ctl.mem_exception_cause === Causes.misaligned_load.U)  -> mem_tval_data_ma,
+                  (io.ctl.mem_exception_cause === Causes.illegal_instruction.U) -> RegNext(exe_reg_inst),
+                  (io.ctl.mem_exception_cause === Causes.misaligned_fetch.U)    -> mem_tval_inst_ma,
+                  (io.ctl.mem_exception_cause === Causes.misaligned_store.U)    -> mem_tval_data_ma,
+                  (io.ctl.mem_exception_cause === Causes.misaligned_load.U)     -> mem_tval_data_ma,
                   ))
 
    // Interrupt rising edge detector (output trap signal for one cycle on rising edge)
-   val reg_interrupt_handled = RegNext(csr.io.interrupt)
+   val reg_interrupt_handled = RegNext(csr.io.interrupt, false.B)
    val interrupt_edge = csr.io.interrupt && !reg_interrupt_handled
 
    csr.io.interrupts := io.interrupt

@@ -21,10 +21,6 @@ import freechips.rocketchip.amba.axi4._
 // out what parameters you need before you write the parameter class
 case class SodorCoreParams(
   bootFreqHz: BigInt = BigInt(1700000000),
-  rasEntries: Int = 4,
-  btbEntries: Int = 16,
-  bhtEntries: Int = 16,
-  enableToFromHostCaching: Boolean = false,
   ports: Int = 2,
   xprlen: Int = 32,
   internalTile: SodorInternalTileFactory = Stage5Factory
@@ -81,10 +77,10 @@ case class SodorTileParams(
 {
   val beuAddr: Option[BigInt] = None
   val blockerCtrlAddr: Option[BigInt] = None
-  val btb: Option[BTBParams] = Some(BTBParams())
+  val btb: Option[BTBParams] = None
   val boundaryBuffers: Boolean = false
   val dcache: Option[DCacheParams] = Some(scratchpad)
-  val icache: Option[ICacheParams] = Some(ICacheParams())
+  val icache: Option[ICacheParams] = None
   def instantiate(crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): SodorTile = {
     new SodorTile(this, crossing, lookup)
   }
@@ -231,4 +227,6 @@ class WithNSodorCores(
   case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 4)
   // The # of instruction bits. Use maximum # of bits if your core supports both 32 and 64 bits.
   case XLen => 32
-})
+}) {
+  require(n == 1, "Sodor doesn't support multiple core.")
+}
