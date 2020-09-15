@@ -23,54 +23,37 @@ class SodorMemArbiter(implicit val conf: SodorCoreParams) extends Module
       val mem  = new MemPortIo(conf.xprlen)      // the single-ported memory
     })
 
-  //***************************
-  val i1reg = Reg(UInt(conf.xprlen.W))
-  val d1reg = Reg(UInt(conf.xprlen.W))
-  val nextdreq = RegInit(true.B)
-  io.dmem.req.ready := io.mem.req.ready
-  //d_fire : when true data request will be put on bus
-  val d_fire = Wire(Bool())
-  io.imem.req.ready := io.mem.req.ready && !(io.dmem.req.valid && d_fire)
   val d_resp = RegInit(false.B)
-  //***************************
+
   // hook up requests
-  // 3 cycle FSM on LW , SW , FENCE in exe stage
-  // HAZ since contention for MEM PORT so next cycle STALL
-  // CYC 1 : Store inst in reg requested in prev CYC
-  //         make data addr available on MEM PORT
-  // CYC 2 : Store data in reg to be used in next CYC
-  // CYC 3 : Default State with data addr on MEM PORT
-  // nextdreq ensures that data req gets access to bus only
+  // d_resp ensures that data req gets access to bus only
   // for one cycle
   // alternate between data and instr to avoid starvation
-  when (io.dmem.req.valid && nextdreq)
+  when (d_resp)
   {
-    d_fire := io.mem.req.ready
-    when (io.mem.resp.valid)
-    {
-      nextdreq := false.B // allow only instr in next cycle
-      d_resp := true.B
-    }
-  }
-  .elsewhen(io.dmem.req.valid && !nextdreq)
-  {
-    d_fire := false.B
-    when (io.mem.resp.valid)
-    {
-      nextdreq := true.B  // allow any future data request
-      d_resp := false.B
-    }
-  }
-  .otherwise
-  {
-    d_fire := false.B
+    // Last request is a data request - do not allow data request this cycle
+    io.dmem.req.ready := false.B
+    io.imem.req.ready := io.mem.req.ready
+
+    // We only clear the d_resp flag when the next request fired since it also indicates the allowed type of the next request
     when (io.mem.req.fire())
     {
       d_resp := false.B
     }
   }
+  .otherwise
+  {
+    // Last request is not a data request - if this cycle has a new data request, dispatch it
+    io.dmem.req.ready := io.mem.req.ready
+    io.imem.req.ready := io.mem.req.ready && !io.dmem.req.valid
+
+    when (io.dmem.req.fire())
+    {
+      d_resp := true.B
+    }
+  }
   // SWITCH BET DATA AND INST REQ FOR SINGLE PORT
-  when (d_fire)
+  when (io.dmem.req.fire())
   {
     io.mem.req.valid     := io.dmem.req.valid
     io.mem.req.bits.addr := io.dmem.req.bits.addr
@@ -95,16 +78,11 @@ class SodorMemArbiter(implicit val conf: SodorCoreParams) extends Module
     io.dmem.resp.valid := false.B
   }
 
+  // No need to switch data since instruction port doesn't write
   io.mem.req.bits.data := io.dmem.req.bits.data
 
-  when (!nextdreq){
-    d1reg := io.mem.resp.bits.data
-  }
-
-  when (io.imem.resp.valid && io.dmem.req.valid && nextdreq){
-    i1reg := io.mem.resp.bits.data
-  }
-
-  io.imem.resp.bits.data := Mux( !io.imem.resp.valid && io.dmem.req.valid && !nextdreq , i1reg , io.mem.resp.bits.data )
-  io.dmem.resp.bits.data := d1reg
+  // Simply connect response data to both ports since we only have one inflight request
+  // the validity of the data is controlled above
+  io.imem.resp.bits.data := io.mem.resp.bits.data
+  io.dmem.resp.bits.data := io.mem.resp.bits.data
 }

@@ -36,6 +36,7 @@ class Core(implicit val p: Parameters, val conf: SodorCoreParams) extends Abstra
   frontend.io.cpu <> cpath.io.imem
   frontend.io.cpu <> dpath.io.imem
   frontend.io.cpu.req.valid := cpath.io.imem.req.valid
+  frontend.io.cpu.exe_kill := cpath.io.imem.exe_kill
 
   cpath.io.ctl  <> dpath.io.ctl
   cpath.io.dat  <> dpath.io.dat

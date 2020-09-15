@@ -148,7 +148,8 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                      PC_4
                      ))))))))))
 
-   io.imem.req.valid := ((!(ctrl_pc_sel === PC_4) && ctrl_valid) || ctrl_pc_sel === PC_EXC) && !io.dat.wb_hazard_stall
+   io.imem.req.valid := ((!(ctrl_pc_sel === PC_4) && ctrl_valid && !io.dat.wb_hazard_stall) || ctrl_pc_sel === PC_EXC)
+   io.imem.exe_kill  := take_evec
 
    io.ctl.exe_kill   := take_evec
    io.ctl.pc_sel     := ctrl_pc_sel

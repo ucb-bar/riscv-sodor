@@ -75,10 +75,10 @@ class FrontEndCpuIO(implicit val conf: SodorCoreParams) extends Bundle
 
    val debug = new FrontEndDebug(conf.xprlen)
 
-   // Instruction-fetch PC change flag - raise for one cycle every time the PC is changed
-   val if_pc_change = Output(Bool())
    // Inst miss
    val imiss = Output(Bool())
+   // Flush the entire pipeline upon exception, including exe stage
+   val exe_kill = Input(Bool())
 
    override def cloneType = { new FrontEndCpuIO().asInstanceOf[this.type] }
 }
@@ -115,11 +115,11 @@ class FrontEnd(implicit val conf: SodorCoreParams) extends Module
    if_buffer_in.bits := io.imem.resp.bits
    if_val_next := io.cpu.resp.ready || (if_buffer_in.ready && !io.imem.resp.valid) // If the incoming inst goes to buffer, don't send the next req
    assert(if_buffer_in.ready || !if_buffer_in.valid, "Inst buffer overflow")
-   val if_buffer_out = Queue(if_buffer_in, entries = 1, pipe = true, flow = true)
+   val if_buffer_out = Queue(if_buffer_in, entries = 1, pipe = false, flow = true)
 
    // stall IF/EXE if backend not ready
    if_pc_next := if_pc_plus4
-   when (io.cpu.req.valid && io.cpu.resp.ready)
+   when (io.cpu.req.valid)
    {
       // datapath is redirecting the PC stream (misspeculation)
       if_redirected := true.B
@@ -130,13 +130,20 @@ class FrontEnd(implicit val conf: SodorCoreParams) extends Module
       if_pc_next := if_redirected_pc
    }
 
-   when (io.cpu.resp.ready && io.imem.req.ready)
+   // Go to next PC if both CPU and imem are ready, and the memory response for the current PC already presents
+   val if_reg_pc_responded = RegInit(false.B)
+   val if_pc_responsed = if_reg_pc_responded || io.imem.resp.valid
+   when (io.cpu.resp.ready && io.imem.req.ready && if_pc_responsed)
    {
+      if_reg_pc_responded := false.B
       if_reg_pc    := if_pc_next
       when (!io.cpu.req.valid)
       {
          if_redirected := false.B
       }
+   } .elsewhen (io.imem.resp.valid)
+   {
+      if_reg_pc_responded := true.B
    }
 
    // set up outputs to the instruction memory
@@ -148,7 +155,11 @@ class FrontEnd(implicit val conf: SodorCoreParams) extends Module
    //**********************************
    // Inst Fetch/Return Stage
    if_buffer_out.ready := io.cpu.resp.ready
-   when (io.cpu.resp.ready)
+   when (io.cpu.exe_kill)
+   {
+      exe_reg_valid := false.B
+   }
+   .elsewhen (io.cpu.resp.ready)
    {
       exe_reg_valid := if_buffer_out.valid && !io.cpu.req.valid && !if_redirected
       exe_reg_pc    := if_reg_pc

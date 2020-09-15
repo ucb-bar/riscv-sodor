@@ -88,12 +88,6 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   // Build "Put" message
   val (legal_put, put_bundle) = edge.Put(0.U, req_address_reg, req_size_reg, req_data_reg)
 
-  // DEBUG
-  when (tl_out.a.fire()) {
-    printf("DEBUG MESSAGE: A-chan size is %x, with address %x\n", tl_out.a.bits.size, tl_out.a.bits.address)
-    printf("DEBUG MESSAGE: Original typ: %b\n", io.dport.req.bits.typ)
-  }
-
   // Connect Channel A bundle
   tl_out.a.bits := Mux(io.dport.req.bits.fcn === M_XRD, get_bundle, put_bundle)
 

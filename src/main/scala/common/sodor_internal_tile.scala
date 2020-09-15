@@ -71,13 +71,13 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
   // Connect ports
   ((mem_ports zip core_ports) zip master_ports).foreach({ case ((mem_port, core_port), master_port) => {
     val router = Module(new SodorRequestRouter(range))
-    val master_buffer = Module(new SameCycleRequestBuffer)
-    master_buffer.io.out <> master_port
     router.io.corePort <> core_port
     router.io.scratchPort <> mem_port
-    router.io.masterPort <> master_buffer.io.in
+    router.io.masterPort <> master_port
     // For sync memory, use the request address from the previous cycle
-    router.io.respAddress := RegNext(core_port.req.bits.addr)
+    val reg_resp_address = Reg(UInt(conf.xprlen.W))
+    when (core_port.req.fire()) { reg_resp_address := core_port.req.bits.addr }
+    router.io.respAddress := reg_resp_address
   }})
 
   // If we only use one port, arbitrate
@@ -90,10 +90,12 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
     scratchpad_arbiter.io.mem <> memory.io.core_ports(0)
 
     // Arbitrate master
+    val master_buffer = Module(new SameCycleRequestBuffer)
     val master_arbiter = Module(new sodor.stage3.SodorMemArbiter)
     master_ports(1) <> master_arbiter.io.imem
     master_ports(0) <> master_arbiter.io.dmem
-    master_arbiter.io.mem <> io.master_port(0)
+    master_arbiter.io.mem <> master_buffer.io.in
+    master_buffer.io.out <> io.master_port(0)
   }
   else
   {

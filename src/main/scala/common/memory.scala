@@ -103,11 +103,109 @@ class MemResp(data_width: Int) extends Bundle
   override def cloneType = { new MemResp(data_width).asInstanceOf[this.type] }
 }
 
+// Note: All `size` field in this class are base 2 logarithm 
+class MemoryModule(numBytes: Int, useAsync: Boolean) {
+   val addrWidth = log2Ceil(numBytes)
+   val mem = if (useAsync) Mem(numBytes / 4, Vec(4, UInt(8.W))) else SyncReadMem(numBytes / 4, Vec(4, UInt(8.W)))
+
+   // Convert size exponent to actual number of bytes - 1
+   private def sizeToBytes(size: UInt) = MuxLookup(size, 3.U, List(0.U -> 0.U, 1.U -> 1.U, 2.U -> 3.U))
+
+   private def getMask(bytes: UInt, storeOffset: UInt = 0.U) = {
+      val mask = ("b00011111".U(8.W) << bytes).apply(7, 4)
+      val maskWithOffset = (mask << storeOffset).apply(3, 0)
+      maskWithOffset.asBools.reverse
+   }
+
+   private def splitWord(data: UInt) = VecInit(((data(31, 0).asBools.reverse grouped 8) map (bools => Cat(bools))).toSeq)
+
+   // Read function
+   def read(addr: UInt, size: UInt, signed: Bool) = {
+      // Create a module to show signal inside
+      class MemReader extends Module {
+         val io = IO(new Bundle {
+            val addr = Input(UInt(addrWidth.W))
+            val size = Input(UInt(2.W))
+            val signed = Input(Bool())
+            val data = Output(UInt(32.W))
+
+            val mem_addr = Output(UInt((addrWidth - 2).W))
+            val mem_data = Input(Vec(4, UInt(8.W)))
+         })
+         // Sync argument if needed
+         val s_offset = if (useAsync) io.addr(1, 0) else RegNext(io.addr(1, 0))
+         val s_size = if (useAsync) io.size else RegNext(io.size)
+         val s_signed = if (useAsync) io.signed else RegNext(io.signed)
+
+         // Read data from the banks and align
+         io.mem_addr := io.addr(addrWidth - 1, 2)
+         val readVec = io.mem_data
+         val shiftedVec = splitWord(Cat(readVec) >> (s_offset << 3))
+
+         // Mask data according to the size
+         val bytes = sizeToBytes(s_size)
+         val sign = shiftedVec(3.U - bytes).apply(7)
+         val masks = getMask(bytes)
+         val maskedVec = (shiftedVec zip masks) map ({ case (byte, mask) => 
+            Mux(sign && s_signed, byte | ~Fill(8, mask), byte & Fill(8, mask))
+         })
+
+         io.data := Cat(maskedVec)
+      }
+
+      val module = Module(new MemReader)
+      module.io.addr := addr
+      module.io.size := size
+      module.io.signed := signed
+      module.io.mem_data := mem.read(module.io.mem_addr)
+
+      module.io.data
+   }
+   def apply(addr: UInt, size: UInt, signed: Bool) = read(addr, size, signed)
+
+   // Write function
+   def write(addr: UInt, data: UInt, size: UInt, en: Bool) = {
+      // Create a module to show signal inside
+      class MemWriter extends Module {
+         val io = IO(new Bundle {
+            val addr = Input(UInt(addrWidth.W))
+            val data = Input(UInt(32.W))
+            val size = Input(UInt(2.W))
+            val en = Input(Bool())
+
+            val mem_addr = Output(UInt((addrWidth - 2).W))
+            val mem_data = Output(Vec(4, UInt(8.W)))
+            val mem_masks = Output(Vec(4, Bool()))
+         })
+
+         // Align data and mask
+         val offset = io.addr(1, 0)
+         val shiftedVec = splitWord(io.data << (offset << 3))
+         val masks = getMask(sizeToBytes(io.size), offset)
+
+         // Write
+         io.mem_addr := io.addr(addrWidth - 1, 2)
+         io.mem_data := shiftedVec
+         io.mem_masks := VecInit(masks map (mask => mask && io.en))
+      }
+
+      val module = Module(new MemWriter)
+      module.io.addr := addr
+      module.io.data := data
+      module.io.size := size
+      module.io.en := en
+
+      when (en) {
+         mem.write(module.io.mem_addr, module.io.mem_data, module.io.mem_masks)
+      }
+   }
+}
+
 // NOTE: the default is enormous (and may crash your computer), but is bound by
 // what the fesvr expects the smallest memory size to be.  A proper fix would
 // be to modify the fesvr to expect smaller sizes.
 //for 1,2 and 5 stage need for combinational reads
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorCoreParams) extends Module
+class ScratchPadMemoryBase(num_core_ports: Int, num_bytes: Int = (1 << 21), useAsync: Boolean = true)(implicit val conf: SodorCoreParams) extends Module
 {
    val io = IO(new Bundle
    {
@@ -117,254 +215,41 @@ class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(imp
    val num_bytes_per_line = 8
    val num_lines = num_bytes / num_bytes_per_line
    println("\n    Sodor Tile: creating Asynchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val async_data = Module(new AsyncReadMem(log2Ceil(num_bytes)))
-   async_data.io.clk := clock
+   val async_data = new MemoryModule(num_bytes, useAsync)
    for (i <- 0 until num_core_ports)
    {
-      io.core_ports(i).resp.valid := io.core_ports(i).req.valid
+      io.core_ports(i).resp.valid := (if (useAsync) io.core_ports(i).req.valid else RegNext(io.core_ports(i).req.valid, false.B))
       io.core_ports(i).req.ready := true.B // for now, no back pressure
-      async_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
    }
 
    /////////// DPORT
    val req_addri = io.core_ports(DPORT).req.bits.addr
 
-   val req_typi = io.core_ports(DPORT).req.bits.typ
-   val resp_datai = async_data.io.dataInstr(DPORT).data
-   io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
-      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)),
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
-      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
-      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
-   ))
-   async_data.io.dw.en := io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR)
-   async_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
-   async_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-   async_data.io.dw.mask := Mux(req_typi === MT_B,1.U << req_addri(1,0),
-                           Mux(req_typi === MT_H,3.U << req_addri(1,0),15.U))
+   val dport_req = io.core_ports(DPORT).req.bits
+   val dport_wen = io.core_ports(DPORT).req.valid && dport_req.fcn === M_XWR
+   io.core_ports(DPORT).resp.bits.data := async_data.read(dport_req.addr, dport_req.getTLSize, dport_req.getTLSigned)
+   async_data.write(dport_req.addr, dport_req.data, dport_req.getTLSize, dport_wen)
    /////////////////
 
    ///////////// IPORT
    if (num_core_ports == 2){
-      io.core_ports(IPORT).resp.bits.data := async_data.io.dataInstr(IPORT).data
+      val iport_req = io.core_ports(IPORT).req.bits 
+      io.core_ports(IPORT).resp.bits.data := async_data.read(iport_req.addr, iport_req.getTLSize, iport_req.getTLSigned)
    }
    ////////////
 
    // DEBUG PORT-------
    io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := io.debug_port.req.valid
+   io.debug_port.resp.valid := (if (useAsync) io.debug_port.req.valid else RegNext(io.debug_port.req.valid, false.B))
    // asynchronous read
-   async_data.io.hr.addr := io.debug_port.req.bits.addr
-   io.debug_port.resp.bits.data := async_data.io.hr.data
-   async_data.io.hw.en := io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR
-   async_data.io.hw.addr := io.debug_port.req.bits.addr
-   async_data.io.hw.data := io.debug_port.req.bits.data
-   async_data.io.hw.mask := 15.U
+   val debug_port_req = io.debug_port.req.bits
+   val debug_port_wen = io.debug_port.req.valid && debug_port_req.fcn === M_XWR
+   io.debug_port.resp.bits.data := async_data.read(debug_port_req.addr, debug_port_req.getTLSize, debug_port_req.getTLSigned)
+   async_data.write(debug_port_req.addr, debug_port_req.data, debug_port_req.getTLSize, debug_port_wen)
 }
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit val conf: SodorCoreParams) extends Module
-{
-   val io = IO(new Bundle
-   {
-      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
-      val debug_port = Flipped(new MemPortIo(data_width = 32))
-   })
-   val num_bytes_per_line = 8
-   val num_lines = num_bytes / num_bytes_per_line
-   println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val sync_data = Module(new SyncMem(log2Ceil(num_bytes)))
-   sync_data.io.clk := clock
-   for (i <- 0 until num_core_ports)
-   {
-      io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
-      io.core_ports(i).req.ready := true.B // for now, no back pressure
-      sync_data.io.dataInstr(i).addr := io.core_ports(i).req.bits.addr
-   }
+class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams) 
+   extends ScratchPadMemoryBase(num_core_ports, num_bytes, true)(conf)
 
-   /////////// DPORT
-   //val resp_datai = Wire(UInt(conf.xprlen.W))
-   val req_addri = io.core_ports(DPORT).req.bits.addr
-
-   val req_typi = Reg(UInt(3.W))
-   req_typi := io.core_ports(DPORT).req.bits.typ
-   val resp_datai = sync_data.io.dataInstr(DPORT).data
-
-   io.core_ports(DPORT).resp.bits.data := MuxCase(resp_datai,Array(
-      (req_typi === MT_B) -> Cat(Fill(24,resp_datai(7)),resp_datai(7,0)),
-      (req_typi === MT_H) -> Cat(Fill(16,resp_datai(15)),resp_datai(15,0)),
-      (req_typi === MT_BU) -> Cat(Fill(24,0.U),resp_datai(7,0)),
-      (req_typi === MT_HU) -> Cat(Fill(16,0.U),resp_datai(15,0))
-   ))
-
-   sync_data.io.dw.en := io.core_ports(DPORT).req.valid && io.core_ports(DPORT).req.bits.fcn === M_XWR
-   when (io.core_ports(DPORT).req.valid && (io.core_ports(DPORT).req.bits.fcn === M_XWR))
-   {
-      sync_data.io.dw.data := io.core_ports(DPORT).req.bits.data << (req_addri(1,0) << 3)
-      sync_data.io.dw.addr := Cat(req_addri(31,2),0.asUInt(2.W))
-      sync_data.io.dw.mask := Mux(io.core_ports(DPORT).req.bits.typ === MT_B,1.U << req_addri(1,0),
-                              Mux(io.core_ports(DPORT).req.bits.typ === MT_H,3.U << req_addri(1,0),15.U))
-   }
-   /////////////////
-
-   ///////////// IPORT
-   if (num_core_ports == 2)
-      io.core_ports(IPORT).resp.bits.data := sync_data.io.dataInstr(IPORT).data
-   ////////////
-
-   // DEBUG PORT-------
-   io.debug_port.req.ready := true.B // for now, no back pressure
-   io.debug_port.resp.valid := RegNext(io.debug_port.req.valid)
-   // asynchronous read
-   sync_data.io.hr.addr := io.debug_port.req.bits.addr
-   io.debug_port.resp.bits.data := sync_data.io.hr.data
-   sync_data.io.hw.en := io.debug_port.req.valid && io.debug_port.req.bits.fcn === M_XWR
-   sync_data.io.hw.addr := io.debug_port.req.bits.addr
-   sync_data.io.hw.data := io.debug_port.req.bits.data
-   sync_data.io.hw.mask := 15.U
-}
-
-
-class ScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21), seq_read: Boolean = false)(implicit val conf: SodorCoreParams) extends Module
-{
-   val io = IO(new Bundle
-   {
-      val core_ports = Vec(num_core_ports, Flipped(new MemPortIo(data_width = conf.xprlen)) )
-      val htif_port = Flipped(new MemPortIo(data_width = 64))
-   })
-
-
-   // HTIF min packet size is 8 bytes
-   // but 32b core will access in 4 byte chunks
-   // thus we will bank the scratchpad
-   val num_bytes_per_line = 8
-   val num_lines = num_bytes / num_bytes_per_line
-   println("\n    Sodor Tile: creating Synchronous Scratchpad Memory of size " + num_lines*num_bytes_per_line/1024 + " kB\n")
-   val data_bank = SyncReadMem(num_lines, Vec(num_bytes_per_line, UInt(8.W)))
-
-   // constants
-   val idx_lsb = log2Ceil(num_bytes_per_line)
-
-   for (i <- 0 until num_core_ports)
-   {
-      io.core_ports(i).resp.valid := RegNext(io.core_ports(i).req.valid)
-
-      io.core_ports(i).req.ready := true.B // for now, no back pressure
-
-      val req_valid      = io.core_ports(i).req.valid
-      val req_addr       = io.core_ports(i).req.bits.addr
-      val req_data       = io.core_ports(i).req.bits.data
-      val req_fcn        = io.core_ports(i).req.bits.fcn
-      val req_typ        = io.core_ports(i).req.bits.typ
-      val byte_shift_amt = io.core_ports(i).req.bits.addr(2,0)
-      val bit_shift_amt  = Cat(byte_shift_amt, 0.U(3.W))
-
-      // read access
-      val data_idx = Wire(UInt())
-      data_idx := req_addr >> idx_lsb.U
-      val r_data_idx = Reg(UInt(32.W))
-      val read_data_out = Wire(Vec(num_bytes_per_line, UInt(8.W)))
-      val rdata_out = Wire(UInt(32.W))
-
-      read_data_out := data_bank.read(r_data_idx)
-      rdata_out     := LoadDataGen(read_data_out, RegNext(req_typ), RegNext(req_addr(2,0)))
-      io.core_ports(i).resp.bits.data := rdata_out
-
-
-
-      // write access
-      when (req_valid && req_fcn === M_XWR)
-      {
-         val wdata = StoreDataGen(req_data, req_typ, req_addr(2,0))
-         data_bank.write(data_idx, wdata, StoreMask(req_typ, req_addr(2,0)).asBools)
-         // move the wdata into position on the sub-line
-      }
-      .elsewhen (req_valid && req_fcn === M_XRD){
-         r_data_idx := data_idx
-      }
-   }
-
-
-   // HTIF -------
-   val htif_idx = Reg(UInt())
-   htif_idx := io.htif_port.req.bits.addr >> idx_lsb.U
-   io.htif_port.req.ready := true.B // for now, no back pressure
-   io.htif_port.resp.valid := RegNext(io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XRD)
-
-   // synchronous read
-
-   io.htif_port.resp.bits.data := data_bank.read(htif_idx).asUInt
-   when (io.htif_port.req.valid && io.htif_port.req.bits.fcn === M_XWR)
-   {
-      data_bank.write(htif_idx, GenVec(io.htif_port.req.bits.data), "b11111111".U.asBools)
-   }
-}
-
-
-object GenVec
-{
-   def apply(din: UInt): Vec[UInt] =
-   {
-      val dout = Wire(Vec(8, UInt(8.W)))
-      dout(0) := din(7,0)
-      dout(1) := din(15,8)
-      dout(2) := din(23,16)
-      dout(3) := din(31,24)
-      dout(4) := din(39,32)
-      dout(5) := din(47,40)
-      dout(6) := din(55,48)
-      dout(7) := din(63,56)
-      return dout
-   }
-}
-
-object StoreDataGen
-{
-   def apply(din: Bits, typ: UInt, idx: UInt): Vec[UInt] =
-   {
-      val word = typ === MT_W
-      val half = typ === MT_H
-      val dout = Wire(Vec(8, UInt(8.W)))
-      dout(idx) := din(7,0)
-      dout(idx + 1.U) := Mux(half, din(15,8), 0.U)
-      dout(idx + 2.U) := Mux(word, din(23,16), 0.U)
-      dout(idx + 3.U) := Mux(word, din(31,24), 0.U)
-      return dout
-   }
-}
-
-
-object StoreMask
-{
-   def apply(sel: UInt, idx: UInt): UInt =
-   {
-      val word = sel === MT_W
-      val half = sel === MT_H
-      val wmask = Wire(UInt(8.W))
-      val temp_byte = Wire(UInt(8.W))
-      val temp_half = Wire(UInt(8.W))
-      val temp_word = Wire(UInt(8.W))
-      temp_byte :=  1.U << idx //for byte access
-      temp_half := 3.U << idx
-      temp_word := 15.U << idx
-      wmask := Mux(word, temp_word,
-               Mux(half, temp_half, temp_byte))
-      return wmask
-   }
-}
-
-//appropriately mask and sign-extend data for the core
-object LoadDataGen
-{
-   def apply(data: Vec[UInt], typ: UInt, idx: UInt) : UInt =
-   {
-      val word = (typ === MT_W) || (typ === MT_WU)
-      val half = (typ === MT_H) || (typ === MT_HU)
-      val dout_7_0 = Wire(UInt(8.W))
-      val dout_15_8 = Wire(UInt(8.W))
-      val dout_31_16 = Wire(UInt(16.W))
-      dout_7_0 := data(idx)
-      dout_15_8 := Mux(half, data(idx + 1.U), 0.U)
-      dout_31_16 := Mux(word, Cat(data(idx + 3.U),data(idx + 2.U)), 0.U)
-      return Cat(dout_31_16,Cat(dout_15_8,dout_7_0))
-   }
-}
+class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams) 
+   extends ScratchPadMemoryBase(num_core_ports, num_bytes, false)(conf)

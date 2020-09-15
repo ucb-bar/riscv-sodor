@@ -88,8 +88,9 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Instruction misalignment detection
    // In control path, instruction misalignment exception is always raised in the next cycle once the misaligned instruction reaches
    // execution stage, regardless whether the pipeline stalls or not
-   io.dat.inst_misaligned :=  (exe_brjmp_target(1, 0).orR    && (io.ctl.pc_sel === PC_BR || io.ctl.pc_sel === PC_J)) ||
-                              (exe_jump_reg_target(1, 0).orR && io.ctl.pc_sel === PC_JR)
+   io.dat.inst_misaligned := ((exe_brjmp_target(1, 0).orR    && (io.ctl.pc_sel === PC_BR || io.ctl.pc_sel === PC_J)) ||
+                              (exe_jump_reg_target(1, 0).orR && io.ctl.pc_sel === PC_JR)) &&
+                             io.imem.resp.valid
    val exe_target_pc = Mux((io.ctl.pc_sel === PC_JR), exe_jump_reg_target, exe_brjmp_target)
 
    io.imem.req.bits.pc := take_pc
@@ -214,7 +215,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    io.dat.data_misaligned := (misaligned_mask & mem_address_low).orR && io.ctl.dmem_val
 
    // datapath to data memory outputs
-   io.dmem.req.valid     := io.ctl.dmem_val && !io.dat.data_misaligned
+   io.dmem.req.valid     := io.ctl.dmem_val && !io.dat.data_misaligned && !wb_hazard_stall // Do not fire during hazard
    if(conf.ports == 1)
       io.dmem.req.bits.fcn  := io.ctl.dmem_fcn & exe_valid & !((wb_reg_wbaddr === exe_rs1_addr) && (exe_rs1_addr =/= 0.U) && wb_reg_ctrl.rf_wen && !wb_reg_ctrl.bypassable)
    else
