@@ -42,39 +42,6 @@ trait MemoryOpConstants
    val IPORT = 1
 }
 
-class Rport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
-   val addr = Input(UInt(addrWidth.W))
-   val data = Output(UInt(dataWidth.W))
-   override def cloneType = { new Rport(addrWidth,dataWidth).asInstanceOf[this.type] }
-}
-
-class Wport(val addrWidth : Int,val dataWidth : Int) extends Bundle{
-   val maskWidth = dataWidth/8
-   val addr = Input(UInt(addrWidth.W))
-   val data = Input(UInt(dataWidth.W))
-   val mask = Input(UInt(maskWidth.W))
-   val en = Input(Bool())
-   override def cloneType = { new Wport(addrWidth,dataWidth).asInstanceOf[this.type] }
-}
-
-class d2h2i1(val addrWidth : Int) extends Bundle{
-   val dataInstr = Vec(2,new  Rport(addrWidth,32))
-   val hw = new  Wport(addrWidth,32)
-   val dw = new  Wport(addrWidth,32)
-   val hr = new  Rport(addrWidth,32)
-   val clk = Input(Clock())
-}
-
-class AsyncReadMem(val addrWidth : Int) extends BlackBox with HasBlackBoxResource {
-   val io = IO(new d2h2i1(addrWidth))
-   addResource("/vsrc/AsyncReadMem.sv")
-}
-
-class SyncMem(val addrWidth : Int) extends BlackBox with HasBlackBoxResource {
-   val io = IO(new d2h2i1(addrWidth))
-   addResource("/vsrc/SyncMem.sv")
-}
-
 // from the pov of the datapath
 class MemPortIo(data_width: Int)(implicit val conf: SodorCoreParams) extends Bundle
 {
