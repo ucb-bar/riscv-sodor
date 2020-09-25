@@ -1,8 +1,8 @@
 About The Sodor Processor Collection
 ====================================
 
-**Note: This repo has been updated to be a part of [Chipyard](https://github.com/ucb-bar/chipyard) Soc Generator.**
-**For the old version of Sodor (which is no longer maintained), see https://github.com/ucb-bar/riscv-sodor/tree/sodor-old.**
+**Note: This repo has been updated to be used with the [Chipyard](https://github.com/ucb-bar/chipyard) SoC Generator.**
+**For the old self-contained version of Sodor (which is no longer maintained), see https://github.com/ucb-bar/riscv-sodor/tree/sodor-old.**
 
 Diagrams: [Sodor Github wiki](https://github.com/ucb-bar/riscv-sodor/wiki)
 
@@ -43,7 +43,7 @@ Getting the repo and Building the processor emulators
 =====================================================
 
 This repo is **NOT** a self-running repository. Please follow the instruction in 
-https://chipyard.readthedocs.io/en/latest/ to set up Chipyard and run the test. 
+https://chipyard.readthedocs.io/en/latest/ to set up Chipyard and simulate Sodor cores.
 
 FAQ
 ===
