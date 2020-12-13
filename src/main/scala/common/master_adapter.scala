@@ -23,7 +23,7 @@ class SodorMasterAdapter(implicit p: Parameters, val conf: SodorCoreParams) exte
   // The client node (only one inflight request supported for Sodor)
   // This node handles core requests to addresses not managed in the tile-local scratchpad
   val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(
-    clients = Seq(TLClientParameters(
+    clients = Seq(TLMasterParameters.v1(
       name = "sodor-mmio-master",
       sourceId = IdRange(0, 1)
     ))
@@ -107,13 +107,13 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   tl_out.e.ready := true.B
 }
 
-// This class allows the next memory request to be sent when the response of the previous request come back. 
+// This class allows the next memory request to be sent when the response of the previous request come back.
 class SameCycleRequestBuffer(implicit val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle() {
     val in = Flipped(new MemPortIo(data_width = conf.xprlen))
     val out = new MemPortIo(data_width = conf.xprlen)
   })
-  
+
   io.out.req <> io.in.req
   io.in.resp := Pipe(io.out.resp)
 }

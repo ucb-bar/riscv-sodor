@@ -42,6 +42,8 @@ case class SodorCoreParams(
   val pmpGranularity: Int = 4 // copied from Rocket
   val nBreakpoints: Int = 0 // TODO: Check
   val useBPWatch: Boolean = false
+  val mcontextWidth: Int = 0 // TODO: Check
+  val scontextWidth: Int = 0 // TODO: Check
   val nPerfCounters: Int = 0
   val haveBasicCounters: Boolean = true
   val haveFSDirty: Boolean = false
@@ -117,7 +119,7 @@ class SodorTile(
   val dtim_address = tileParams.dcache.flatMap { d => d.scratch.map { s =>
     AddressSet.misaligned(s, d.dataScratchpadBytes)
   }}
-  val dtim_adapter = dtim_address.map { addr => 
+  val dtim_adapter = dtim_address.map { addr =>
     LazyModule(new ScratchpadSlavePort(addr, coreParams.coreDataBytes, false))
   }
   dtim_adapter.foreach(lm => connectTLSlave(lm.node, lm.node.portParams.head.beatBytes))
@@ -174,7 +176,7 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
   require(outer.dtim_adapter.isDefined, "Sodor core must have a scratchpad: make sure that tileParams.dcache.scratch is defined.")
   require(outer.dtim_address.get.length == 1, "Sodor core can only have one scratchpad.")
 
-  // Tile 
+  // Tile
   val tile = Module(outer.sodorParams.core.internalTile.instantiate(outer.dtim_address.get.apply(0)))
 
   // Add scratchpad adapter
