@@ -15,6 +15,7 @@ import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util._
 import freechips.rocketchip.tile._
 import freechips.rocketchip.amba.axi4._
+import freechips.rocketchip.prci.ClockSinkParameters
 
 // Example parameter class copied from Ariane, not included in documentation but for compile check only
 // If you are here for documentation, DO NOT copy MyCoreParams and MyTileParams directly - always figure
@@ -38,6 +39,7 @@ case class SodorCoreParams(
   val mulDiv: Option[MulDivParams] = None
   val fpu: Option[FPUParams] = None
   val nLocalInterrupts: Int = 0
+  val useNMI: Boolean = false
   val nPMPs: Int = 0 // TODO: Check
   val pmpGranularity: Int = 4 // copied from Rocket
   val nBreakpoints: Int = 0 // TODO: Check
@@ -50,6 +52,7 @@ case class SodorCoreParams(
   val misaWritable: Boolean = false
   val haveCFlush: Boolean = false
   val nL2TLBEntries: Int = 0 // copied from Rocket
+  val nL2TLBWays: Int = 0 // copied from Rocket
   val mtvecInit: Option[BigInt] = Some(BigInt(0)) // copied from Rocket
   val mtvecWritable: Boolean = true // copied from Rocket
   val instBits: Int = if (useCompressed) 16 else 32
@@ -83,6 +86,7 @@ case class SodorTileParams(
   val boundaryBuffers: Boolean = false
   val dcache: Option[DCacheParams] = Some(scratchpad)
   val icache: Option[ICacheParams] = None
+  val clockSinkParams: ClockSinkParameters = ClockSinkParameters()
   def instantiate(crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): SodorTile = {
     new SodorTile(this, crossing, lookup)
   }
