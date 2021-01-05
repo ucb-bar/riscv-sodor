@@ -216,7 +216,7 @@ class WithNSodorCores(
         tileParams = SodorTileParams(
           hartId = i + idOffset,
           scratchpad = DCacheParams(
-            nSets = 256,
+            nSets = 4096, // Very large so we have enough SPAD for bmark tests
             nWays = 1,
             nMSHRs = 0,
             scratch = Some(0x80000000L)
