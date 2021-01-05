@@ -257,6 +257,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    csr.io.hartid := io.hartid
    io.dat.csr_interrupt := interrupt_edge
    csr.io.cause := Mux(io.ctl.exception, io.ctl.exception_cause, csr.io.interrupt_cause)
+   csr.io.ungated_clock := clock
 
    io.dat.csr_eret := csr.io.eret
 

@@ -197,6 +197,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
               (exception_cause === Causes.misaligned_store.U)     -> tval_data_ma,
               (exception_cause === Causes.misaligned_load.U)      -> tval_data_ma,
               ))
+  csr.io.ungated_clock := clock
 
    // Add your own uarch counters here!
    csr.io.counters.foreach(_.inc := false.B)
