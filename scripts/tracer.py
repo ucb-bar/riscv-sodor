@@ -11,7 +11,8 @@ parser = argparse.ArgumentParser(description="SODOR instruction trace analyzer")
 parser.add_argument('file', nargs='?', type=argparse.FileType('r'),
                     default=sys.stdin,
                     help="workload.out file")
-parser.add_argument
+parser.add_argument('-u', '--ucode', action='store_true',
+                    help='Process the tracefile from the UCode machine')
 
 args = parser.parse_args()
 
@@ -30,7 +31,54 @@ n_bubbles = 0            # Total cycles where no instruction was committed while
 n_cycles = 0             # Total cycles where collecting_stats == True
 
 # Use Regex to decode and read each line of the trace
-h = re.compile("Cyc=([ 0-9]+) \[([01])\] pc=\[([0-9a-f]+)] W\[r([ 0-9]+)=([0-9a-f]+)\]\[([01])\] Op1=\[r([ 0-9]+)\]\[([0-9a-f]+)\] Op2=\[r([ 0-9]+)\]\[([0-9a-f]+)\] inst=\[([0-9a-f]+)\] ([SKFH ])([BJREM ])([X ]) ([ a-z0-9-,.]+)")
+if args.ucode:
+    regex = "Cyc=([ 0-9]+) \[([01])\] PCReg=\[([0-9a-f]+)\] uPC=\[([0-9a-f]+)\] Bus=\[([0-9a-f]+)\] RegSel=\[([0-9a-f]+)\] RegAddr=\[([ 0-9a-f]+)\] A=\[([0-9a-f]+)\] B=\[([0-9a-f]+)\] MA=\[([0-9a-f]+)\] InstReg=\[([0-9a-f]+)\] ([F ])([M ])([X ]) ([ a-z0-9-,.()]+)"
+    groupmap = {
+        "cycle" : 1,
+        "retire" : 2,
+        "pc" : 3,
+        "inst" : 11,
+        "dasm" : 15,
+
+        "upc" : 4,
+        "bus" : 5,
+        "regsel" : 6,
+        "regaddr" : 7,
+        "A" : 8,
+        "B" : 9,
+        "MA" : 10,
+    }
+
+else:
+    regex = "Cyc=([ 0-9]+) \[([01])\] pc=\[([0-9a-f]+)] W\[r([ 0-9]+)=([0-9a-f]+)\]\[([01])\] Op1=\[r([ 0-9]+)\]\[([0-9a-f]+)\] Op2=\[r([ 0-9]+)\]\[([0-9a-f]+)\] inst=\[([0-9a-f]+)\] ([SKFH ])([BJREM ])([X ]) ([ a-z0-9-,.()]+)"
+
+    groupmap = {
+        "cycle" : 1,
+        "retire" : 2,
+        "pc" : 3,
+        "inst" : 11,
+        "dasm" : 15,
+
+        "rd" : 4,
+        "wdata" : 5,
+        "wen" : 6,
+
+        "rs1" : 7,
+        "rs1_data" : 8,
+        "rs2" : 9,
+        "rs2_data" : 10,
+
+        "pc_sel" : 13,
+        "exception" : 14,
+    }
+
+def extract(match, key):
+    return match.group(groupmap[key])
+
+
+
+h = re.compile(regex)
+
 
 
 for line in args.file:
@@ -38,25 +86,34 @@ for line in args.file:
 
     if p:
         # Extract useful information from a line of the trace
-        cycle = int(p.group(1))     # Cycle timestamp of this line
-        retire = p.group(2) == '1'  # True if instruction was retired here
-        pc = int(p.group(3), 16)    # PC of retired instruction
+        cycle = int(extract(p, "cycle"))                # Cycle timestamp of this line
+        retire = extract(p, "retire") == '1'            # True if instruction was retired here
+        pc = int(extract(p, "pc"), 16)                  # PC of retired instruction
+        inst = Instruction(int(extract(p, "inst"), 16)) # Raw instruction bits as uint
+        dasm = extract(p, "dasm")                       # Diassembled instruction
 
-        rd = int(p.group(4))        # Destination register
-        wdata = int(p.group(5), 16) # Data to be written to destination register
-        wen = p.group(6) == '1'     # True of this instruction writes to a destination register
+        if args.ucode:
+            upc = int(extract(p, "upc"), 16)          # Address of microcoded instruction
+            bus = int(extract(p, "bus"), 16)          # Value on bus
+            regsel = int(extract(p, "regsel"), 16)    # Which value to get the reg addr from?
+            regaddr = int(extract(p, "regaddr"), 16)  # Register address
+            A = int(extract(p, "A"), 16)              # A operand register
+            B = int(extract(p, "B"), 16)              # B operand register
+            MA = int(extract(p, "MA"), 16)            # MA memory address register
+        else:
+            rd = int(extract(p, "rd"))           # Destination register
+            wdata = int(extract(p, "wdata"), 16) # Data to be written to destination register
+            wen = extract(p, "wen") == '1'       # True of this instruction writes to a destination register
 
-        rs1 = int(p.group(7))           # Register operand 1 address
-        rs1_data = int(p.group(8), 16)  # Register operand 1 data
-        rs2 = int(p.group(9))           # Register operand 2 address
-        rs2_data = int(p.group(10), 16) # Register operand 2 data
+            rs1 = int(extract(p, "rs1"))                # Register operand 1 address
+            rs1_data = int(extract(p, "rs1_data"), 16)  # Register operand 1 data
+            rs2 = int(extract(p, "rs2"))                # Register operand 2 address
+            rs2_data = int(extract(p, "rs2_data"), 16)  # Register operand 2 data
 
-        inst = Instruction(int(p.group(11), 16)) # Raw instruction bits as uint
+            pc_sel = extract(p, "pc_sel")               # How the next PC after this instruction is generated
+            exception = extract(p, "exception")         # True if this instruction generates an exception
 
-        pc_sel = p.group(13)                     # How the next PC after this instruction is generated
-        exception = p.group(14)                  # True if this instruction generates an exception
 
-        dasm = p.group(15)                       # Diassembled instruction
 
         # Start recording stats after we jump to the target binary at 0x8000_0000
         if retire and pc == 0x80000000:
@@ -79,8 +136,6 @@ for line in args.file:
 
             n_cycles = cycle - start_cycle
 
-    else:
-        print(line)
 
 if (n_instructions == 0):
     sys.exit("Trace analyzer found no instructions. Are you passing in the correct trace file?")
@@ -108,5 +163,3 @@ Instruction Breakdown:
            ldst=100 * n_ldst_instructions / n_instructions,
            brjmp=100 * n_brjmp_instructions / n_instructions,
            misc=100 * n_misc_instructions / n_instructions))
-
-
