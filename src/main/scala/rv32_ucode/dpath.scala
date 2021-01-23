@@ -35,8 +35,8 @@ class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bun
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts())
-    val hartid = Input(UInt())
-    val reset_vector = Input(UInt())
+   val hartid = Input(UInt())
+   val reset_vector = Input(UInt())
 }
 
 
@@ -125,6 +125,11 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    //note: I could be far more clever and save myself on wasted registers here...
    //32 x-registers, 1 pc-register
    val regfile = Reg(Vec(33, UInt(32.W)))
+   when (reset.asBool) {
+     regfile(PC_IDX) := io.reset_vector
+   }
+
+
 
    inst_misaligned := false.B
    tval_inst_ma := RegNext(bus & ~1.U(conf.xprlen.W))
@@ -222,7 +227,6 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt() < reg_b.asSInt()).asUInt(),
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  io.reset_vector,
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))

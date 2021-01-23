@@ -20,7 +20,6 @@ import scala.collection.mutable.ArrayBuffer
 
 class CtlToDatIo extends Bundle()
 {
-   val msk_sel = Output(UInt(MSK_SZ))
    val csr_cmd = Output(UInt(CSR.SZ.W))
    val ld_ir   = Output(Bool())
    val reg_sel = Output(UInt(RS_X.getWidth.W))
@@ -33,6 +32,7 @@ class CtlToDatIo extends Bundle()
    val ld_ma   = Output(Bool())
    val mem_wr  = Output(Bool())
    val en_mem  = Output(Bool())
+   val msk_sel = Output(UInt(MSK_SZ))
    val is_sel  = Output(UInt(IS_X.getWidth.W))
    val en_imm  = Output(Bool())
    val upc     = Output(UInt()) // for debugging purposes
@@ -49,7 +49,7 @@ class CpathIo(implicit val conf: SodorCoreParams) extends Bundle()
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
    override def cloneType = { new CpathIo().asInstanceOf[this.type] }
-}
+ }
 
 class CtlPath(implicit val conf: SodorCoreParams) extends Module
 {
@@ -68,7 +68,7 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
 
    // Micro-PC State Register
    val upc_state_next = Wire(UInt())
-   val upc_state = RegNext(upc_state_next, init = label_target_map("INIT_PC").asUInt(label_sz.W))
+   val upc_state = RegNext(upc_state_next, init = label_target_map("FETCH").asUInt(label_sz.W))
 
    // Micro-code ROM
    val micro_code = VecInit(rombits)
@@ -77,7 +77,6 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
    // Extract Control Signals from UOP
   val cs = uop.asTypeOf(new Bundle()
   {
-     val msk_sel        = UInt(MSK_SZ)
      val csr_cmd        = UInt(CSR.SZ.W)
      val ld_ir          = Bool()
      val reg_sel        = UInt(RS_X.getWidth.W)
@@ -90,6 +89,7 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
      val ld_ma          = Bool()
      val mem_wr         = Bool()
      val en_mem         = Bool()
+     val msk_sel        = UInt(MSK_SZ)
      val is_sel         = UInt(IS_X.getWidth.W)
      val en_imm         = Bool()
      val ubr            = UInt(UBR_N.getWidth.W)
