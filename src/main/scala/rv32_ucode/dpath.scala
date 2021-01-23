@@ -59,13 +59,15 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val bus = MuxCase(0.U, Array(
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0),
-               (io.ctl.en_reg & ~io.ctl.reg_wr &
+               (io.ctl.en_reg &
                  (io.ctl.reg_sel =/= RS_CR))     -> reg_rdata(conf.xprlen-1,0),
                (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(conf.xprlen-1,0),
-               (io.ctl.en_reg & ~io.ctl.reg_wr &
+               (io.ctl.en_reg &
                   (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
 
+   assert(PopCount(Seq(io.ctl.en_imm, io.ctl.en_alu, io.ctl.en_reg, io.ctl.en_mem & ~io.ctl.mem_wr)) <= 1.U,
+     "Error. Multiple components attempting to write to bus simultaneously")
 
 
    // IR Register
@@ -133,7 +135,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    inst_misaligned := false.B
    tval_inst_ma := RegNext(bus & ~1.U(conf.xprlen.W))
-   when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr =/= 0.U)
+   when (io.ctl.reg_wr & reg_addr =/= 0.U)
    {
       when (reg_addr === PC_IDX)
       { 
