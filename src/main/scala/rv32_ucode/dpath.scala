@@ -60,13 +60,13 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0),
                (io.ctl.en_reg &
-                 (io.ctl.reg_sel =/= RS_CR))     -> reg_rdata(conf.xprlen-1,0),
-               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(conf.xprlen-1,0),
+                 (io.ctl.reg_sel =/= RS_CR))    -> reg_rdata(conf.xprlen-1,0),
+               (io.ctl.en_mem)                  -> io.mem.resp.bits.data(conf.xprlen-1,0),
                (io.ctl.en_reg &
                   (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
 
-   assert(PopCount(Seq(io.ctl.en_imm, io.ctl.en_alu, io.ctl.en_reg, io.ctl.en_mem & ~io.ctl.mem_wr)) <= 1.U,
+   assert(PopCount(Seq(io.ctl.en_imm, io.ctl.en_alu, io.ctl.en_reg, io.ctl.en_mem)) <= 1.U,
      "Error. Multiple components attempting to write to bus simultaneously")
 
 
@@ -244,7 +244,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
    val misaligned_mask = Wire(UInt(3.W))
    misaligned_mask := ~(7.U(3.W) << (io.ctl.msk_sel - 1.U)(1, 0))
-   data_misaligned := (misaligned_mask & reg_ma.asUInt.apply(2, 0)).orR && io.ctl.en_mem
+   data_misaligned := (misaligned_mask & reg_ma.asUInt.apply(2, 0)).orR && (io.ctl.en_mem || io.ctl.mem_wr)
    mem_store := io.ctl.mem_wr
    tval_data_ma := RegNext(reg_ma.asUInt)
 

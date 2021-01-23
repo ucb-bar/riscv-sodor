@@ -98,7 +98,7 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
   })
   require(label_sz == 8, "Label size must be 8")
 
-  val mem_is_busy = !io.mem.resp.valid && cs.en_mem.asBool
+  val mem_is_busy = !io.mem.resp.valid && (cs.en_mem || cs.mem_wr)
 
   val interrupt_trigger = io.dat.interrupt && io.ctl.upc_is_fetch
   val non_illegal_trap = interrupt_trigger || io.dat.addr_exception
@@ -163,8 +163,8 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
    io.ctl.retire := io.ctl.upc_is_fetch && en_retire
 
    // Memory Interface
-   io.mem.req.bits.fcn := Mux(cs.en_mem && cs.mem_wr , M_XWR, M_XRD)
+   io.mem.req.bits.fcn := Mux(cs.mem_wr , M_XWR, M_XRD)
    io.mem.req.bits.typ := cs.msk_sel
-   io.mem.req.valid   := cs.en_mem.asBool && !io.dat.addr_exception
+   io.mem.req.valid    := (cs.en_mem || cs.mem_wr) && !io.dat.addr_exception
 
 }
