@@ -112,11 +112,12 @@ object MicrocodeCompiler
             case Signals(code,str) => uaddr += 1
          }
       }
+      val label_sz = log2Ceil(uaddr)
       println("Label Map " + label_map)
-      println("  MicroROM size    : " + (uaddr-1) + " lines")
-      println("  Bitwidth of uaddr: " + log2Ceil(uaddr-1) + " bits")
+      println("  MicroROM size    : " + uaddr + " lines")
+      println("  Bitwidth of uaddr: " + label_sz + " bits")
       println("")
-      return (label_map, log2Ceil(uaddr-1))
+      return (label_map, label_sz)
    }
 
 
