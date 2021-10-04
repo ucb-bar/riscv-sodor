@@ -24,6 +24,7 @@ object CSREvents {
 
 // Abstract core and tile base class for all cores
 abstract class AbstractCore extends Module {
+  val io: Bundle
   val mem_ports: Seq[MemPortIo]
   val interrupt: CoreInterrupts
   val hartid: UInt
@@ -114,7 +115,7 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
 }
 
 // The general Sodor tile for all cores other than 3-stage
-class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams) 
+class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams)
   extends AbstractInternalTile(coreCtor.nMemPorts)
 {
   val core   = Module(coreCtor.instantiate)
