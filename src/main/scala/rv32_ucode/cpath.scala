@@ -48,7 +48,6 @@ class CpathIo(implicit val conf: SodorCoreParams) extends Bundle()
    val mem  = new MemPortIo(conf.xprlen)
    val dat  = Flipped(new DatToCtlIo())
    val ctl  = new CtlToDatIo()
-   override def cloneType = { new CpathIo().asInstanceOf[this.type] }
  }
 
 class CtlPath(implicit val conf: SodorCoreParams) extends Module

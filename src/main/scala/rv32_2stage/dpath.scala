@@ -29,7 +29,6 @@ class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
    val mem_store = Output(Bool())
    val csr_eret = Output(Bool())
    val csr_interrupt = Output(Bool())
-   override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle()

@@ -24,7 +24,6 @@ class DatToCtlIo extends Bundle()
    val csr_eret = Output(Bool())
    val interrupt = Output(Bool())
    val addr_exception = Output(Bool())
-   override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 
