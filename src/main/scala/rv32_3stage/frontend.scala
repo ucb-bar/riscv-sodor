@@ -41,7 +41,6 @@ class FrontEndIO(implicit val conf: SodorCoreParams) extends Bundle
 
    val reset_vector = Input(UInt())
 
-   override def cloneType = { new FrontEndIO().asInstanceOf[this.type] }
 }
 
 
@@ -49,7 +48,6 @@ class FrontEndReq(xprlen: Int) extends Bundle
 {
    val pc   = UInt(xprlen.W)
 
-   override def cloneType = { new FrontEndReq(xprlen).asInstanceOf[this.type] }
 }
 
 
@@ -58,14 +56,12 @@ class FrontEndResp(xprlen: Int) extends Bundle
    val pc   = UInt(xprlen.W)
    val inst = UInt(xprlen.W)  // only support 32b insts for now
 
-   override def cloneType = { new FrontEndResp(xprlen).asInstanceOf[this.type] }
 }
 
 class FrontEndDebug(xprlen: Int) extends Bundle
 {
    val if_pc   = Output(UInt(xprlen.W))
    val if_inst = Output(UInt(xprlen.W))
-   override def cloneType = { new FrontEndDebug(xprlen).asInstanceOf[this.type] }
 }
 
 class FrontEndCpuIO(implicit val conf: SodorCoreParams) extends Bundle
@@ -80,7 +76,6 @@ class FrontEndCpuIO(implicit val conf: SodorCoreParams) extends Bundle
    // Flush the entire pipeline upon exception, including exe stage
    val exe_kill = Input(Bool())
 
-   override def cloneType = { new FrontEndCpuIO().asInstanceOf[this.type] }
 }
 
 
