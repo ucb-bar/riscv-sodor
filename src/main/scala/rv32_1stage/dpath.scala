@@ -194,7 +194,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
-   csr.io.decode(0).csr := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.decode(0).csr_addr := inst
    csr.io.rw.addr   := inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd    := io.ctl.csr_cmd
    csr.io.rw.wdata  := alu_out
