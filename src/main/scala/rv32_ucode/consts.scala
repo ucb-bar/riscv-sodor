@@ -79,9 +79,8 @@ trait ScalarOpConstants extends MemoryOpConstants
    val ALU_XOR      = 13.asUInt(5.W)
    val ALU_SLT      = 14.asUInt(5.W)
    val ALU_SLTU     = 15.asUInt(5.W)
-   val ALU_INIT_PC  = 16.asUInt(5.W)  // output START_ADDR, used to initialize the PC register
-   val ALU_MASK_12  = 17.asUInt(5.W)  // output A with lower 12 bits cleared (AUIPC)
-   val ALU_EVEC     = 18.asUInt(5.W)  // output evec from CSR file
+   val ALU_MASK_12  = 16.asUInt(5.W)  // output A with lower 12 bits cleared (AUIPC)
+   val ALU_EVEC     = 17.asUInt(5.W)  // output evec from CSR file
    val ALU_X        = 0.asUInt(5.W)
 
    // ALU Enable Signal

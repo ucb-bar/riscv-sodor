@@ -131,6 +131,15 @@ for line in args.file:
                     n_arith_instructions += 1
                 else:
                     n_misc_instructions += 1
+
+                # TODO: Track more types of instructions here?
+
+                # Example code showing how to slice some bits out of each Instruction object
+                # Bits 0-6 correspond to the opcode of instructions. Notice that inst[0:6] is 7
+                # bits, as we follow verilog-style bit indexing
+
+                bits0to6 = inst[0:6]
+                # print("{0:07b}".format(bits0to6))
             else:
                 n_bubbles += 1
 

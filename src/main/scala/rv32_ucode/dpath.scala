@@ -35,8 +35,8 @@ class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bun
    val ctl  = Flipped(new CtlToDatIo())
    val dat  = new DatToCtlIo()
    val interrupt = Input(new CoreInterrupts())
-    val hartid = Input(UInt())
-    val reset_vector = Input(UInt())
+   val hartid = Input(UInt())
+   val reset_vector = Input(UInt())
 }
 
 
@@ -59,13 +59,15 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val bus = MuxCase(0.U, Array(
                (io.ctl.en_imm)                  -> imm(conf.xprlen-1,0),
                (io.ctl.en_alu)                  -> alu(conf.xprlen-1,0),
-               (io.ctl.en_reg & ~io.ctl.reg_wr &
-                 (io.ctl.reg_sel =/= RS_CR))     -> reg_rdata(conf.xprlen-1,0),
-               (io.ctl.en_mem & ~io.ctl.mem_wr) -> io.mem.resp.bits.data(conf.xprlen-1,0),
-               (io.ctl.en_reg & ~io.ctl.reg_wr &
+               (io.ctl.en_reg &
+                 (io.ctl.reg_sel =/= RS_CR))    -> reg_rdata(conf.xprlen-1,0),
+               (io.ctl.en_mem)                  -> io.mem.resp.bits.data(conf.xprlen-1,0),
+               (io.ctl.en_reg &
                   (io.ctl.reg_sel === RS_CR))   -> csr_rdata
              ))
 
+   assert(PopCount(Seq(io.ctl.en_imm, io.ctl.en_alu, io.ctl.en_reg, io.ctl.en_mem)) <= 1.U,
+     "Error. Multiple components attempting to write to bus simultaneously")
 
 
    // IR Register
@@ -125,10 +127,15 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    //note: I could be far more clever and save myself on wasted registers here...
    //32 x-registers, 1 pc-register
    val regfile = Reg(Vec(33, UInt(32.W)))
+   when (reset.asBool) {
+     regfile(PC_IDX) := io.reset_vector
+   }
+
+
 
    inst_misaligned := false.B
    tval_inst_ma := RegNext(bus & ~1.U(conf.xprlen.W))
-   when (io.ctl.en_reg & io.ctl.reg_wr & reg_addr =/= 0.U)
+   when (io.ctl.reg_wr & reg_addr =/= 0.U)
    {
       when (reg_addr === PC_IDX)
       { 
@@ -222,7 +229,6 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
               (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt() < reg_b.asSInt()).asUInt(),
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
-              (io.ctl.alu_op === ALU_INIT_PC) ->  io.reset_vector,
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
             ))
@@ -238,7 +244,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.
    val misaligned_mask = Wire(UInt(3.W))
    misaligned_mask := ~(7.U(3.W) << (io.ctl.msk_sel - 1.U)(1, 0))
-   data_misaligned := (misaligned_mask & reg_ma.asUInt.apply(2, 0)).orR && io.ctl.en_mem
+   data_misaligned := (misaligned_mask & reg_ma.asUInt.apply(2, 0)).orR && (io.ctl.en_mem || io.ctl.mem_wr)
    mem_store := io.ctl.mem_wr
    tval_data_ma := RegNext(reg_ma.asUInt)
 

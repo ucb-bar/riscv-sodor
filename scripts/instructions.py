@@ -34,6 +34,18 @@ class Instruction:
             self._opcode = Opcode.decode(self.inst)
         return self._opcode
 
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            assert(i.step is None)
+            start = i.start
+            stop = i.stop
+            assert(start >= 0 and start < 32)
+            assert(stop >= 0 and stop < 32 and stop > start)
+            return (self.inst & ((1 << (stop + 1)) - 1)) >> start
+        else:
+            assert(i >= 0 and i < 32)
+            return (self.inst >> i) & 1
+
 # These are taken from Instructions.scala in rocket-chip
 # Commentted out opcodes are not applicable for sodor
 BEQ                = Opcode("b?????????????????000?????1100011")
