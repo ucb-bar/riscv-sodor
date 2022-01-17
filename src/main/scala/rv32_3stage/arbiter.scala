@@ -36,7 +36,7 @@ class SodorMemArbiter(implicit val conf: SodorCoreParams) extends Module
     io.imem.req.ready := io.mem.req.ready
 
     // We only clear the d_resp flag when the next request fired since it also indicates the allowed type of the next request
-    when (io.mem.req.fire())
+    when (io.mem.req.fire)
     {
       d_resp := false.B
     }
@@ -47,13 +47,13 @@ class SodorMemArbiter(implicit val conf: SodorCoreParams) extends Module
     io.dmem.req.ready := io.mem.req.ready
     io.imem.req.ready := io.mem.req.ready && !io.dmem.req.valid
 
-    when (io.dmem.req.fire())
+    when (io.dmem.req.fire)
     {
       d_resp := true.B
     }
   }
   // SWITCH BET DATA AND INST REQ FOR SINGLE PORT
-  when (io.dmem.req.fire())
+  when (io.dmem.req.fire)
   {
     io.mem.req.valid     := io.dmem.req.valid
     io.mem.req.bits.addr := io.dmem.req.bits.addr

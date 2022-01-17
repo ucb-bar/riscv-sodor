@@ -66,10 +66,10 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
     req_size_reg := a_size
     req_data_reg := io.dport.req.bits.data
   }
-  when (state === s_active && tl_out.a.fire()) {
+  when (state === s_active && tl_out.a.fire) {
     state := s_inflight
   }
-  when (state === s_inflight && tl_out.d.fire()) {
+  when (state === s_inflight && tl_out.d.fire) {
     state := s_ready
   }
   tl_out.a.valid := state === s_active
@@ -78,7 +78,7 @@ class SodorMasterAdapterImp(outer: SodorMasterAdapter) extends LazyModuleImp(out
   io.dport.resp.valid := tl_out.d.valid
 
   // Bookkeeping
-  when (tl_out.a.fire()) {
+  when (tl_out.a.fire) {
     a_address_reg := io.dport.req.bits.addr
     a_signed_reg := a_size
   }

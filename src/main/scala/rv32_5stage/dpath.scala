@@ -19,7 +19,7 @@ import freechips.rocketchip.tile.CoreInterrupts
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle() 
+class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val dec_inst    = Output(UInt(conf.xprlen.W))
    val dec_valid   = Output(Bool())
@@ -143,17 +143,17 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    // Instruction fetch kill flag buffer
    val if_reg_killed = RegInit(false.B)
-   when ((io.ctl.pipeline_kill || io.ctl.if_kill) && !if_buffer_out.fire())
+   when ((io.ctl.pipeline_kill || io.ctl.if_kill) && !if_buffer_out.fire)
    {
       if_reg_killed := true.B
    }
-   when (if_reg_killed && if_buffer_out.fire())
+   when (if_reg_killed && if_buffer_out.fire)
    {
       if_reg_killed := false.B
    }
 
    // Do not change the PC again if the instruction is killed in previous cycles (when the PC has changed)
-   when ((if_buffer_in.fire() && !if_reg_killed) || io.ctl.if_kill || io.ctl.pipeline_kill)
+   when ((if_buffer_in.fire && !if_reg_killed) || io.ctl.if_kill || io.ctl.pipeline_kill)
    {
       if_reg_pc := if_pc_next
    }
