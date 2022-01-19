@@ -28,7 +28,6 @@ abstract class AbstractCore extends Module {
   val interrupt: CoreInterrupts
   val hartid: UInt
   val reset_vector: UInt
-  val io: Data
 }
 abstract class AbstractInternalTile(ports: Int)(implicit val p: Parameters, val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle {
