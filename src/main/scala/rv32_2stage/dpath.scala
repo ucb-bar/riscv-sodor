@@ -84,7 +84,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                   (io.ctl.pc_sel === PC_EXC)-> exception_target
                   ))
 
-   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once 
+   // Instruction memory buffer; if the core is stalled and a multi-cycle request arrives, save it in the buffer and supply it to the pipeline once
    // the execution is resumed
    val if_inst_buffer = RegInit(0.U(32.W))
    val if_inst_buffer_valid = RegInit(false.B)
@@ -227,7 +227,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
-   csr.io.decode(0).csr_addr  := exe_reg_inst
+   csr.io.decode(0).inst  := exe_reg_inst
    csr.io.rw.addr  := exe_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.cmd   := io.ctl.csr_cmd
    csr.io.rw.wdata := exe_alu_out
