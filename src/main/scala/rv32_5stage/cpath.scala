@@ -200,11 +200,12 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
       exe_reg_is_csr      := false.B
       exe_reg_illegal     := false.B
    }
-
-   mem_reg_wbaddr      := exe_reg_wbaddr
-   wb_reg_wbaddr       := mem_reg_wbaddr
-   mem_reg_ctrl_rf_wen := exe_reg_ctrl_rf_wen
-   wb_reg_ctrl_rf_wen  := mem_reg_ctrl_rf_wen
+   when (!full_stall) {
+     mem_reg_wbaddr      := exe_reg_wbaddr
+     wb_reg_wbaddr       := mem_reg_wbaddr
+     mem_reg_ctrl_rf_wen := exe_reg_ctrl_rf_wen
+     wb_reg_ctrl_rf_wen  := mem_reg_ctrl_rf_wen
+   }
 
    val exe_inst_is_load = RegInit(false.B)
 
