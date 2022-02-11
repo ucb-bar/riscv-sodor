@@ -35,8 +35,6 @@ class DMIReq(addrBits : Int) extends Bundle {
   val op   = Output(UInt(DMConsts.dmiOpSize.W))
   val addr = Output(UInt(addrBits.W))
   val data = Output(UInt(DMConsts.dmiDataSize.W))
-
-  override def cloneType = new DMIReq(addrBits).asInstanceOf[this.type]
 }
 
 /** Structure to define the contents of a Debug Bus Response

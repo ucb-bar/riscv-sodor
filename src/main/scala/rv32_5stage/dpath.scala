@@ -19,7 +19,7 @@ import freechips.rocketchip.tile.CoreInterrupts
 import Constants._
 import sodor.common._
 
-class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle() 
+class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
 {
    val dec_inst    = Output(UInt(conf.xprlen.W))
    val dec_valid   = Output(Bool())
@@ -35,7 +35,6 @@ class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()
 
    val csr_eret = Output(Bool())
    val csr_interrupt = Output(Bool())
-   override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle
@@ -144,17 +143,17 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    // Instruction fetch kill flag buffer
    val if_reg_killed = RegInit(false.B)
-   when ((io.ctl.pipeline_kill || io.ctl.if_kill) && !if_buffer_out.fire())
+   when ((io.ctl.pipeline_kill || io.ctl.if_kill) && !if_buffer_out.fire)
    {
       if_reg_killed := true.B
    }
-   when (if_reg_killed && if_buffer_out.fire())
+   when (if_reg_killed && if_buffer_out.fire)
    {
       if_reg_killed := false.B
    }
 
    // Do not change the PC again if the instruction is killed in previous cycles (when the PC has changed)
-   when ((if_buffer_in.fire() && !if_reg_killed) || io.ctl.if_kill || io.ctl.pipeline_kill)
+   when ((if_buffer_in.fire && !if_reg_killed) || io.ctl.if_kill || io.ctl.pipeline_kill)
    {
       if_reg_pc := if_pc_next
    }
@@ -427,7 +426,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
-   csr.io.decode(0).csr  := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
+   csr.io.decode(0).inst := mem_reg_inst
    csr.io.rw.addr   := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata  := mem_reg_alu_out
    csr.io.rw.cmd    := mem_reg_ctrl_csr_cmd

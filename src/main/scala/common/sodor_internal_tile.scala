@@ -28,6 +28,7 @@ abstract class AbstractCore extends Module {
   val interrupt: CoreInterrupts
   val hartid: UInt
   val reset_vector: UInt
+  val io: Data
 }
 abstract class AbstractInternalTile(ports: Int)(implicit val p: Parameters, val conf: SodorCoreParams) extends Module {
   val io = IO(new Bundle {
@@ -76,7 +77,7 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
     router.io.masterPort <> master_port
     // For sync memory, use the request address from the previous cycle
     val reg_resp_address = Reg(UInt(conf.xprlen.W))
-    when (core_port.req.fire()) { reg_resp_address := core_port.req.bits.addr }
+    when (core_port.req.fire) { reg_resp_address := core_port.req.bits.addr }
     router.io.respAddress := reg_resp_address
   }})
 
@@ -113,7 +114,7 @@ class SodorInternalTileStage3(range: AddressSet, ports: Int)(implicit p: Paramet
 }
 
 // The general Sodor tile for all cores other than 3-stage
-class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams) 
+class SodorInternalTile(range: AddressSet, coreCtor: SodorCoreFactory)(implicit p: Parameters, conf: SodorCoreParams)
   extends AbstractInternalTile(coreCtor.nMemPorts)
 {
   val core   = Module(coreCtor.instantiate)

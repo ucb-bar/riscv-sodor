@@ -24,7 +24,6 @@ class DatToCtlIo extends Bundle()
    val csr_eret = Output(Bool())
    val interrupt = Output(Bool())
    val addr_exception = Output(Bool())
-   override def cloneType = { new DatToCtlIo().asInstanceOf[this.type] }
 }
 
 
@@ -102,7 +101,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
   // Exception
   val tval_data_ma = Wire(UInt(conf.xprlen.W))
-  val tval_inst_ma = Wire(UInt(conf.xprlen.W)) 
+  val tval_inst_ma = Wire(UInt(conf.xprlen.W))
   val inst_misaligned = Wire(Bool())
   val data_misaligned = Wire(Bool())
   val mem_store = Wire(Bool())
@@ -138,13 +137,13 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    when (io.ctl.reg_wr & reg_addr =/= 0.U)
    {
       when (reg_addr === PC_IDX)
-      { 
+      {
         // Check bit 1 of the address for misalignment
         inst_misaligned := bus(1)
         // Clear LSB of the write data if we are writing to PC (required by JALR, but doesn't hurt doing this for all req)
         regfile(reg_addr) := bus & ~1.U(conf.xprlen.W)
       }
-      .elsewhen (!io.ctl.exception) 
+      .elsewhen (!io.ctl.exception)
       {
         regfile(reg_addr) := bus
       }
@@ -169,7 +168,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Control Status Registers
    val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
    csr.io := DontCare
-   csr.io.decode(0).csr  := csr_addr
+   csr.io.decode(0).inst  := csr_addr << 20
    csr.io.rw.addr  := csr_addr
    csr.io.rw.wdata := csr_wdata
    csr.io.rw.cmd   := io.ctl.csr_cmd

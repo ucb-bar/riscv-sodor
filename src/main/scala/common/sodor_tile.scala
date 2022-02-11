@@ -27,6 +27,7 @@ case class SodorCoreParams(
   internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends CoreParams {
   val useVM: Boolean = false
+  val useHypervisor: Boolean = false
   val useUser: Boolean = false
   val useSupervisor: Boolean = false
   val useDebug: Boolean = true
@@ -60,6 +61,7 @@ case class SodorCoreParams(
   val decodeWidth: Int = 1 // TODO: Check
   val fetchWidth: Int = 1 // TODO: Check
   val retireWidth: Int = 1
+  val nPTECacheEntries: Int = 0
 }
 
 // DOC include start: CanAttachTile
