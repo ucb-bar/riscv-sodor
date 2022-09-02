@@ -8,7 +8,7 @@ import freechips.rocketchip.rocket._
 import freechips.rocketchip.config.{Parameters, Field}
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.diplomaticobjectmodel.model.OMSRAM
+
 import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
