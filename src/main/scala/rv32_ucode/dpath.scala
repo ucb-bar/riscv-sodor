@@ -209,7 +209,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    csr.io.counters.foreach(_.inc := false.B)
 
    // ALU
-   val alu_shamt = reg_b(4,0).asUInt()
+   val alu_shamt = reg_b(4,0).asUInt
 
    alu := MuxCase(0.U, Array[(Bool, UInt)](
               (io.ctl.alu_op === ALU_COPY_A)  ->  reg_a,
@@ -222,11 +222,11 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
               (io.ctl.alu_op === ALU_SUB)     ->  (reg_a  -  reg_b),
               (io.ctl.alu_op === ALU_SLL)     -> ((reg_a << alu_shamt)(conf.xprlen-1,0)),
               (io.ctl.alu_op === ALU_SRL)     ->  (reg_a >> alu_shamt),
-              (io.ctl.alu_op === ALU_SRA)     ->  (reg_a.asSInt() >> alu_shamt).asUInt(),
+              (io.ctl.alu_op === ALU_SRA)     ->  (reg_a.asSInt >> alu_shamt).asUInt,
               (io.ctl.alu_op === ALU_AND)     ->  (reg_a & reg_b),
               (io.ctl.alu_op === ALU_OR)      ->  (reg_a | reg_b),
               (io.ctl.alu_op === ALU_XOR)     ->  (reg_a ^ reg_b),
-              (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt() < reg_b.asSInt()).asUInt(),
+              (io.ctl.alu_op === ALU_SLT)     ->  (reg_a.asSInt < reg_b.asSInt).asUInt,
               (io.ctl.alu_op === ALU_SLTU)    ->  (reg_a < reg_b),
               (io.ctl.alu_op === ALU_MASK_12) ->  (reg_a & ~((1<<12)-1).asUInt(conf.xprlen.W)),
               (io.ctl.alu_op === ALU_EVEC)    ->  exception_target
@@ -236,7 +236,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    io.dat.alu_zero := (alu === 0.U)
 
    // Output Signals to the Memory
-   io.mem.req.bits.addr := reg_ma.asUInt()
+   io.mem.req.bits.addr := reg_ma.asUInt
    io.mem.req.bits.data := bus
 
    // Data misalignment detection

@@ -253,7 +253,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                (io.ctl.op2_sel === OP2_SBTYPE) -> imm_sbtype_sext,
                (io.ctl.op2_sel === OP2_UTYPE)  -> imm_utype_sext,
                (io.ctl.op2_sel === OP2_UJTYPE) -> imm_ujtype_sext
-               )).asUInt()
+               )).asUInt
 
 
 
@@ -354,25 +354,25 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    //**********************************
    // Execute Stage
 
-   val exe_alu_op1 = exe_reg_op1_data.asUInt()
-   val exe_alu_op2 = exe_reg_op2_data.asUInt()
+   val exe_alu_op1 = exe_reg_op1_data.asUInt
+   val exe_alu_op2 = exe_reg_op2_data.asUInt
 
    // ALU
-   val alu_shamt     = exe_alu_op2(4,0).asUInt()
+   val alu_shamt     = exe_alu_op2(4,0).asUInt
    val exe_adder_out = (exe_alu_op1 + exe_alu_op2)(conf.xprlen-1,0)
 
    //only for debug purposes right now until debug() works
-   exe_alu_out := MuxCase(exe_reg_inst.asUInt(), Array(
+   exe_alu_out := MuxCase(exe_reg_inst.asUInt, Array(
                   (exe_reg_ctrl_alu_fun === ALU_ADD)  -> exe_adder_out,
-                  (exe_reg_ctrl_alu_fun === ALU_SUB)  -> (exe_alu_op1 - exe_alu_op2).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_AND)  -> (exe_alu_op1 & exe_alu_op2).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_OR)   -> (exe_alu_op1 | exe_alu_op2).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_XOR)  -> (exe_alu_op1 ^ exe_alu_op2).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_SLT)  -> (exe_alu_op1.asSInt() < exe_alu_op2.asSInt()).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_SLTU) -> (exe_alu_op1 < exe_alu_op2).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_SRA)  -> (exe_alu_op1.asSInt() >> alu_shamt).asUInt(),
-                  (exe_reg_ctrl_alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).asUInt(),
+                  (exe_reg_ctrl_alu_fun === ALU_SUB)  -> (exe_alu_op1 - exe_alu_op2).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_AND)  -> (exe_alu_op1 & exe_alu_op2).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_OR)   -> (exe_alu_op1 | exe_alu_op2).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_XOR)  -> (exe_alu_op1 ^ exe_alu_op2).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SLT)  -> (exe_alu_op1.asSInt < exe_alu_op2.asSInt).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SLTU) -> (exe_alu_op1 < exe_alu_op2).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SLL)  -> ((exe_alu_op1 << alu_shamt)(conf.xprlen-1, 0)).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SRA)  -> (exe_alu_op1.asSInt >> alu_shamt).asUInt,
+                  (exe_reg_ctrl_alu_fun === ALU_SRL)  -> (exe_alu_op1 >> alu_shamt).asUInt,
                   (exe_reg_ctrl_alu_fun === ALU_COPY_1)-> exe_alu_op1,
                   (exe_reg_ctrl_alu_fun === ALU_COPY_2)-> exe_alu_op2
                   ))
@@ -502,15 +502,15 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    io.dat.dec_valid  := dec_reg_valid
    io.dat.dec_inst   := dec_reg_inst
    io.dat.exe_br_eq  := (exe_reg_op1_data === exe_reg_rs2_data)
-   io.dat.exe_br_lt  := (exe_reg_op1_data.asSInt() < exe_reg_rs2_data.asSInt())
-   io.dat.exe_br_ltu := (exe_reg_op1_data.asUInt() < exe_reg_rs2_data.asUInt())
+   io.dat.exe_br_lt  := (exe_reg_op1_data.asSInt < exe_reg_rs2_data.asSInt)
+   io.dat.exe_br_ltu := (exe_reg_op1_data.asUInt < exe_reg_rs2_data.asUInt)
    io.dat.exe_br_type:= exe_reg_ctrl_br_type
 
    io.dat.mem_ctrl_dmem_val := mem_reg_ctrl_mem_val
 
    // datapath to data memory outputs
    io.dmem.req.valid     := mem_reg_ctrl_mem_val && !io.dat.mem_data_misaligned
-   io.dmem.req.bits.addr := mem_reg_alu_out.asUInt()
+   io.dmem.req.bits.addr := mem_reg_alu_out.asUInt
    io.dmem.req.bits.fcn  := mem_reg_ctrl_mem_fcn
    io.dmem.req.bits.typ  := mem_reg_ctrl_mem_typ
    io.dmem.req.bits.data := mem_reg_rs2_data
