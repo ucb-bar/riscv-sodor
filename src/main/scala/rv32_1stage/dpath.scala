@@ -14,7 +14,7 @@ import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.{CSRFile, Causes}
 import freechips.rocketchip.tile.CoreInterrupts
 
-import Constants._
+import sodor.stage1.Constants._
 import sodor.common._
 
 class DatToCtlIo(implicit val conf: SodorCoreParams) extends Bundle()

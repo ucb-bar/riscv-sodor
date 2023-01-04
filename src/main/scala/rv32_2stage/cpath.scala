@@ -13,7 +13,7 @@ import freechips.rocketchip.rocket.{CSR, Causes}
 
 import sodor.common._
 import sodor.common.Instructions._
-import Constants._
+import sodor.stage2.Constants._
 
 class CtlToDatIo extends Bundle()
 {

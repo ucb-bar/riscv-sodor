@@ -14,7 +14,7 @@ import freechips.rocketchip.rocket.CSR
 
 import sodor.common._
 import sodor.common.Instructions._
-import Constants._
+import sodor.ucode.Constants._
 import scala.collection.mutable.ArrayBuffer
 
 

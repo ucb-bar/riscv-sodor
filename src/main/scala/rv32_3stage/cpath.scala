@@ -14,8 +14,8 @@ import freechips.rocketchip.rocket.{CSR, Causes}
 
 import sodor.common._
 import sodor.common.Instructions._
-import Constants._
-import ALU._
+import sodor.stage3.Constants._
+import sodor.stage3.ALU._
 
 class CtrlSignals extends Bundle()
 {

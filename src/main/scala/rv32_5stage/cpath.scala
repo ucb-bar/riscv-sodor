@@ -15,7 +15,7 @@ import chisel3.util._
 
 import freechips.rocketchip.rocket.{CSR, Causes}
 
-import Constants._
+import sodor.stage5.Constants._
 import sodor.common._
 import sodor.common.Instructions._
 

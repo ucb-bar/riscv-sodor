@@ -8,7 +8,7 @@ import chisel3._
 import chisel3.util._
 
 import sodor.common._
-import Constants._
+import sodor.stage3.Constants._
 
 object ALU
 {
