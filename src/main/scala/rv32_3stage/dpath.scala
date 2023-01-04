@@ -178,12 +178,12 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Operand Muxes
    val exe_alu_op1 = Mux(io.ctl.op1_sel === OP1_IMZ, imm_z,
                      Mux(io.ctl.op1_sel === OP1_IMU, imm_u,
-                                                     exe_rs1_data)).asUInt()
+                                                     exe_rs1_data)).asUInt
 
    val exe_alu_op2 = Mux(io.ctl.op2_sel === OP2_IMI, imm_i_sext,
                      Mux(io.ctl.op2_sel === OP2_PC,  exe_pc,
                      Mux(io.ctl.op2_sel === OP2_IMS, imm_s_sext,
-                                                     exe_rs2_data))).asUInt()
+                                                     exe_rs2_data))).asUInt
 
 
    // ALU
@@ -203,8 +203,8 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    // datapath to controlpath outputs
    io.dat.br_eq  := (exe_rs1_data === exe_rs2_data)
-   io.dat.br_lt  := (exe_rs1_data.asSInt() < exe_rs2_data.asSInt())
-   io.dat.br_ltu := (exe_rs1_data.asUInt() < exe_rs2_data.asUInt())
+   io.dat.br_lt  := (exe_rs1_data.asSInt < exe_rs2_data.asSInt)
+   io.dat.br_ltu := (exe_rs1_data.asUInt < exe_rs2_data.asUInt)
 
    // Data misalignment detection
    // For example, if type is 3 (word), the mask is ~(0b111 << (3 - 1)) = ~0b100 = 0b011.

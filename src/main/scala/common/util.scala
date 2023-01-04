@@ -73,7 +73,7 @@ object PerformShiftRegister
 {
    def apply(reg_val: Bits, new_bit: Bool): Bits =
    {
-      reg_val := Cat(reg_val(reg_val.getWidth-1, 0).asUInt(), new_bit.asUInt()).asUInt()
+      reg_val := Cat(reg_val(reg_val.getWidth-1, 0).asUInt, new_bit.asUInt).asUInt
       reg_val
    }
 }
@@ -184,7 +184,7 @@ object Str
   def apply(x: SInt): Bits = apply(x, 10)
   def apply(x: SInt, radix: Int): Bits = {
     val neg = x < 0.S
-    val abs = Mux(neg, -x, x).asUInt()
+    val abs = Mux(neg, -x, x).asUInt
     if (radix != 10) {
       Cat(Mux(neg, Str('-'), Str(' ')), Str(abs, radix))
     } else {
