@@ -67,7 +67,7 @@ class MemResp(data_width: Int) extends Bundle
    val data = Output(UInt(data_width.W))
 }
 
-// Note: All `size` field in this class are base 2 logarithm 
+// Note: All `size` field in this class are base 2 logarithm
 class MemoryModule(numBytes: Int, useAsync: Boolean) {
    val addrWidth = log2Ceil(numBytes)
    val mem = if (useAsync) Mem(numBytes / 4, Vec(4, UInt(8.W))) else SyncReadMem(numBytes / 4, Vec(4, UInt(8.W)))
@@ -110,20 +110,20 @@ class MemoryModule(numBytes: Int, useAsync: Boolean) {
          val bytes = sizeToBytes(s_size)
          val sign = shiftedVec(3.U - bytes).apply(7)
          val masks = getMask(bytes)
-         val maskedVec = (shiftedVec zip masks) map ({ case (byte, mask) => 
+         val maskedVec = (shiftedVec zip masks) map ({ case (byte, mask) =>
             Mux(sign && s_signed, byte | ~Fill(8, mask), byte & Fill(8, mask))
          })
 
          io.data := Cat(maskedVec)
       }
 
-      val module = Module(new MemReader)
-      module.io.addr := addr
-      module.io.size := size
-      module.io.signed := signed
-      module.io.mem_data := mem.read(module.io.mem_addr)
+      val memreader = Module(new MemReader)
+      memreader.io.addr := addr
+      memreader.io.size := size
+      memreader.io.signed := signed
+      memreader.io.mem_data := mem.read(memreader.io.mem_addr)
 
-      module.io.data
+      memreader.io.data
    }
    def apply(addr: UInt, size: UInt, signed: Bool) = read(addr, size, signed)
 
@@ -153,14 +153,14 @@ class MemoryModule(numBytes: Int, useAsync: Boolean) {
          io.mem_masks := VecInit(masks map (mask => mask && io.en))
       }
 
-      val module = Module(new MemWriter)
-      module.io.addr := addr
-      module.io.data := data
-      module.io.size := size
-      module.io.en := en
+      val memwriter = Module(new MemWriter)
+      memwriter.io.addr := addr
+      memwriter.io.data := data
+      memwriter.io.size := size
+      memwriter.io.en := en
 
       when (en) {
-         mem.write(module.io.mem_addr, module.io.mem_data, module.io.mem_masks)
+         mem.write(memwriter.io.mem_addr, memwriter.io.mem_data, memwriter.io.mem_masks)
       }
    }
 }
@@ -197,7 +197,7 @@ class ScratchPadMemoryBase(num_core_ports: Int, num_bytes: Int = (1 << 21), useA
 
    ///////////// IPORT
    if (num_core_ports == 2){
-      val iport_req = io.core_ports(IPORT).req.bits 
+      val iport_req = io.core_ports(IPORT).req.bits
       io.core_ports(IPORT).resp.bits.data := async_data.read(iport_req.addr, iport_req.getTLSize, iport_req.getTLSigned)
    }
    ////////////
@@ -212,8 +212,8 @@ class ScratchPadMemoryBase(num_core_ports: Int, num_bytes: Int = (1 << 21), useA
    async_data.write(debug_port_req.addr, debug_port_req.data, debug_port_req.getTLSize, debug_port_wen)
 }
 
-class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams) 
+class AsyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams)
    extends ScratchPadMemoryBase(num_core_ports, num_bytes, true)(conf)
 
-class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams) 
+class SyncScratchPadMemory(num_core_ports: Int, num_bytes: Int = (1 << 21))(implicit conf: SodorCoreParams)
    extends ScratchPadMemoryBase(num_core_ports, num_bytes, false)(conf)
