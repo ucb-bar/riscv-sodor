@@ -14,7 +14,7 @@ import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.rocket.CSRFile
 import freechips.rocketchip.tile.CoreInterrupts
 
-import Constants._
+import sodor.ucode.Constants._
 import sodor.common._
 
 class DatToCtlIo extends Bundle()

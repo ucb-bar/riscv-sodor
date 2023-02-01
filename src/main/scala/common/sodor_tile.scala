@@ -61,6 +61,11 @@ case class SodorCoreParams(
   val fetchWidth: Int = 1 // TODO: Check
   val retireWidth: Int = 1
   val nPTECacheEntries: Int = 0
+  val useBitManip: Boolean = false
+  val useBitManipCrypto: Boolean = false
+  val useCryptoNIST: Boolean = false
+  val useCryptoSM: Boolean = false
+  val traceHasWdata: Boolean = false
 }
 
 // DOC include start: CanAttachTile

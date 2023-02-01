@@ -49,7 +49,7 @@ import chisel3.util._
 
 import freechips.rocketchip.rocket.CSR
 
-import Constants._
+import sodor.ucode.Constants._
 import sodor.common._
 
 object Microcode

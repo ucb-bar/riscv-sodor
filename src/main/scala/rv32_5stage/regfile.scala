@@ -9,7 +9,7 @@ import chisel3._
 import chisel3.util._
 
 
-import Constants._
+import sodor.stage5.Constants._
 import sodor.common._
 
 class RFileIo(implicit val conf: SodorCoreParams) extends Bundle()
