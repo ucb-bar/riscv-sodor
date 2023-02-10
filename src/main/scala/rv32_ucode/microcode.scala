@@ -169,17 +169,17 @@ object Microcode
    /* Reg[rd] <- A < B */,                  Signals(Cat(CSR.N, LDIR_0, RS_RD , RWR_1, REN_0, LDA_0, LDB_0, ALU_SLTU   , AEN_1, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_J), "FETCH")
 
    /* SLLI             */
-   /* A  <- Reg[rs1]   */,Label("SLLI"),    Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
+   /* A  <- Reg[rs1]   */,Label("SLLI_RV32"),Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
    /* B  <- Sext(Imm12)*/,                  Signals(Cat(CSR.N, LDIR_0, RS_X  , RWR_0, REN_0, LDA_0, LDB_1, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_I , IEN_1, UBR_N), "X")
    /* Reg[rd] <- A << B*/,                  Signals(Cat(CSR.N, LDIR_0, RS_RD , RWR_1, REN_0, LDA_0, LDB_0, ALU_SLL    , AEN_1, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_J), "FETCH")
 
    /* SRLI             */
-   /* A  <- Reg[rs1]   */,Label("SRLI"),    Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
+   /* A  <- Reg[rs1]   */,Label("SRLI_RV32"),Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
    /* B  <- Sext(Imm12)*/,                  Signals(Cat(CSR.N, LDIR_0, RS_X  , RWR_0, REN_0, LDA_0, LDB_1, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_I , IEN_1, UBR_N), "X")
    /* Reg[rd] <- A>>>B */,                  Signals(Cat(CSR.N, LDIR_0, RS_RD , RWR_1, REN_0, LDA_0, LDB_0, ALU_SRL    , AEN_1, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_J), "FETCH")
 
    /* SRAI             */
-   /* A  <- Reg[rs1]   */,Label("SRAI"),    Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
+   /* A  <- Reg[rs1]   */,Label("SRAI_RV32"),Signals(Cat(CSR.N, LDIR_0, RS_RS1, RWR_0, REN_1, LDA_1, LDB_X, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_N), "X")
    /* B  <- Sext(Imm12)*/,                  Signals(Cat(CSR.N, LDIR_0, RS_X  , RWR_0, REN_0, LDA_0, LDB_1, ALU_X      , AEN_0, LDMA_X, MWR_0, MEN_0, MT_X , IS_I , IEN_1, UBR_N), "X")
    /* Reg[rd] <- A>>>B */,                  Signals(Cat(CSR.N, LDIR_0, RS_RD , RWR_1, REN_0, LDA_0, LDB_0, ALU_SRA    , AEN_1, LDMA_X, MWR_0, MEN_0, MT_X , IS_X , IEN_0, UBR_J), "FETCH")
 
