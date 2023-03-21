@@ -17,7 +17,7 @@ package sodor.stage3
 import chisel3._
 import chisel3.util._
 
-import freechips.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.rocket.{CSR, CSRFile, Causes}
 import freechips.rocketchip.tile.CoreInterrupts
 
