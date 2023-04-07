@@ -7,7 +7,7 @@ package sodor.stage5
 import chisel3._
 import sodor.common._
 
-import freechips.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.tile.CoreInterrupts
 
 class CoreIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle
