@@ -66,6 +66,7 @@ case class SodorCoreParams(
   val useCryptoNIST: Boolean = false
   val useCryptoSM: Boolean = false
   val traceHasWdata: Boolean = false
+  val useConditionalZero: Boolean = false
 }
 
 // DOC include start: CanAttachTile
