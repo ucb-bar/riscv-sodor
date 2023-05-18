@@ -5,7 +5,7 @@ import chisel3.util._
 import chisel3.experimental._
 
 import freechips.rocketchip.rocket._
-import freechips.rocketchip.config.{Parameters, Field}
+import org.chipsalliance.cde.config.{Parameters, Field}
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
 
