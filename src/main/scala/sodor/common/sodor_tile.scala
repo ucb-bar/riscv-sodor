@@ -81,7 +81,7 @@ case class SodorTileAttachParams(
 
 case class SodorTileParams(
   name: Option[String] = Some("sodor_tile"),
-  hartId: Int = 0,
+  tileId: Int = 0,
   trace: Boolean = false,
   val core: SodorCoreParams = SodorCoreParams(),
   val scratchpad: DCacheParams = DCacheParams()
@@ -94,9 +94,11 @@ case class SodorTileParams(
   val dcache: Option[DCacheParams] = Some(scratchpad)
   val icache: Option[ICacheParams] = None
   val clockSinkParams: ClockSinkParameters = ClockSinkParameters()
-  def instantiate(crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): SodorTile = {
+  def instantiate(crossing: HierarchicalElementCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters): SodorTile = {
     new SodorTile(this, crossing, lookup)
   }
+  val baseName = name.getOrElse("sodor_tile")
+  val uniqueName = s"${baseName}_$tileId"
 }
 
 class SodorTile(
@@ -109,11 +111,11 @@ class SodorTile(
   with SourcesExternalNotifications
 {
   // Private constructor ensures altered LazyModule.p is used implicitly
-  def this(params: SodorTileParams, crossing: TileCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
+  def this(params: SodorTileParams, crossing: HierarchicalElementCrossingParamsLike, lookup: LookupByHartIdImpl)(implicit p: Parameters) =
     this(params, crossing.crossingType, lookup, p)
 
   // Require TileLink nodes
-  val intOutwardNode = IntIdentityNode()
+  val intOutwardNode = Some(IntIdentityNode())
   val masterNode = visibilityNode
   val slaveNode = TLIdentityNode()
 
@@ -161,7 +163,7 @@ class SodorTile(
   }
 
   ResourceBinding {
-    Resource(cpuDevice, "reg").bind(ResourceAddress(staticIdForMetadataUseOnly))
+    Resource(cpuDevice, "reg").bind(ResourceAddress(tileId))
   }
 
   override def makeMasterBoundaryBuffers(crossing: ClockCrossingType)(implicit p: Parameters) = {
@@ -209,19 +211,18 @@ class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
 
 class WithNSodorCores(
   n: Int = 1,
-  overrideIdOffset: Option[Int] = None,
   internalTile: SodorInternalTileFactory = Stage3Factory()
 ) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => {
     // Calculate the next available hart ID (since hart ID cannot be duplicated)
     val prev = up(TilesLocated(InSubsystem), site)
     require(prev.length == 0, "Sodor doesn't support multiple core.")
-    val idOffset = overrideIdOffset.getOrElse(prev.size)
+    val idOffset = up(NumTiles)
     // Create TileAttachParams for every core to be instantiated
     (0 until n).map { i =>
       SodorTileAttachParams(
         tileParams = SodorTileParams(
-          hartId = i + idOffset,
+          tileId = i + idOffset,
           scratchpad = DCacheParams(
             nSets = 4096, // Very large so we have enough SPAD for bmark tests
             nWays = 1,
@@ -241,6 +242,7 @@ class WithNSodorCores(
   case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 4)
   // The # of instruction bits. Use maximum # of bits if your core supports both 32 and 64 bits.
   case XLen => 32
+  case NumTiles => up(NumTiles) + n
 }) {
   require(n == 1, "Sodor doesn't support multiple core.")
 }

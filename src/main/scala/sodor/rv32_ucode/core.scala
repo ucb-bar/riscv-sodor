@@ -17,14 +17,14 @@ import chisel3.util._
 import sodor.common._
 
 import org.chipsalliance.cde.config.Parameters
-import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.rocket.CoreInterrupts
 
 class CoreIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bundle
 {
   val ddpath = Flipped(new DebugDPath())
   val dcpath = Flipped(new DebugCPath())
   val mem  = new MemPortIo(conf.xprlen)
-  val interrupt = Input(new CoreInterrupts())
+  val interrupt = Input(new CoreInterrupts(false))
   val hartid = Input(UInt())
   val reset_vector = Input(UInt())
 }
