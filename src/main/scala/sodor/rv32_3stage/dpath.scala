@@ -19,7 +19,7 @@ import chisel3.util._
 
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.rocket.{CSR, CSRFile, Causes}
-import freechips.rocketchip.tile.CoreInterrupts
+import freechips.rocketchip.rocket.CoreInterrupts
 
 import sodor.stage3.Constants._
 import sodor.common._
@@ -43,7 +43,7 @@ class DpathIo(implicit val p: Parameters, val conf: SodorCoreParams) extends Bun
    val dmem = new MemPortIo(conf.xprlen)
    val ctl  = Input(new CtrlSignals())
    val dat  = new DatToCtlIo()
-   val interrupt = Input(new CoreInterrupts())
+   val interrupt = Input(new CoreInterrupts(false))
    val hartid = Input(UInt())
 }
 

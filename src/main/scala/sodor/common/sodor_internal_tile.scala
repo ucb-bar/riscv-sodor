@@ -34,7 +34,7 @@ abstract class AbstractInternalTile(ports: Int)(implicit val p: Parameters, val 
   val io = IO(new Bundle {
     val debug_port = Flipped(new MemPortIo(data_width = conf.xprlen))
     val master_port = Vec(ports, new MemPortIo(data_width = conf.xprlen))
-    val interrupt = Input(new CoreInterrupts())
+    val interrupt = Input(new CoreInterrupts(false))
     val hartid = Input(UInt())
     val reset_vector = Input(UInt())
   })
