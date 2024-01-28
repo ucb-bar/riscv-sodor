@@ -324,7 +324,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       MuxCase(Str(" "), Seq(
          wb_hazard_stall -> Str("H"),
          io.ctl.exe_kill -> Str("K"))),
-      MuxLookup(io.ctl.pc_sel, Str("?"), Seq(
+      MuxLookup(io.ctl.pc_sel, Str("?"))(Seq(
          PC_BR -> Str("B"),
          PC_J -> Str("J"),
          PC_JR -> Str("R"),

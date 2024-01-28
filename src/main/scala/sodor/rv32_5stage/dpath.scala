@@ -533,7 +533,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
          io.ctl.pipeline_kill -> Str("K"),
          io.ctl.full_stall -> Str("F"),
          io.ctl.dec_stall -> Str("S"))),
-      MuxLookup(io.ctl.exe_pc_sel, Str("?"), Seq(
+      MuxLookup(io.ctl.exe_pc_sel, Str("?"))(Seq(
          PC_BRJMP -> Str("B"),
          PC_JALR -> Str("R"),
          PC_EXC -> Str("E"),

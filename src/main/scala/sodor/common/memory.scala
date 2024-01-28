@@ -73,7 +73,7 @@ class MemoryModule(numBytes: Int, useAsync: Boolean) {
    val mem = if (useAsync) Mem(numBytes / 4, Vec(4, UInt(8.W))) else SyncReadMem(numBytes / 4, Vec(4, UInt(8.W)))
 
    // Convert size exponent to actual number of bytes - 1
-   private def sizeToBytes(size: UInt) = MuxLookup(size, 3.U, List(0.U -> 0.U, 1.U -> 1.U, 2.U -> 3.U))
+   private def sizeToBytes(size: UInt) = MuxLookup(size, 3.U)(List(0.U -> 0.U, 1.U -> 1.U, 2.U -> 3.U))
 
    private def getMask(bytes: UInt, storeOffset: UInt = 0.U) = {
       val mask = ("b00011111".U(8.W) << bytes).apply(7, 4)
