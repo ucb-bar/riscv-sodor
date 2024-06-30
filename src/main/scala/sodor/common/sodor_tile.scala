@@ -25,6 +25,8 @@ case class SodorCoreParams(
   xprlen: Int = 32,
   internalTile: SodorInternalTileFactory = Stage5Factory
 ) extends CoreParams {
+  val xLen = xprlen
+  val pgLevels = 2
   val useVM: Boolean = false
   val useHypervisor: Boolean = false
   val useUser: Boolean = false
@@ -240,8 +242,6 @@ class WithNSodorCores(
   }
   // Configurate # of bytes in one memory / IO transaction. For RV64, one load/store instruction can transfer 8 bytes at most.
   case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 4)
-  // The # of instruction bits. Use maximum # of bits if your core supports both 32 and 64 bits.
-  case XLen => 32
   case NumTiles => up(NumTiles) + n
 }) {
   require(n == 1, "Sodor doesn't support multiple core.")
