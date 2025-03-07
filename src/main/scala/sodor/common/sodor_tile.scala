@@ -180,9 +180,6 @@ class SodorTile(
 }
 
 class SodorTileModuleImp(outer: SodorTile) extends BaseTileModuleImp(outer){
-  // annotate the parameters
-  Annotated.params(this, outer.sodorParams)
-
   // Sodor core parameters
   implicit val conf = outer.sodorParams.core
 
